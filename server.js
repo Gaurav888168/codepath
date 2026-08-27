@@ -4,7 +4,11 @@ import { exec } from 'child_process';
 import vm from 'vm';
 
 const app = express();
-const PORT = 5000;
+const PORT = 8000;
+
+// Enable CORS and body parsing first
+app.use(cors());
+app.use(express.json());
 
 // Firewall State & Memory Log Storage
 let firewallEnabled = true;
@@ -106,9 +110,6 @@ app.use((req, res, next) => {
 
   next();
 });
-
-app.use(cors());
-app.use(express.json());
 
 // -------------------------------------------------------------
 // FIREWALL API ENDPOINTS
@@ -225,6 +226,10 @@ app.post('/api/user/progress', (req, res) => {
   res.json({ status: 'SYNCED', timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () => {
-  console.log(`🔒 CodePath Secure Backend & Firewall Server running on port ${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🔒 CodePath Secure Backend & Firewall Server running on port ${PORT}`);
+  });
+}
+
+export default app;

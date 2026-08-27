@@ -25,6 +25,8 @@ import {
 import { topicsData, practiceQuestions, quizzesData, companyPacks } from './data';
 import './App.css';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 function App() {
   // Navigation State
   const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, learn, playground, games, store, firewall, settings
@@ -134,8 +136,8 @@ function App() {
     try {
       setFirewallLoading(true);
       const [resStatus, resLogs] = await Promise.all([
-        fetch('http://localhost:5000/api/firewall/status'),
-        fetch('http://localhost:5000/api/firewall/logs')
+        fetch(`${API_BASE}/api/firewall/status`),
+        fetch(`${API_BASE}/api/firewall/logs`)
       ]);
       if (resStatus.ok && resLogs.ok) {
         const dataStatus = await resStatus.json();
@@ -152,7 +154,7 @@ function App() {
 
   const handleToggleFirewall = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/firewall/toggle', { method: 'POST' });
+      const res = await fetch(`${API_BASE}/api/firewall/toggle`, { method: 'POST' });
       if (res.ok) {
         fetchFirewallData();
       }
@@ -209,7 +211,7 @@ function App() {
   const executeCode = async (submit = false) => {
     // Attempt Secure Backend Compiler first
     try {
-      const response = await fetch('http://localhost:5000/api/compile', {
+      const response = await fetch(`${API_BASE}/api/compile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: editorCode, language: activeLanguage })
@@ -316,7 +318,7 @@ function App() {
       }
 
       // Sync progress to backend
-      fetch('http://localhost:5000/api/user/progress', {
+      fetch(`${API_BASE}/api/user/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ xp: xp + 50, coins: coins + 25, solvedQuestions: newSolved })
@@ -421,7 +423,7 @@ function App() {
   // Playground Runner
   const runPlaygroundCode = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/compile', {
+      const response = await fetch(`${API_BASE}/api/compile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: playgroundCode, language: 'JavaScript' })
@@ -663,7 +665,7 @@ function App() {
     if (type === 'login') {
       if (email && password) {
         try {
-          await fetch('http://localhost:5000/api/auth/login', {
+          await fetch(`${API_BASE}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
@@ -676,7 +678,7 @@ function App() {
     } else if (type === 'register') {
       if (email && password) {
         try {
-          await fetch('http://localhost:5000/api/auth/register', {
+          await fetch(`${API_BASE}/api/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
@@ -1017,7 +1019,7 @@ function App() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Backend Firewall:</span>
                       <span style={{ fontWeight: 'bold', color: firewallStatus?.firewallEnabled ? 'var(--success)' : 'var(--error)' }}>
-                        {firewallStatus?.firewallEnabled ? '🛡️ ENABLED (Port 5000)' : '⚠️ DISABLED'}
+                        {firewallStatus?.firewallEnabled ? '🛡️ ENABLED (Port 8000)' : '⚠️ DISABLED'}
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>

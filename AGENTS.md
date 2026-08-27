@@ -25,13 +25,17 @@ This repository is a Vite + React application with an Express backend for API, a
 
 Use modern ES modules, React functional components, and hooks. Follow the existing JavaScript style: 2-space indentation, single quotes, semicolons in application files, and descriptive camelCase names. Name React components in PascalCase. Keep shared curriculum, quiz, and practice data in `src/data.js`. Use `lucide-react` for UI icons.
 
+## Curriculum Data
+
+Keep `topicsData` ordered from beginner fundamentals to advanced techniques. Update the explicit `curriculumOrder` list in `src/data.js` when adding a topic, and place new concepts after their prerequisites. Preserve existing topic IDs so saved progress, quizzes, and practice records continue to match. Keep scraped source data in `scraped_data/`; normalize imported topics instead of duplicating core modules.
+
 ## Testing Guidelines
 
 No first-party test framework is currently configured. Before opening a pull request, run `npm run lint` and `npm run build`. For new coverage, prefer colocated names such as `ComponentName.test.jsx` or a `src/__tests__/` directory, and document any new test command in `package.json` and this guide.
 
 ## Commit & Pull Request Guidelines
 
-Git history is not available in this working copy, so there is no observed repository-specific commit convention. Use concise, imperative commit messages such as `Add quiz progress persistence` or `Fix firewall log rendering`.
+Use concise, imperative commit messages consistent with the project history, such as `Order curriculum topics by difficulty` or `Fix firewall log rendering`.
 
 Pull requests should include a summary, affected frontend/backend areas, verification steps, and screenshots or recordings for UI changes. Link related issues when available. Note changes to `vercel.json`, `.github/workflows/deploy.yml`, or build output behavior.
 

@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>0/1 Knapsack Problem — DP Visualizer</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1a2236;
+      --border: #1e2d45;
+      --border2: #263550;
+      --text: #e2e8f4;
+      --muted: #6b7a99;
+      --accent-main: #58a6ff;
+      --accent-sel: #3fb950;
+      --accent2: #f472b6;
+      --accent3: #34d399;
+      --accent4: #fbbf24;
+      --accent-orange: #f0883e;
+      --rejected: #ef4444;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
+    body::before { content: ""; position: fixed; inset: 0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+
+    .top-bar { position: sticky; top: 0; z-index: 100000; display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: rgba(10,14,26,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .top-title { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; }
+    .top-title span { color: var(--accent4); }
+    .badge { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-main); border: 1px solid rgba(88,166,255,0.3); background: rgba(88,166,255,0.08); border-radius: 999px; padding: 4px 10px; }
+    .pen-toolbar-top { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-left: auto; pointer-events: auto; }
+    #pen-canvas { position: fixed; top: 0; left: 0; z-index: 99999; cursor: crosshair; display: none; pointer-events: none; }
+    #pen-undo-btn:disabled, #pen-redo-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #pen-undo-btn:disabled:hover, #pen-redo-btn:disabled:hover { border-color: var(--border2); color: var(--muted); }
+
+    .page { position: relative; z-index: 1; }
+    header { padding: 32px 34px 24px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; }
+    .tag-blue { color: var(--accent-main); border: 1px solid rgba(88,166,255,0.25); background: rgba(88,166,255,0.06); }
+    .tag-sel { color: var(--accent-sel); border: 1px solid rgba(63,185,80,0.25); background: rgba(63,185,80,0.06); }
+    .tag-orange { color: var(--accent-orange); border: 1px solid rgba(240,136,62,0.25); background: rgba(240,136,62,0.06); }
+    .tag-pink { color: var(--accent2); border: 1px solid rgba(244,114,182,0.25); background: rgba(244,114,182,0.06); }
+    h1 { font-size: clamp(22px, 4vw, 38px); line-height: 1.1; margin-bottom: 8px; letter-spacing: -0.5px; }
+    .subtitle { font-size: 13px; color: var(--muted); max-width: 760px; line-height: 1.75; }
+
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 20px 42px; }
+    .section-hdr { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin: 24px 0 16px; display: flex; align-items: center; gap: 12px; font-weight: 600; }
+    .section-hdr::after { content: ""; flex: 1; height: 2px; background: linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 20px; align-items: start; }
+    .viz-stack { display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .card-header { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .content { padding: 14px 16px; }
+
+    .theory-box { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; padding: 18px 20px; border-left: 3px solid var(--accent3); }
+    .theory-box h2 { font-size: 16px; margin-bottom: 12px; }
+    .theory-box p { color: var(--muted); line-height: 1.75; margin-bottom: 14px; }
+    .theory-list { list-style: none; display: flex; flex-direction: column; gap: 10px; color: var(--text); }
+    .theory-list strong { color: var(--accent4); }
+    .theory-highlights { margin-top: 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .mini-point { border: 1px solid var(--border2); background: rgba(88,166,255,0.06); border-radius: 12px; padding: 12px; }
+    .mini-point h4 { font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--accent-main); margin-bottom: 6px; }
+    .mini-point p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+    .controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .small-input, .btn {
+      font-family: 'IBM Plex Mono', monospace;
+      border-radius: 10px;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+    .btn { cursor: pointer; transition: all .15s; }
+    .btn:hover { border-color: var(--accent-main); color: var(--accent-main); }
+    .btn-primary { border-color: var(--accent-main); background: linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .pill { font-family: 'IBM Plex Mono', monospace; font-size: 11px; border: 1px solid var(--border2); border-radius: 999px; background: var(--surface2); padding: 7px 10px; color: var(--muted); }
+    .pill b { color: var(--accent4); }
+    .pill.success b { color: var(--accent-sel); }
+    .pill.error b { color: var(--rejected); }
+    .walk-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+
+    .walk-layout { display: grid; grid-template-columns: 1.9fr 1fr; gap: 10px; align-items: start; }
+    .tree-wrap { min-height: 620px; max-height: 700px; overflow-x: auto; overflow-y: auto; padding: 14px; width: 100%; background: #0f172a; border: 1px solid var(--border2); border-radius: 12px; }
+    .tree-wrap { scrollbar-color: #2f4e7d #0b1324; scrollbar-width: thin; }
+    .tree-wrap::-webkit-scrollbar { height: 12px; width: 12px; }
+    .tree-wrap::-webkit-scrollbar-track { background: #0b1324; border-radius: 10px; }
+    .tree-wrap::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #2f4e7d, #3b82f6); border-radius: 10px; border: 2px solid #0b1324; }
+    .tree-wrap::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #3b82f6, #58a6ff); }
+    .svg-tree { display: block; width: max-content; min-width: 0; }
+    .edge { stroke: var(--border2); stroke-width: 1.2; fill: none; }
+    .edge-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; fill: var(--muted); }
+    .node-box { stroke-width: 1; rx: 8; ry: 8; }
+    .node-box.normal { fill: rgba(88,166,255,0.1); stroke: rgba(88,166,255,0.35); }
+    .node-box.leaf { fill: rgba(63,185,80,0.12); stroke: rgba(63,185,80,0.35); }
+    .node-box.cached { fill: rgba(244,114,182,0.12); stroke: rgba(244,114,182,0.35); }
+    .node-box.visited { stroke-width: 1.6; }
+    .node-box.active { stroke: var(--accent4); stroke-width: 2.2; filter: drop-shadow(0 0 6px rgba(251,191,36,0.35)); }
+    .node-text { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; }
+    .node-text.normal { fill: var(--accent-main); }
+    .node-text.leaf { fill: var(--accent-sel); }
+    .node-text.cached { fill: var(--accent2); }
+    .approach-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 20px; }
+    .plain-steps, .impl-notes { list-style: none; display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .plain-steps strong, .impl-notes strong { color: var(--accent4); }
+    .code-block { font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.7; color: var(--text); background: #0f172a; border: 1px solid var(--border2); border-radius: 10px; padding: 12px; overflow-x: auto; margin-bottom: 10px; }
+    .note { color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .code-line { font-family: 'IBM Plex Mono', monospace; color: var(--muted); font-size: 12px; line-height: 1.9; }
+    .code-line .kw { color: var(--accent2); }
+    .code-line .fn { color: var(--accent-main); }
+    .code-line .ok { color: var(--accent-sel); }
+    .code-line .bad { color: var(--rejected); }
+    .walk-panel { background: #0f172a; border: 1px solid var(--border2); border-radius: 12px; padding: 12px; }
+    .ps-line { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); padding: 6px 8px; border-radius: 6px; margin-bottom: 5px; border: 1px solid transparent; }
+    .ps-line.active { color: var(--accent4); background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.35); }
+    .call-box { margin-top: 10px; padding: 10px; border-radius: 8px; border: 1px solid var(--border2); background: rgba(88,166,255,0.06); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.6; }
+    .lang-switch { display: flex; gap: 8px; margin-bottom: 10px; }
+    .lang-btn.active { border-color: var(--accent-sel); color: var(--accent-sel); background: rgba(63,185,80,0.12); }
+    .hidden { display: none; }
+    .params-box { background: #0f172a; border: 1px solid var(--border2); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+    .params-box p { margin: 4px 0; color: var(--muted); }
+    .params-box b { color: var(--accent4); }
+
+    @media(max-width: 900px) {
+      .grid-2, .controls, .stats, .approach-grid, .walk-controls, .walk-layout { grid-template-columns: 1fr; }
+      .theory-highlights { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="pen-canvas"></canvas>
+  <div class="top-bar">
+    <span class="top-title">0/1 Knapsack <span>Problem</span></span>
+    <span class="badge">Dynamic Programming</span>
+    <div class="pen-toolbar-top" id="pen-toolbar-top">
+      <button class="btn btn-primary" id="pen-toggle-btn" title="Toggle Drawing Mode (P)" style="padding: 8px 14px; font-size: 12px;">✏️ Start Drawing</button>
+      <button id="pen-undo-btn" class="btn" style="padding: 8px 12px; font-size: 12px;">↶ Undo</button>
+      <button id="pen-redo-btn" class="btn" style="padding: 8px 12px; font-size: 12px;">↷ Redo</button>
+      <button id="pen-clear-btn" class="btn" style="padding: 8px 12px; font-size: 12px;">🗑️ Clear</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label for="pen-color" style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono', monospace;">Color:</label>
+        <input type="color" id="pen-color" value="#fbbf24" style="width:36px;height:28px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label for="pen-size" style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono', monospace; min-width:40px;">Size:</label>
+        <input type="range" id="pen-size" min="1" max="20" value="3" style="width:100px;">
+        <span id="pen-size-display" style="font-size:11px;color:var(--muted);min-width:30px;">3px</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <header>
+      <div class="tag-row">
+        <span class="tag tag-blue">Decision Tree</span>
+        <span class="tag tag-pink">Overlapping Subproblems</span>
+        <span class="tag tag-sel">Memoization</span>
+        <span class="tag tag-orange">Interactive</span>
+      </div>
+      <h1>0/1 Knapsack with <span style="color:var(--accent4)">DP Visualization</span></h1>
+      <p class="subtitle">Master the 0/1 Knapsack problem: first see the full recursive tree with redundant decisions, then watch as DP memoization prunes the tree by reusing cached results. Change items and capacity to explore different scenarios instantly.</p>
+    </header>
+
+    <div class="container">
+      <div class="theory-box">
+        <h2>Core Idea</h2>
+        <p>The 0/1 Knapsack problem asks: given items with weights and values, select items to maximize value without exceeding capacity. Each item is either fully included (1) or not included (0)—no fractional items allowed. This is a perfect case for Dynamic Programming because decisions repeat across many subproblems.</p>
+        
+        <div style="background:rgba(88,166,255,0.08); border:1px solid rgba(88,166,255,0.2); border-radius:10px; padding:14px; margin-bottom:14px;">
+          <h3 style="color:var(--accent-main); font-size:13px; margin-bottom:8px; font-family:'IBM Plex Mono',monospace;">📋 Problem Statement With Example</h3>
+          <p style="color:var(--muted); font-size:12px; line-height:1.7; margin-bottom:10px;"><strong>You have:</strong></p>
+          <p style="color:var(--muted); font-size:12px; line-height:1.7; margin-left:10px; font-family:'IBM Plex Mono',monospace;">• Item 0: weight=2, value=3<br/>• Item 1: weight=3, value=4<br/>• Item 2: weight=4, value=5<br/>• Knapsack capacity: 5</p>
+          <p style="color:var(--muted); font-size:12px; line-height:1.7; margin-top:10px; margin-bottom:10px;"><strong>Question:</strong> What is the maximum value you can fit?</p>
+          <p style="color:var(--accent-sel); font-size:12px; line-height:1.7; margin-left:10px; font-family:'IBM Plex Mono',monospace;">✓ <strong>Answer:</strong> Take item 0 (weight=2, value=3) + item 2 (weight=4, but only 3 left... can't fit).<br/>✓ Better: Take item 0 (weight=2, value=3) + item 1 (weight=3, value=4) = total weight 5, value 7. ✓ OPTIMAL!</p>
+        </div>
+        
+        <ul class="theory-list">
+          <li><strong>Decision:</strong> for each item, make two choices: include it (if it fits) or skip it.</li>
+          <li><strong>Overlapping Subproblems:</strong> decisions like "best value using items starting at index 1 with capacity 5" appear multiple times in different branches.</li>
+          <li><strong>Optimal Substructure:</strong> best solution for (i, w) = max of (skip item i) or (include item i + best for remaining items).</li>
+          <li><strong>DP State:</strong> <code>dp[i][w]</code> = maximum value using first i items with capacity w.</li>
+          <li><strong>Recurrence:</strong> <code>dp[i][w] = max(skip, include)</code> where skip = <code>dp[i-1][w]</code> and include = <code>dp[i-1][w-weight[i]] + value[i]</code>.</li>
+          <li><strong>Result:</strong> Without DP, time is O(2^n); with DP, it drops to O(n·W) where W is capacity.</li>
+        </ul>
+        <div class="theory-highlights">
+          <div class="mini-point">
+            <h4>1) State Definition</h4>
+            <p><code>dp[i][w]</code> = best value using first i items with max capacity w.</p>
+          </div>
+          <div class="mini-point">
+            <h4>2) Two Choices</h4>
+            <p>Skip item i, or include it. Choose the option that gives higher value.</p>
+          </div>
+          <div class="mini-point">
+            <h4>3) Base Cases</h4>
+            <p><code>dp[0][w] = 0</code> (no items = 0 value). <code>dp[i][0] = 0</code> (no capacity = 0 value).</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Approach In Plain English</p>
+      <div class="approach-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--rejected)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Recursive Approach (Without DP)</h3>
+          </div>
+          <div class="content">
+            <p style="color:var(--muted); font-size:12px; line-height:1.6; margin-bottom:10px;"><strong style="color:var(--accent4);">What Each Recursive Call Means:</strong></p>
+            <p style="color:var(--muted); font-size:12px; line-height:1.6; margin-bottom:10px; font-family:'IBM Plex Mono',monospace;"><strong style="color:var(--accent-main);">knapsack(i, w)</strong> = "<strong>What is the maximum value I can get starting from item i with remaining capacity w?</strong>"</p>
+            <p style="color:var(--muted); font-size:12px; line-height:1.6; margin-bottom:12px;">• <strong>i:</strong> Current item index (0 to n-1). We decide about this item first, then move to next.<br/>• <strong>w:</strong> Remaining knapsack capacity (0 to capacity). After including an item, capacity shrinks.</p>
+            <p style="color:var(--text); font-size:12px; line-height:1.6; margin-bottom:10px;"><strong style="color:var(--accent4);">How the Approach Works:</strong></p>
+            <ul class="plain-steps">
+              <li><strong>At item i with capacity w:</strong> we must decide: include item i or skip it?</li>
+              <li><strong>Skip choice:</strong> ignore item i, keep capacity w → <code>knapsack(i+1, w)</code></li>
+              <li><strong>Include choice:</strong> if item i's weight ≤ w, take it (gain value) → <code>value[i] + knapsack(i+1, w-weight[i])</code></li>
+              <li><strong>Return:</strong> the maximum of skip and include branches.</li>
+              <li><strong>Base cases:</strong> if i ≥ n (no items left) or w = 0 (no space), return 0.</li>
+              <li><strong>Problem:</strong> <code>knapsack(1, 5)</code> may appear 100+ times across different paths—massive redundant work!</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-sel)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">DP Memoization Approach</h3>
+          </div>
+          <div class="content">
+            <p style="color:var(--muted); font-size:12px; line-height:1.6; margin-bottom:10px;"><strong style="color:var(--accent4);">Same Logic, But With Memory:</strong></p>
+            <p style="color:var(--muted); font-size:12px; line-height:1.6; margin-bottom:12px;">We make the same recursive calls, but <strong>we never compute the same (i, w) pair twice</strong>.</p>
+            <ul class="plain-steps">
+              <li><strong>Before recursing:</strong> check memo: "Have I solved <code>knapsack(i, w)</code> before?"</li>
+              <li><strong>Cache hit:</strong> yes! Return stored answer instantly (no recursion needed).</li>
+              <li><strong>Cache miss:</strong> no, solve it like before (skip and include branches).</li>
+              <li><strong>Store result:</strong> save <code>memo[(i, w)] = answer</code> before returning.</li>
+              <li><strong>Unique states:</strong> only n × (capacity+1) unique (i, w) pairs exist.</li>
+              <li><strong>Advantage:</strong> O(2^n) recursion becomes O(n·W) with huge speedup!</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Recursive Walkthrough</p>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+          <div class="dot" style="background:var(--accent4)"></div>
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Choose Preset Example</h3>
+        </div>
+        <div class="content">
+          <div class="params-box" id="preset-info" style="background:rgba(52,211,153,0.08); border:1px solid rgba(52,211,153,0.2);">
+            <p><b>📌 Preset 1 (Diverse Items):</b> [w:2,v:3], [w:3,v:4], [w:4,v:5] | Capacity: 5</p>
+          </div>
+          <div class="controls">
+            <button class="btn btn-primary" onclick="renderAll()">Generate Trees</button>
+            <button class="btn" onclick="loadPreset1()">📊 Preset 1</button>
+            <button class="btn" onclick="loadPreset2()">📊 Preset 2</button>
+            <button class="btn" onclick="loadPreset3()">📊 Preset 3</button>
+          </div>
+          <p class="note"><strong style="color:var(--accent4);">💡 Tip:</strong> Preset 2 & 3 have many overlapping subproblems—watch DP prune the tree dramatically!</p>
+          <div class="stats">
+            <div class="pill">Max Value: <b id="knap-value">0</b></div>
+            <div class="pill">Calls Saved: <b id="saved-calls">0</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="viz-stack">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--rejected)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Without Dynamic Programming (Repeated Work)</h3>
+          </div>
+          <div class="content">
+            <p class="note" style="margin-bottom:10px;">Each (i, w) decision is recomputed from scratch whenever encountered in the tree. <strong>Full tree shown below—click "Start Fresh" to begin step-by-step walkthrough.</strong></p>
+            <div class="walk-layout">
+              <div class="tree-wrap" id="plain-tree"></div>
+              <div class="walk-panel">
+                <div class="ps-line" id="plain-l1">def knapsack(i, w):</div>
+                <div class="ps-line" id="plain-l2">if i == n or w == 0:</div>
+                <div class="ps-line" id="plain-l3">return 0</div>
+                <div class="ps-line" id="plain-l4">skip = knapsack(i+1, w)</div>
+                <div class="ps-line" id="plain-l5">if weight[i] &lt;= w:</div>
+                <div class="ps-line" id="plain-l6">include = value[i] + knapsack(i+1, w-weight[i])</div>
+                <div class="ps-line" id="plain-l7">return max(skip, include)</div>
+                <div class="call-box" id="plain-current-call">Press Next to start walkthrough.</div>
+              </div>
+            </div>
+            <div class="walk-controls">
+              <button class="btn" onclick="clearPlainWalkthrough()">🔄 Start Fresh (Without DP)</button>
+              <button class="btn" onclick="nextPlainStep()">▶ Next Step</button>
+            </div>
+            <div class="stats" style="margin-top:10px;">
+              <div class="pill error">Without DP Calls: <b id="plain-calls">0</b></div>
+              <div class="pill error">Without DP Step: <b id="plain-step">0</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-sel)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">With DP Memoization (Pruned Tree)</h3>
+          </div>
+          <div class="content">
+            <p class="note" style="margin-bottom:10px;">First visit to (i, w) computes it; repeat visits immediately return the cached value. <strong>Full tree shown below—click "Start Fresh" to begin step-by-step walkthrough.</strong></p>
+            <div class="walk-layout">
+              <div class="tree-wrap" id="dp-tree"></div>
+              <div class="walk-panel">
+                <div class="ps-line" id="dp-l1">def knapsack_dp(i, w, memo):</div>
+                <div class="ps-line" id="dp-l2">if (i, w) in memo:</div>
+                <div class="ps-line" id="dp-l3">return memo[(i, w)]</div>
+                <div class="ps-line" id="dp-l4">if i == n or w == 0:</div>
+                <div class="ps-line" id="dp-l5">return 0</div>
+                <div class="ps-line" id="dp-l6">skip = knapsack_dp(i+1, w, memo)</div>
+                <div class="ps-line" id="dp-l7">include = 0</div>
+                <div class="ps-line" id="dp-l8">if weight[i] &lt;= w:</div>
+                <div class="ps-line" id="dp-l9">include = value[i] + knapsack_dp(i+1, w-weight[i], memo)</div>
+                <div class="ps-line" id="dp-l10">memo[(i, w)] = max(skip, include)</div>
+                <div class="ps-line" id="dp-l11">return memo[(i, w)]</div>
+                <div class="call-box" id="dp-current-call">Press Next to start walkthrough.</div>
+              </div>
+            </div>
+            <div class="walk-controls">
+              <button class="btn" onclick="clearDpWalkthrough()">🔄 Start Fresh (With DP)</button>
+              <button class="btn" onclick="nextDpStep()">▶ Next Step</button>
+            </div>
+            <div class="stats" style="margin-top:10px;">
+              <div class="pill success">With DP Calls: <b id="dp-calls">0</b></div>
+              <div class="pill success">With DP Step: <b id="dp-step">0</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Pseudocode And Complexity</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent4)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Pseudocode (DP Memoization)</h3>
+          </div>
+          <div class="content">
+            <pre class="code-block">function knapsack_dp(i, w, memo):
+    if (i, w) in memo:
+        return memo[(i, w)]
+    if i == n or w == 0:
+        return 0
+    skip = knapsack_dp(i+1, w, memo)
+    include = 0
+    if weight[i] <= w:
+        include = value[i] + knapsack_dp(i+1, w-weight[i], memo)
+    memo[(i, w)] = max(skip, include)
+    return memo[(i, w)]
+
+main:
+    memo = empty map
+    answer = knapsack_dp(0, capacity, memo)</pre>
+            <ul class="impl-notes">
+              <li><strong>Memo lookup:</strong> avoids recomputing same (i, w) pairs.</li>
+              <li><strong>Base cases:</strong> no items left (i==n) or no capacity (w==0) → return 0.</li>
+              <li><strong>Recurrence:</strong> max of skip and include transitions.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-sel)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Time / Space Complexity</h3>
+          </div>
+          <div class="content">
+            <pre class="code-block">Without DP recursion:
+Time  : O(2^n)   (every item, pick or skip)
+Space : O(n)     (recursion depth)
+
+With DP memoization:
+Time  : O(n·W)   (unique states: n items × W capacities)
+Space : O(n·W)   (memo map + recursion depth)
+
+With tabulation:
+Time  : O(n·W)
+Space : O(n·W), can be optimized to O(W)</pre>
+            <ul class="impl-notes">
+              <li><strong>State count:</strong> exactly n·(W+1) unique (i, w) pairs.</li>
+              <li><strong>Real speedup:</strong> O(2^n) → O(n·W) is massive for large n.</li>
+              <li><strong>Trade-off:</strong> added space for memo is worth the time savings.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Implementation (Choose Language)</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-main)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Language Selector</h3>
+          </div>
+          <div class="content">
+            <div class="lang-switch">
+              <button id="btn-python" class="btn lang-btn active" onclick="setImplLanguage('python')">Python</button>
+              <button id="btn-c" class="btn lang-btn" onclick="setImplLanguage('c')">C</button>
+            </div>
+            <pre id="code-python" class="code-block">def knapsack(weight, value, capacity):
+    n = len(weight)
+    
+    def knapsack_rec(i, w):
+        if i == n or w == 0:
+            return 0
+        skip = knapsack_rec(i + 1, w)
+        include = 0
+        if weight[i] <= w:
+            include = value[i] + knapsack_rec(i + 1, w - weight[i])
+        return max(skip, include)
+    
+    return knapsack_rec(0, capacity)
+
+def knapsack_dp(weight, value, capacity):
+    n = len(weight)
+    memo = {}
+    
+    def dp(i, w):
+        if (i, w) in memo:
+            return memo[(i, w)]
+        if i == n or w == 0:
+            return 0
+        skip = dp(i + 1, w)
+        include = 0
+        if weight[i] <= w:
+            include = value[i] + dp(i + 1, w - weight[i])
+        memo[(i, w)] = max(skip, include)
+        return memo[(i, w)]
+    
+    return dp(0, capacity)</pre>
+            <pre id="code-c" class="code-block hidden">#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+int knapsack_rec(int weight[], int value[], int n, int w) {
+    if (n == 0 || w == 0) return 0;
+    if (weight[n-1] > w)
+        return knapsack_rec(weight, value, n-1, w);
+    int include = value[n-1] + knapsack_rec(weight, value, n-1, w - weight[n-1]);
+    int skip = knapsack_rec(weight, value, n-1, w);
+    return (include > skip) ? include : skip;
+}
+
+#define MAX_N 20
+#define MAX_W 100
+int memo[MAX_N][MAX_W];
+
+int knapsack_dp(int weight[], int value[], int n, int w) {
+    if (n == 0 || w == 0) return 0;
+    if (memo[n][w] != -1) return memo[n][w];
+    if (weight[n-1] > w)
+        return memo[n][w] = knapsack_dp(weight, value, n-1, w);
+    int include = value[n-1] + knapsack_dp(weight, value, n-1, w - weight[n-1]);
+    int skip = knapsack_dp(weight, value, n-1, w);
+    return memo[n][w] = (include > skip) ? include : skip;
+}</pre>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-orange)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Line-by-Line Explanation</h3>
+          </div>
+          <div class="content">
+            <ul id="explain-python" class="impl-notes">
+              <li><strong><code>if (i, w) in memo</code>:</strong> cache hit—return immediately without recursion.</li>
+              <li><strong><code>if i == n or w == 0</code>:</strong> base cases stop recursion and return 0.</li>
+              <li><strong><code>skip = dp(i + 1, w)</code>:</strong> value if we don't take item i.</li>
+              <li><strong><code>include = value[i] + dp(...)</code>:</strong> value if we take item i, plus recursion on reduced capacity.</li>
+              <li><strong><code>memo[(i, w)] = max(...)</code>:</strong> store best result for this state before returning.</li>
+            </ul>
+            <ul id="explain-c" class="impl-notes hidden">
+              <li><strong><code>memo[n][w] != -1</code>:</strong> check if state is already computed (non-negative value).</li>
+              <li><strong><code>if (weight[n-1] > w)</code>:</strong> item too heavy, can only skip it.</li>
+              <li><strong><code>include = value[n-1] + knapsack_dp(...)</code>:</strong> add current value and solve for remaining capacity.</li>
+              <li><strong><code>memo[n][w] = ...</code>:</strong> store the maximum (include or skip) before returning.</li>
+              <li><strong><code>memset(memo, -1, ...)</code>:</strong> initialize array to -1 before calling DP function.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Key Insights</p>
+      <div class="card">
+        <div class="card-header">
+          <div class="dot" style="background:var(--accent3)"></div>
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Why 0/1 Knapsack is a DP Classic</h3>
+        </div>
+        <div class="content">
+          <ul class="plain-steps">
+            <li><strong>Overlapping subproblems:</strong> many paths in the tree lead to the same (i, w) state, making recursion wasteful.</li>
+            <li><strong>Optimal substructure:</strong> the best solution for (i, w) is built from best solutions for (i+1, w) and (i+1, w-weight[i]).</li>
+            <li><strong>DP brings exponential to polynomial:</strong> without memoization, we explore 2^n decision branches; with it, we solve only n·W unique states.</li>
+            <li><strong>Interview favorite:</strong> tests understanding of DP state design, recurrence relations, and complexity analysis.</li>
+            <li><strong>Real-world relevance:</strong> resource allocation, budget optimization, and selection problems all map to knapsack variants.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const NODE_W = 160;
+    const NODE_H = 48;
+    const H_GAP = 36;
+    const V_GAP = 90;
+    const PAD = 20;
+
+    let items = [
+      { weight: 2, value: 3 },
+      { weight: 3, value: 4 },
+      { weight: 4, value: 5 }
+    ];
+    let capacity = 5;
+    let model = null;
+    let plainStep = 0;
+    let dpStep = 0;
+    let nodeCounter = 0;
+
+    function nextId() {
+      nodeCounter += 1;
+      return `node-${nodeCounter}`;
+    }
+
+    function plainTreeData(i, w, stats, trace, edge = "") {
+      stats.calls++;
+      const isBase = i >= items.length || w === 0;
+      const node = {
+        id: nextId(),
+        label: isBase ? `(${i},${w})=0` : `(${i},${w})`,
+        type: isBase ? "leaf" : "normal",
+        edge,
+        children: []
+      };
+      trace.push(node.id);
+      if (!isBase) {
+        node.children.push(plainTreeData(i + 1, w, stats, trace, "skip"));
+        if (items[i].weight <= w) {
+          node.children.push(plainTreeData(i + 1, w - items[i].weight, stats, trace, "take"));
+        }
+      }
+      return node;
+    }
+
+    function dpTreeData(i, w, memo, seen, stats, trace, edge = "") {
+      stats.calls++;
+      const key = `${i},${w}`;
+      if (seen.has(key)) {
+        const cached = { 
+          id: nextId(), 
+          label: `(${i},${w})[✓]`, 
+          type: "cached", 
+          edge, 
+          children: [] 
+        };
+        trace.push(cached.id);
+        return cached;
+      }
+      seen.add(key);
+      if (i >= items.length || w === 0) {
+        memo[key] = 0;
+        const leaf = { 
+          id: nextId(), 
+          label: `(${i},${w})=0`, 
+          type: "leaf", 
+          edge, 
+          children: [] 
+        };
+        trace.push(leaf.id);
+        return leaf;
+      }
+      const node = { id: nextId(), label: `(${i},${w})`, type: "normal", edge, children: [] };
+      trace.push(node.id);
+      const skip = dpTreeData(i + 1, w, memo, seen, stats, trace, "skip");
+      let include = null;
+      if (items[i].weight <= w) {
+        include = dpTreeData(i + 1, w - items[i].weight, memo, seen, stats, trace, "take");
+      }
+      let skipVal = parseInt(memo[`${i + 1},${w}`] ?? 0);
+      let includeVal = 0;
+      if (include) {
+        includeVal = items[i].value + parseInt(memo[`${i + 1},${w - items[i].weight}`] ?? 0);
+      }
+      memo[key] = Math.max(skipVal, includeVal);
+      node.children = include ? [skip, include] : [skip];
+      return node;
+    }
+
+    function computeLayout(node, depth, nextXRef, placed) {
+      const children = node.children || [];
+      let x;
+      if (children.length === 0) {
+        x = nextXRef.value;
+        nextXRef.value += NODE_W + H_GAP;
+      } else {
+        children.forEach((child) => computeLayout(child, depth + 1, nextXRef, placed));
+        const childPositions = children.map(c => c._x);
+        x = (Math.min(...childPositions) + Math.max(...childPositions)) / 2;
+      }
+      node._x = x;
+      node._y = PAD + depth * V_GAP;
+      placed.push(node);
+    }
+
+    function maxDepth(node) {
+      if (!node.children || node.children.length === 0) return 0;
+      return 1 + Math.max(...node.children.map(maxDepth));
+    }
+
+    function renderSvgTree(containerId, root, trace, step) {
+      const host = document.getElementById(containerId);
+      host.innerHTML = "";
+      const placed = [];
+      computeLayout(root, 0, { value: PAD }, placed);
+      const width = Math.max(...placed.map((n) => n._x)) + NODE_W + PAD;
+      const height = PAD * 2 + (maxDepth(root) * V_GAP) + NODE_H;
+
+      const activeId = step > 0 ? trace[Math.min(step - 1, trace.length - 1)] : null;
+      const visited = new Set(trace.slice(0, Math.max(step - 1, 0)));
+      const revealed = new Set(trace.slice(0, Math.max(step, 0)));
+
+      const svg = document.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("class", "svg-tree");
+      svg.setAttribute("width", `${width}`);
+      svg.setAttribute("height", height);
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      svg.setAttribute("preserveAspectRatio", "xMinYMin meet");
+
+      function drawEdges(node) {
+        (node.children || []).forEach((child) => {
+          if (!(revealed.has(node.id) && revealed.has(child.id))) {
+            drawEdges(child);
+            return;
+          }
+          const x1 = node._x + NODE_W / 2;
+          const y1 = node._y + NODE_H;
+          const x2 = child._x + NODE_W / 2;
+          const y2 = child._y;
+          const path = document.createElementNS(SVG_NS, "path");
+          const midY = y1 + (y2 - y1) / 2;
+          path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
+          path.setAttribute("class", "edge");
+          svg.appendChild(path);
+
+          if (child.edge) {
+            const label = document.createElementNS(SVG_NS, "text");
+            label.setAttribute("x", (x1 + x2) / 2);
+            label.setAttribute("y", midY - 6);
+            label.setAttribute("text-anchor", "middle");
+            label.setAttribute("class", "edge-label");
+            label.textContent = child.edge;
+            svg.appendChild(label);
+          }
+          drawEdges(child);
+        });
+      }
+
+      function drawNodes(node) {
+        if (!revealed.has(node.id)) {
+          return;
+        }
+        const rect = document.createElementNS(SVG_NS, "rect");
+        rect.setAttribute("x", node._x);
+        rect.setAttribute("y", node._y);
+        rect.setAttribute("width", NODE_W);
+        rect.setAttribute("height", NODE_H);
+        let rectClass = `node-box ${node.type}`;
+        if (visited.has(node.id)) rectClass += " visited";
+        if (activeId === node.id) rectClass += " active";
+        rect.setAttribute("class", rectClass);
+        svg.appendChild(rect);
+
+        const text = document.createElementNS(SVG_NS, "text");
+        text.setAttribute("x", node._x + NODE_W / 2);
+        text.setAttribute("y", node._y + NODE_H / 2 + 0.5);
+        text.setAttribute("class", `node-text ${node.type}`);
+        text.textContent = node.label;
+        svg.appendChild(text);
+
+        (node.children || []).forEach(drawNodes);
+      }
+
+      drawEdges(root);
+      drawNodes(root);
+      host.appendChild(svg);
+    }
+
+    function buildIdMap(root, map) {
+      map[root.id] = root;
+      (root.children || []).forEach((child) => buildIdMap(child, map));
+    }
+
+    function clearPseudo(prefix, count) {
+      for (let i = 1; i <= count; i++) {
+        const el = document.getElementById(`${prefix}-l${i}`);
+        if (el) el.classList.remove("active");
+      }
+    }
+
+    function updatePseudoPanels() {
+      if (!model) return;
+      clearPseudo("plain", 7);
+      clearPseudo("dp", 11);
+
+      if (plainStep === 0) {
+        document.getElementById("plain-current-call").textContent = "Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.";
+      } else {
+        const plainId = model.plainTrace[Math.min(plainStep - 1, model.plainTrace.length - 1)];
+        const plainNode = model.plainNodeMap[plainId];
+        const plainLine = plainNode.type === "leaf" ? 2 : 4;
+        document.getElementById(`plain-l${plainLine}`).classList.add("active");
+        document.getElementById("plain-current-call").textContent = `${plainNode.label}`;
+      }
+
+      if (dpStep === 0) {
+        document.getElementById("dp-current-call").textContent = "Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.";
+      } else {
+        const dpId = model.dpTrace[Math.min(dpStep - 1, model.dpTrace.length - 1)];
+        const dpNode = model.dpNodeMap[dpId];
+        let dpLine = 6;
+        if (dpNode.type === "cached") dpLine = 2;
+        else if (dpNode.type === "leaf") dpLine = 4;
+        document.getElementById(`dp-l${dpLine}`).classList.add("active");
+        document.getElementById("dp-current-call").textContent = `${dpNode.label}`;
+      }
+    }
+
+    function updateTreeViews() {
+      if (!model) return;
+      renderSvgTree("plain-tree", model.plainRoot, model.plainTrace, plainStep);
+      renderSvgTree("dp-tree", model.dpRoot, model.dpTrace, dpStep);
+      document.getElementById("plain-step").textContent = `${plainStep}/${model.plainTrace.length}`;
+      document.getElementById("dp-step").textContent = `${dpStep}/${model.dpTrace.length}`;
+      updatePseudoPanels();
+    }
+
+    function clearPlainWalkthrough() {
+      plainStep = 0;
+      updateTreeViews();
+    }
+
+    function clearDpWalkthrough() {
+      dpStep = 0;
+      updateTreeViews();
+    }
+
+    function preloadWalkthrough() {
+      if (!model) return;
+      plainStep = model.plainTrace.length;
+      dpStep = model.dpTrace.length;
+      updateTreeViews();
+    }
+
+    function nextPlainStep() {
+      if (!model) return;
+      plainStep = Math.min(plainStep + 1, model.plainTrace.length);
+      updateTreeViews();
+    }
+
+    function nextDpStep() {
+      if (!model) return;
+      dpStep = Math.min(dpStep + 1, model.dpTrace.length);
+      updateTreeViews();
+    }
+
+    function renderAll() {
+      nodeCounter = 0;
+      const plainStats = { calls: 0 };
+      const dpStats = { calls: 0 };
+      const memo = {};
+      const plainTrace = [];
+      const dpTrace = [];
+      const plainRoot = plainTreeData(0, capacity, plainStats, plainTrace);
+      const dpRoot = dpTreeData(0, capacity, memo, new Set(), dpStats, dpTrace);
+      const plainNodeMap = {};
+      const dpNodeMap = {};
+      buildIdMap(plainRoot, plainNodeMap);
+      buildIdMap(dpRoot, dpNodeMap);
+      model = { plainRoot, dpRoot, plainTrace, dpTrace, plainNodeMap, dpNodeMap };
+
+      const maxVal = parseInt(memo["0," + capacity] ?? 0);
+      const saved = Math.max(plainStats.calls - dpStats.calls, 0);
+      document.getElementById("plain-calls").textContent = plainStats.calls;
+      document.getElementById("dp-calls").textContent = dpStats.calls;
+      document.getElementById("knap-value").textContent = maxVal;
+      document.getElementById("saved-calls").textContent = saved;
+
+      preloadWalkthrough();
+    }
+
+    function updatePresetInfo() {
+      const presetBox = document.getElementById("preset-info");
+      let info = "";
+      if (items.length === 3 && capacity === 5) {
+        info = "<p><b>📌 Preset 1 (Diverse Items):</b> [w:2,v:3], [w:3,v:4], [w:4,v:5] | Capacity: 5</p>";
+      } else if (items.length === 3 && capacity === 2) {
+        info = "<p><b>⭐ Preset 2 (Optimal for Cache):</b> [w:1,v:10], [w:1,v:10], [w:1,v:10] | Capacity: 2</p><p style='color:var(--accent-sel); font-size:11px; margin-top:6px;'>✓ Many overlapping subproblems! Watch (1,1) and (2,1) appear multiple times.</p>";
+      } else if (items.length === 3 && capacity === 4) {
+        info = "<p><b>⭐ Preset 3 (Good Example):</b> [w:2,v:3], [w:2,v:4], [w:1,v:2] | Capacity: 4</p><p style='color:var(--accent-sel); font-size:11px; margin-top:6px;'>✓ Clear cache hits visible! (2,2) computed once, reused multiple times.</p>";
+      }
+      presetBox.innerHTML = info;
+    }
+
+    function loadPreset1() {
+      items = [
+        { weight: 2, value: 3 },
+        { weight: 3, value: 4 },
+        { weight: 4, value: 5 }
+      ];
+      capacity = 5;
+      updatePresetInfo();
+      renderAll();
+    }
+
+    function loadPreset2() {
+      items = [
+        { weight: 1, value: 10 },
+        { weight: 1, value: 10 },
+        { weight: 1, value: 10 }
+      ];
+      capacity = 2;
+      updatePresetInfo();
+      renderAll();
+    }
+
+    function loadPreset3() {
+      items = [
+        { weight: 2, value: 3 },
+        { weight: 2, value: 4 },
+        { weight: 1, value: 2 }
+      ];
+      capacity = 4;
+      updatePresetInfo();
+      renderAll();
+    }
+
+    function setImplLanguage(lang) {
+      const isPython = lang === "python";
+      document.getElementById("code-python").classList.toggle("hidden", !isPython);
+      document.getElementById("code-c").classList.toggle("hidden", isPython);
+      document.getElementById("explain-python").classList.toggle("hidden", !isPython);
+      document.getElementById("explain-c").classList.toggle("hidden", isPython);
+      document.getElementById("btn-python").classList.toggle("active", isPython);
+      document.getElementById("btn-c").classList.toggle("active", !isPython);
+    }
+
+    let penActive = false, isDrawing = false, drawingHistory = [], historyStep = -1;
+    function initPenTool() {
+      const canvas = document.getElementById('pen-canvas');
+      const ctx = canvas.getContext('2d');
+      const toggleBtn = document.getElementById('pen-toggle-btn');
+      const undoBtn = document.getElementById('pen-undo-btn');
+      const redoBtn = document.getElementById('pen-redo-btn');
+      const colorInput = document.getElementById('pen-color');
+      const sizeInput = document.getElementById('pen-size');
+      const sizeDisplay = document.getElementById('pen-size-display');
+      const clearBtn = document.getElementById('pen-clear-btn');
+      const toolbar = document.getElementById('pen-toolbar-top');
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px';
+        if (penActive && drawingHistory.length > 0 && historyStep >= 0) {
+          const img = new Image();
+          img.src = drawingHistory[historyStep];
+          img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
+        }
+      }
+      function saveToHistory() {
+        historyStep++;
+        if (historyStep < drawingHistory.length) drawingHistory.length = historyStep;
+        drawingHistory.push(canvas.toDataURL());
+        undoBtn.disabled = historyStep <= 0;
+        redoBtn.disabled = historyStep >= drawingHistory.length - 1;
+      }
+      function undo() {
+        if (historyStep <= 0) return;
+        historyStep--;
+        const img = new Image(); img.src = drawingHistory[historyStep];
+        img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); undoBtn.disabled = historyStep <= 0; redoBtn.disabled = historyStep >= drawingHistory.length - 1; };
+      }
+      function redo() {
+        if (historyStep >= drawingHistory.length - 1) return;
+        historyStep++;
+        const img = new Image(); img.src = drawingHistory[historyStep];
+        img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); undoBtn.disabled = historyStep <= 0; redoBtn.disabled = historyStep >= drawingHistory.length - 1; };
+      }
+      function togglePenMode() {
+        penActive = !penActive;
+        canvas.style.display = penActive ? 'block' : 'none';
+        canvas.style.pointerEvents = penActive ? 'auto' : 'none';
+        toggleBtn.textContent = penActive ? '✏️ Stop Drawing' : '✏️ Start Drawing';
+        if (penActive && drawingHistory.length === 0) saveToHistory();
+      }
+      function setCanvasInteractivity(enabled) { if (penActive) canvas.style.pointerEvents = enabled ? 'auto' : 'none'; }
+
+      let lx = 0, ly = 0;
+      canvas.addEventListener('mousedown', e => { if (!penActive) return; e.preventDefault(); isDrawing = true; lx = e.clientX; ly = e.clientY; });
+      canvas.addEventListener('mousemove', e => {
+        if (!penActive || !isDrawing) return;
+        e.preventDefault();
+        ctx.strokeStyle = colorInput.value; ctx.lineWidth = sizeInput.value; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(e.clientX, e.clientY); ctx.stroke(); lx = e.clientX; ly = e.clientY;
+      });
+      canvas.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } });
+      canvas.addEventListener('mouseout', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } });
+      toggleBtn.addEventListener('click', e => { e.stopPropagation(); togglePenMode(); });
+      undoBtn.addEventListener('click', e => { e.stopPropagation(); undo(); });
+      redoBtn.addEventListener('click', e => { e.stopPropagation(); redo(); });
+      clearBtn.addEventListener('click', e => { e.stopPropagation(); ctx.clearRect(0,0,canvas.width,canvas.height); drawingHistory = []; historyStep = -1; undoBtn.disabled = true; redoBtn.disabled = true; });
+      sizeInput.addEventListener('input', e => { sizeDisplay.textContent = e.target.value + 'px'; });
+      toolbar.addEventListener('mouseenter', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } setCanvasInteractivity(false); });
+      toolbar.addEventListener('mouseleave', () => setCanvasInteractivity(true));
+      document.addEventListener('keydown', e => {
+        if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') togglePenMode();
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+      });
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      undoBtn.disabled = true; redoBtn.disabled = true;
+    }
+
+    window.addEventListener("load", function() {
+      loadPreset2();
+      initPenTool();
+    });
+  </script>
+</body>
+</html>

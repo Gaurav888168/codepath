@@ -1,4 +1,8 @@
-export const topicsData = [
+import scrapedDsaData from '../scraped_data/kodin_dsa_data.json';
+
+const topicIcons = ['⏱️', '🧭', '📚', '🚦', '🏗️', '🔗', '🌳', '🔁', '🧩', '📦', '🎯', '✂️', '🕸️', '🌲', '🔃', '🔎', '🔤', '🪟'];
+
+const coreTopicsData = [
   {
     id: 'loops',
     title: 'Loops & Conditions',
@@ -181,7 +185,139 @@ export const topicsData = [
   }
 ];
 
-export const practiceQuestions = {
+const toTitleCaseDifficulty = (difficulty = 'Medium') =>
+  difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+
+const normalizeTopic = topic => ({
+  ...topic,
+  description: topic.description || topic.desc,
+  codeExample: topic.codeExample || (topic.dryRun?.code || []).join('\n'),
+  analogy: typeof topic.analogy === 'string'
+    ? {
+        title: topic.title,
+        story: topic.analogy,
+        takeaway: `Connect the analogy back to ${topic.title} by identifying the data, operation, and stopping condition.`
+      }
+    : topic.analogy,
+  dryRun: {
+    ...topic.dryRun,
+    steps: (topic.dryRun?.steps || []).map(step => ({
+      ...step,
+      explanation: step.explanation || step.desc,
+      highlightLine: step.highlightLine || (typeof step.line === 'number' ? `Line ${step.line + 1}` : 'Concept focus')
+    }))
+  }
+});
+
+const scrapedTopicEntries = Object.entries(scrapedDsaData.topics || {});
+const coreTopicIds = new Set(coreTopicsData.map(topic => topic.id));
+
+const websiteTopicsData = scrapedTopicEntries
+  .filter(([id]) => !coreTopicIds.has(id))
+  .map(([id, topic], index) => {
+    const primaryProblem = topic.problems?.[0];
+    const codeSample = `// ${topic.title} practice starter\nfunction solve${topic.title.replace(/[^A-Za-z0-9]/g, '')}() {\n  // Pick one problem below and implement your approach.\n  return null;\n}`;
+
+    return {
+      id,
+      title: topic.title,
+      desc: primaryProblem?.desc || `Practice core ${topic.title} concepts with curated DSA problems.`,
+      description: primaryProblem?.desc || `Practice core ${topic.title} concepts with curated DSA problems.`,
+      difficulty: toTitleCaseDifficulty(primaryProblem?.difficulty),
+      icon: topicIcons[index % topicIcons.length],
+      codeExample: codeSample,
+      lessons: [
+        {
+          title: `${topic.title} Problem Set`,
+          content: `This module was imported from ${scrapedDsaData.source}. Start with ${primaryProblem?.title || 'the foundation problem'}, then work through the remaining problems by difficulty.`
+        },
+        {
+          title: 'Practice Path',
+          content: (topic.problems || []).map(problem => `${problem.title} (${toTitleCaseDifficulty(problem.difficulty)})`).join(' → ')
+        }
+      ],
+      analogy: {
+        title: `${topic.title} as a toolkit`,
+        story: `Treat each ${topic.title} problem as a tool selection exercise: identify the input pattern, choose the right operation, and verify edge cases before coding.`,
+        takeaway: 'Focus on why the technique fits before writing the implementation.'
+      },
+      dryRun: {
+        code: codeSample.split('\n'),
+        steps: [
+          {
+            line: 0,
+            vars: { topic: topic.title },
+            explanation: `Read the ${topic.title} prompt and identify the data structure or algorithm pattern.`,
+            highlightLine: 'Problem pattern'
+          },
+          {
+            line: 2,
+            vars: { problems: topic.problems?.length || 0 },
+            explanation: 'Choose a starter problem, define inputs and outputs, then write test cases.',
+            highlightLine: 'Plan inputs and outputs'
+          },
+          {
+            line: 3,
+            vars: { status: 'ready' },
+            explanation: 'Implement the solution and validate it against simple and edge-case examples.',
+            highlightLine: 'Implementation'
+          }
+        ]
+      }
+    };
+  });
+
+export const topicsData = [
+  ...coreTopicsData.map(normalizeTopic),
+  ...websiteTopicsData.map(normalizeTopic)
+];
+
+const generatedPracticeQuestions = Object.fromEntries(
+  websiteTopicsData.map(topic => [
+    topic.id,
+    [
+      {
+        id: `${topic.id}-website-practice`,
+        title: `${topic.title} Starter Challenge`,
+        difficulty: 'Basic',
+        description: topic.description,
+        prompt: `Choose one ${topic.title} problem from this module and implement a JavaScript solution. Start by writing clear inputs, outputs, and edge cases.`,
+        initialCode: topic.codeExample,
+        testCase: {
+          fn: `solve${topic.title.replace(/[^A-Za-z0-9]/g, '')}`,
+          cases: []
+        },
+        hints: [
+          'Restate the problem in one sentence before coding.',
+          'List the input size and expected output type.',
+          'Write a simple example and one edge case.',
+          'Choose the data structure or algorithm pattern before implementation.',
+          'After coding, walk through the example manually and compare each variable change.'
+        ]
+      }
+    ]
+  ])
+);
+
+const generatedQuizzesData = Object.fromEntries(
+  websiteTopicsData.map(topic => [
+    topic.id,
+    [
+      {
+        question: `What should you identify first when solving a ${topic.title} problem?`,
+        options: ['The input pattern and constraints', 'The final CSS colors', 'The deployment provider', 'The file name only'],
+        answer: 0
+      },
+      {
+        question: `Why group problems under ${topic.title}?`,
+        options: ['They share a reusable solving pattern', 'They must all use recursion', 'They avoid testing', 'They only run in the browser'],
+        answer: 0
+      }
+    ]
+  ])
+);
+
+const corePracticeQuestions = {
   loops: [
     {
       id: 'l1',
@@ -324,7 +460,12 @@ export const practiceQuestions = {
   ]
 };
 
-export const quizzesData = {
+export const practiceQuestions = {
+  ...generatedPracticeQuestions,
+  ...corePracticeQuestions
+};
+
+const coreQuizzesData = {
   loops: [
     {
       question: 'Which loop is guaranteed to run at least once?',
@@ -385,6 +526,11 @@ export const quizzesData = {
       answer: 1
     }
   ]
+};
+
+export const quizzesData = {
+  ...generatedQuizzesData,
+  ...coreQuizzesData
 };
 
 export const companyPacks = [

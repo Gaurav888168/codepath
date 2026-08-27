@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Graph Foundation — Interactive Visualizer</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1a2236;
+      --border: #1e2d45;
+      --border2: #263550;
+      --text: #e2e8f4;
+      --muted: #6b7a99;
+      --accent-main: #58a6ff;
+      --accent-sel: #3fb950;
+      --accent2: #f472b6;
+      --accent3: #34d399;
+      --accent4: #fbbf24;
+      --accent-orange: #f0883e;
+      --rejected: #ef4444;
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { min-height:100vh; background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; overflow-x:hidden; }
+    body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+
+    /* ── Top Bar ── */
+    .top-bar { position:sticky; top:0; z-index:100; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 20px; background:rgba(10,14,26,0.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+    .top-title { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; }
+    .top-title span { color:var(--accent4); }
+    .divider { width:1px; height:28px; background:var(--border2); flex-shrink:0; }
+
+    /* ── Pen Toolbar ── */
+    .pen-toolbar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .tool-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+    .tool-btn:hover { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.06); }
+    .tool-btn.active { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.12); }
+    .pen-toolbar input[type="color"] { width:34px; height:34px; padding:0; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); cursor:pointer; }
+    .pen-toolbar input[type="range"] { width:110px; }
+    .pen-toolbar > *:not(#pen-toggle) { display:none; }
+    .pen-toolbar.active > *:not(#pen-toggle) { display:inline-flex; }
+
+    /* ── Page / Header ── */
+    .page { position:relative; z-index:1; }
+    header { padding:36px 40px 28px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+    .tag-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+    .tag { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:4px 12px; border-radius:20px; }
+    .tag-blue   { color:var(--accent-main);   border:1px solid rgba(88,166,255,0.25);  background:rgba(88,166,255,0.06); }
+    .tag-sel    { color:var(--accent-sel);    border:1px solid rgba(63,185,80,0.25);   background:rgba(63,185,80,0.06); }
+    .tag-orange { color:var(--accent-orange); border:1px solid rgba(240,136,62,0.25);  background:rgba(240,136,62,0.06); }
+    h1 { font-size:clamp(22px,4vw,38px); line-height:1.1; margin-bottom:8px; letter-spacing:-0.5px; }
+    .subtitle { font-size:13px; color:var(--muted); max-width:640px; line-height:1.75; }
+    .progress-bar { height:2px; background:var(--border); margin-top:16px; }
+    .progress-fill { height:100%; width:100%; background:linear-gradient(90deg, var(--accent-sel), var(--accent3), var(--accent-main)); transition:width .4s ease; }
+
+    /* ── Layout ── */
+    .container { max-width:1100px; margin:0 auto; padding:28px 24px 48px; position:relative; }
+
+    /* ── Theory / Problem boxes ── */
+    .theory-box  { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent3); }
+    .theory-box h2 { font-size:16px; margin-bottom:14px; }
+    .problem-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent-main); }
+    .problem-box h2 { font-size:16px; margin-bottom:14px; }
+    .theory-points { list-style:none; padding:0; }
+    .theory-points li { margin-bottom:12px; line-height:1.6; }
+    .theory-points li strong { color:var(--accent4); }
+    .theory-points li ul { margin-top:8px; margin-left:20px; }
+    .theory-points li ul li { margin-bottom:6px; color:var(--muted); }
+    .problem-body { color:var(--muted); font-size:13px; line-height:1.8; }
+    .problem-body strong { color:var(--text); }
+
+    /* ── Cards ── */
+    .main-card  { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+    .card       { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+    .card-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface2); }
+    .dot { width:8px; height:8px; border-radius:50%; }
+
+    /* ── Controls ── */
+    .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:18px 20px; background:var(--surface2); border-top:1px solid var(--border); }
+    .btn { font-family:'IBM Plex Mono',monospace; font-size:12px; padding:10px 16px; border-radius:10px; border:1px solid var(--border2); background:var(--surface); color:var(--muted); cursor:pointer; transition:all .15s; }
+    .btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+    .btn-primary { border-color:var(--accent-main); color:var(--text); background:linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+    .btn-secondary { border-color:var(--border2); color:var(--muted); background:var(--surface2); }
+    .step-label { color:var(--muted); font-size:12px; }
+    .small-input { padding:10px 12px; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:12px; }
+
+    /* ── Graph / Canvas wrap ── */
+    .graph-wrap { position:relative; display:block; line-height:0; background:#0f172a; min-height:320px; border-radius:10px; }
+    #graph-svg  { width:100%; display:block; }
+    #draw-canvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; }
+    #draw-canvas.pen-active { pointer-events:all; cursor:crosshair; }
+
+    /* ── Legend ── */
+    .legend { display:flex; flex-wrap:wrap; gap:14px; padding:0 20px 16px; }
+    .legend-item { display:flex; align-items:center; gap:7px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+    .legend-dot { width:12px; height:12px; border-radius:50%; border:2px solid; }
+
+    /* ── Section headers ── */
+    .section-hdr { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text); margin:24px 0 16px 0; display:flex; align-items:center; gap:12px; font-weight:600; }
+    .section-hdr::after { content:''; flex:1; height:2px; background:linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+
+    /* ── Grid ── */
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+    .grid-viz { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:0; align-items:start; }
+
+    /* ── Code blocks ── */
+    .code-block { padding:20px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+    .code-line { display:flex; gap:10px; }
+    .ln  { color:var(--muted); min-width:18px; user-select:none; font-size:11px; }
+    .kw  { color:var(--accent2); }
+    .fn  { color:var(--accent-main); }
+    .cm  { color:var(--muted); font-style:italic; }
+    .vr  { color:var(--accent-sel); }
+    .op  { color:var(--accent4); }
+    .dt  { color:var(--accent3); }
+    .str { color:var(--accent-orange); }
+    .pp  { color:var(--accent2); }
+    .i1  { padding-left:16px; }
+    .i2  { padding-left:32px; }
+    .i3  { padding-left:48px; }
+
+    /* ── Implementation selector ── */
+    .impl-selector { display:flex; gap:8px; align-items:center; margin-bottom:16px; }
+    .impl-selector label { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+    .impl-toggle { display:flex; gap:6px; }
+    .impl-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; }
+    .impl-btn.active { border-color:var(--accent-main); color:var(--accent-main); background:rgba(88,166,255,0.12); }
+    .impl-btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+    .impl-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+    .impl-grid.hidden { display:none; }
+    .hidden { display:none !important; }
+
+    @media(max-width:860px) { 
+      .grid-2 { grid-template-columns:1fr; } 
+      .grid-viz { grid-template-columns:1fr; } 
+      .impl-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ══ -->
+<div class="top-bar">
+  <span class="top-title">Graph <span>Foundation</span></span>
+  <div class="divider"></div>
+  <div class="pen-toolbar">
+    <button class="tool-btn" id="pen-toggle" onclick="togglePen()">✏️ Pen</button>
+    <button class="tool-btn" id="btn-undo" onclick="undoDraw()" disabled title="Undo">↶ Undo</button>
+    <button class="tool-btn" id="btn-redo" onclick="redoDraw()" disabled title="Redo">↷ Redo</button>
+    <input type="color" id="pen-color" value="#fbbf24" onchange="setColor(this.value)" title="Pen Color" />
+    <input type="range" id="pen-size" min="1" max="12" value="3" onchange="setSize(this.value)" title="Thickness" />
+    <button class="tool-btn" id="btn-clear" onclick="clearDraw()" title="Clear Drawing">🧹 Clear</button>
+  </div>
+</div>
+
+<div class="page">
+  <!-- ══ HEADER ══ -->
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Graph Theory</span>
+      <span class="tag tag-sel">Foundation</span>
+      <span class="tag tag-orange">Interactive</span>
+    </div>
+    <h1>Graph <span style="color:var(--accent4)">Foundation</span></h1>
+    <p class="subtitle">Build and visualize graphs interactively. Connect nodes with edges and explore adjacency list and matrix representations. Use the pen overlay to annotate and highlight your understanding.</p>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  </header>
+
+  <div class="container">
+
+    <!-- ══ THEORY ══ -->
+    <div class="theory-box">
+      <h2>Theory</h2>
+      <div class="theory-body">
+        <p style="color:var(--muted);margin-bottom:16px;line-height:1.7;">A graph is a fundamental data structure consisting of nodes (vertices) and edges (connections) that represent relationships between entities. Graphs can be directed (edges have direction) or undirected (bidirectional). Graphs are the foundation for algorithms like BFS, DFS, shortest path, and network flow analysis, and are crucial for modeling real-world networks.</p>
+        <ul class="theory-points">
+          <li><strong>Components:</strong> Nodes/Vertices are entities, Edges connect nodes and may have weights or directions</li>
+          <li><strong>Time Complexity:</strong> Adjacency List: O(1) insertion, O(degree) search; Adjacency Matrix: O(1) both</li>
+          <li><strong>Space Complexity:</strong> Adjacency List: O(V + E); Adjacency Matrix: O(V²)</li>
+          <li><strong>Common Applications:</strong>
+            <ul>
+              <li>Social networks and connections</li>
+              <li>Road networks and GPS routing</li>
+              <li>Web page link structure and PageRank</li>
+              <li>Recommendation systems and relationships</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ══ PROBLEM ══ -->
+    <div class="problem-box">
+      <h2>Problem Statement</h2>
+      <div class="problem-body">
+        Build a graph by adding nodes and edges interactively. Use the visualizer to understand how graphs are structured and represented. Observe how the adjacency list and matrix representations change as you modify the graph, and use the pen tool to annotate your analysis.
+      </div>
+    </div>
+
+    <!-- ══ GRAPH VISUALIZATION & CONTROLS — SIDE BY SIDE ══ -->
+    <p class="section-hdr">Interactive Graph Builder</p>
+    
+    <div class="grid-viz">
+      <!-- LEFT COLUMN: Graph Visualization -->
+      <div class="main-card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>graph.svg</h3></div>
+        <div class="graph-wrap" id="graph-wrap" style="min-height:360px;">
+          <svg id="graph-svg" viewBox="0 0 380 360" xmlns="http://www.w3.org/2000/svg"></svg>
+          <canvas id="draw-canvas"></canvas>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(88,166,255,0.25);border-color:var(--accent-main);"></div>Node</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(88,166,255,0.22);border-color:rgba(88,166,255,0.4);"></div>Edge</div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Controls & Graph Info -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <!-- Node/Edge Controls -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>Graph Controls</h3></div>
+          <div class="controls" style="border:none;padding:16px;flex-direction:column;gap:12px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <input type="text" id="node-name" class="small-input" placeholder="Node (A)" maxlength="2" />
+              <button class="btn btn-primary" onclick="addNode()" style="flex:1;">+ Node</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <select id="source-select" class="small-input"></select>
+              <select id="target-select" class="small-input"></select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <button class="btn btn-primary" onclick="addEdge()">+ Edge</button>
+              <button class="btn btn-secondary" onclick="removeEdge()">- Edge</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <button class="btn btn-secondary" onclick="randomGraph()">⟳ Random</button>
+              <button class="btn btn-secondary" onclick="resetGraph()">Reset</button>
+            </div>
+            <button class="btn" style="width:100%;border-color:var(--rejected);color:var(--rejected);background:rgba(239,68,68,0.08);" onclick="clearGraphCompletely()">🗑️ Clear Graph</button>
+          </div>
+        </div>
+
+        <!-- Graph Stats -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>Graph Stats</h3></div>
+          <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div style="background:var(--surface2);padding:12px;border-radius:8px;">
+              <p style="font-size:11px;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:1px;font-family:'IBM Plex Mono',monospace;">Nodes</p>
+              <p style="font-size:20px;color:var(--accent-main);margin:0;font-weight:600;" id="node-count">6</p>
+            </div>
+            <div style="background:var(--surface2);padding:12px;border-radius:8px;">
+              <p style="font-size:11px;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:1px;font-family:'IBM Plex Mono',monospace;">Edges</p>
+              <p style="font-size:20px;color:var(--accent-sel);margin:0;font-weight:600;" id="edge-count">7</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ADJACENCY LIST & MATRIX ══ -->
+    <p class="section-hdr">Graph Representations</p>
+    
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>adjacency_list.txt</h3></div>
+        <div class="code-block">
+          <pre id="adj-list-display" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent-orange);white-space:pre-wrap;margin:0;line-height:1.6;max-height:300px;overflow-y:auto;">A → [ ]
+B → [ ]
+C → [ ]
+D → [ ]
+E → [ ]
+F → [ ]</pre>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>adjacency_matrix.txt</h3></div>
+        <div class="code-block">
+          <pre id="adj-matrix-display" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent3);white-space:pre-wrap;margin:0;line-height:1.6;max-height:300px;overflow-y:auto;">  A B C D E F
+A 0 1 1 0 0 0
+B 1 0 0 1 1 0
+C 1 0 0 1 0 0
+D 0 1 1 0 0 1
+E 0 1 0 0 0 0
+F 0 0 0 1 0 0</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ IMPLEMENTATION SECTION ══ -->
+    <p class="section-hdr">Code Representations</p>
+    <div class="impl-selector">
+      <label>Language:</label>
+      <div class="impl-toggle">
+        <button class="impl-btn active" id="impl-c" onclick="switchImpl('c')">C</button>
+        <button class="impl-btn" id="impl-python" onclick="switchImpl('python')">Python</button>
+      </div>
+    </div>
+
+    <!-- C IMPLEMENTATION -->
+    <div class="impl-grid" id="c-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>adjacency_list.c</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="pp">#include</span> <span class="str">&lt;stdio.h&gt;</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="pp">#include</span> <span class="str">&lt;stdlib.h&gt;</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span></span></div>
+          <div class="code-line"><span class="ln">4</span><span><span class="cm">// Adjacency List using array of linked lists</span></span></div>
+          <div class="code-line"><span class="ln">5</span><span><span class="kw">typedef struct</span> Node {</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i1"><span class="dt">int</span> vertex;</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="kw">struct</span> Node* next;</span></div>
+          <div class="code-line"><span class="ln">8</span><span>} Node;</span></div>
+          <div class="code-line"><span class="ln">9</span><span></span></div>
+          <div class="code-line"><span class="ln">10</span><span><span class="kw">typedef struct</span> Graph {</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i1"><span class="dt">int</span> V;</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i1">Node** adjList;</span></div>
+          <div class="code-line"><span class="ln">13</span><span>} Graph;</span></div>
+          <div class="code-line"><span class="ln">14</span><span></span></div>
+          <div class="code-line"><span class="ln">15</span><span>Graph* <span class="fn">createGraph</span>(<span class="dt">int</span> V) {</span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i1">Graph* graph = <span class="fn">malloc</span>(<span class="kw">sizeof</span>(Graph));</span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i1">graph-&gt;V = V;</span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i1">graph-&gt;adjList = <span class="fn">malloc</span>(V * <span class="kw">sizeof</span>(Node*));</span></div>
+          <div class="code-line"><span class="ln">19</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> i = 0; i &lt; V; i++)</span></div>
+          <div class="code-line"><span class="ln">20</span><span class="i2">graph-&gt;adjList[i] = <span class="op">NULL</span>;</span></div>
+          <div class="code-line"><span class="ln">21</span><span class="i1"><span class="kw">return</span> graph;</span></div>
+          <div class="code-line"><span class="ln">22</span><span>}</span></div>
+          <div class="code-line"><span class="ln">23</span><span></span></div>
+          <div class="code-line"><span class="ln">24</span><span><span class="kw">void</span> <span class="fn">addEdge</span>(Graph* g, <span class="dt">int</span> src, <span class="dt">int</span> dest) {</span></div>
+          <div class="code-line"><span class="ln">25</span><span class="i1">Node* newNode = <span class="fn">malloc</span>(<span class="kw">sizeof</span>(Node));</span></div>
+          <div class="code-line"><span class="ln">26</span><span class="i1">newNode-&gt;vertex = dest;</span></div>
+          <div class="code-line"><span class="ln">27</span><span class="i1">newNode-&gt;next = g-&gt;adjList[src];</span></div>
+          <div class="code-line"><span class="ln">28</span><span class="i1">g-&gt;adjList[src] = newNode;</span></div>
+          <div class="code-line"><span class="ln">29</span><span>}</span></div>
+          <div class="code-line"><span class="ln">30</span><span></span></div>
+          <div class="code-line"><span class="ln">31</span><span><span class="kw">void</span> <span class="fn">printAdjList</span>(Graph* g) {</span></div>
+          <div class="code-line"><span class="ln">32</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> i = 0; i &lt; g-&gt;V; i++) {</span></div>
+          <div class="code-line"><span class="ln">33</span><span class="i2"><span class="fn">printf</span>(<span class="str">"%d: "</span>, i);</span></div>
+          <div class="code-line"><span class="ln">34</span><span class="i2"><span class="kw">for</span> (Node* temp = g-&gt;adjList[i]; temp; temp = temp-&gt;next)</span></div>
+          <div class="code-line"><span class="ln">35</span><span class="i3"><span class="fn">printf</span>(<span class="str">"%d "</span>, temp-&gt;vertex);</span></div>
+          <div class="code-line"><span class="ln">36</span><span class="i2"><span class="fn">printf</span>(<span class="str">"\n"</span>);</span></div>
+          <div class="code-line"><span class="ln">37</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">38</span><span>}</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>adjacency_matrix.c</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="pp">#include</span> <span class="str">&lt;stdio.h&gt;</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="pp">#define</span> MAX_V 100</span></div>
+          <div class="code-line"><span class="ln">3</span><span></span></div>
+          <div class="code-line"><span class="ln">4</span><span><span class="cm">// Adjacency Matrix representation</span></span></div>
+          <div class="code-line"><span class="ln">5</span><span><span class="kw">typedef struct</span> {</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i1"><span class="dt">int</span> adj[MAX_V][MAX_V];</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="dt">int</span> V;  <span class="cm">// number of vertices</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span>} Graph;</span></div>
+          <div class="code-line"><span class="ln">9</span><span></span></div>
+          <div class="code-line"><span class="ln">10</span><span>Graph* <span class="fn">createGraph</span>(<span class="dt">int</span> V) {</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i1">Graph* g = <span class="fn">malloc</span>(<span class="kw">sizeof</span>(Graph));</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i1">g-&gt;V = V;</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> i = 0; i &lt; V; i++)</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i2"><span class="kw">for</span> (<span class="dt">int</span> j = 0; j &lt; V; j++)</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i3">g-&gt;adj[i][j] = 0;</span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i1"><span class="kw">return</span> g;</span></div>
+          <div class="code-line"><span class="ln">17</span><span>}</span></div>
+          <div class="code-line"><span class="ln">18</span><span></span></div>
+          <div class="code-line"><span class="ln">19</span><span><span class="kw">void</span> <span class="fn">addEdge</span>(Graph* g, <span class="dt">int</span> src, <span class="dt">int</span> dest) {</span></div>
+          <div class="code-line"><span class="ln">20</span><span class="i1">g-&gt;adj[src][dest] = 1;  <span class="cm">// undirected</span></span></div>
+          <div class="code-line"><span class="ln">21</span><span class="i1">g-&gt;adj[dest][src] = 1;</span></div>
+          <div class="code-line"><span class="ln">22</span><span>}</span></div>
+          <div class="code-line"><span class="ln">23</span><span></span></div>
+          <div class="code-line"><span class="ln">24</span><span><span class="kw">void</span> <span class="fn">printMatrix</span>(Graph* g) {</span></div>
+          <div class="code-line"><span class="ln">25</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> i = 0; i &lt; g-&gt;V; i++) {</span></div>
+          <div class="code-line"><span class="ln">26</span><span class="i2"><span class="kw">for</span> (<span class="dt">int</span> j = 0; j &lt; g-&gt;V; j++)</span></div>
+          <div class="code-line"><span class="ln">27</span><span class="i3"><span class="fn">printf</span>(<span class="str">"%d "</span>, g-&gt;adj[i][j]);</span></div>
+          <div class="code-line"><span class="ln">28</span><span class="i2"><span class="fn">printf</span>(<span class="str">"\n"</span>);</span></div>
+          <div class="code-line"><span class="ln">29</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">30</span><span>}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PYTHON IMPLEMENTATION -->
+    <div class="impl-grid hidden" id="python-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>adjacency_list.py</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">"""Adjacency List using Dictionary"""</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span></span></div>
+          <div class="code-line"><span class="ln">3</span><span><span class="kw">class</span> <span class="fn">Graph</span>:</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="kw">def</span> <span class="fn">__init__</span>(<span class="vr">self</span>, vertices):</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i2"><span class="vr">self</span>.V = vertices</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i2"><span class="vr">self</span>.adjList = {i: [] <span class="kw">for</span> i <span class="kw">in</span> <span class="vr">range</span>(vertices)}</span></div>
+          <div class="code-line"><span class="ln">7</span><span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="kw">def</span> <span class="fn">addEdge</span>(<span class="vr">self</span>, src, dest):</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i2"><span class="cm"># Undirected graph - add both directions</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i2"><span class="vr">self</span>.adjList[src].<span class="fn">append</span>(dest)</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i2"><span class="vr">self</span>.adjList[dest].<span class="fn">append</span>(src)</span></div>
+          <div class="code-line"><span class="ln">12</span><span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i1"><span class="kw">def</span> <span class="fn">printAdjList</span>(<span class="vr">self</span>):</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i2"><span class="kw">for</span> vertex <span class="kw">in</span> <span class="vr">self</span>.adjList:</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i3"><span class="fn">print</span>(f<span class="str">"{vertex}: {self.adjList[vertex]}"</span>)</span></div>
+          <div class="code-line"><span class="ln">16</span><span></span></div>
+          <div class="code-line"><span class="ln">17</span><span><span class="cm"># Example usage:</span></span></div>
+          <div class="code-line"><span class="ln">18</span><span>g = <span class="fn">Graph</span>(6)</span></div>
+          <div class="code-line"><span class="ln">19</span><span>g.<span class="fn">addEdge</span>(0, 1)</span></div>
+          <div class="code-line"><span class="ln">20</span><span>g.<span class="fn">addEdge</span>(0, 2)</span></div>
+          <div class="code-line"><span class="ln">21</span><span>g.<span class="fn">printAdjList</span>()</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>adjacency_matrix.py</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">"""Adjacency Matrix using 2D List"""</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span></span></div>
+          <div class="code-line"><span class="ln">3</span><span><span class="kw">class</span> <span class="fn">Graph</span>:</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="kw">def</span> <span class="fn">__init__</span>(<span class="vr">self</span>, vertices):</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i2"><span class="vr">self</span>.V = vertices</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i2"><span class="vr">self</span>.adj = [[0] * vertices <span class="kw">for</span> _ <span class="kw">in</span> <span class="vr">range</span>(vertices)]</span></div>
+          <div class="code-line"><span class="ln">7</span><span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="kw">def</span> <span class="fn">addEdge</span>(<span class="vr">self</span>, src, dest):</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i2"><span class="cm"># Undirected graph</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i2"><span class="vr">self</span>.adj[src][dest] = 1</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i2"><span class="vr">self</span>.adj[dest][src] = 1</span></div>
+          <div class="code-line"><span class="ln">12</span><span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i1"><span class="kw">def</span> <span class="fn">removeEdge</span>(<span class="vr">self</span>, src, dest):</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i2"><span class="vr">self</span>.adj[src][dest] = 0</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i2"><span class="vr">self</span>.adj[dest][src] = 0</span></div>
+          <div class="code-line"><span class="ln">16</span><span></span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i1"><span class="kw">def</span> <span class="fn">printMatrix</span>(<span class="vr">self</span>):</span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i2"><span class="kw">for</span> row <span class="kw">in</span> <span class="vr">self</span>.adj:</span></div>
+          <div class="code-line"><span class="ln">19</span><span class="i3"><span class="fn">print</span>(row)</span></div>
+          <div class="code-line"><span class="ln">20</span><span></span></div>
+          <div class="code-line"><span class="ln">21</span><span><span class="cm"># Example usage:</span></span></div>
+          <div class="code-line"><span class="ln">22</span><span>g = <span class="fn">Graph</span>(6)</span></div>
+          <div class="code-line"><span class="ln">23</span><span>g.<span class="fn">addEdge</span>(0, 1)</span></div>
+          <div class="code-line"><span class="ln">24</span><span>g.<span class="fn">addEdge</span>(0, 2)</span></div>
+          <div class="code-line"><span class="ln">25</span><span>g.<span class="fn">printMatrix</span>()</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════════════════════
+// GRAPH VISUALIZATION & STATE
+// ════════════════════════════════════════════════════════════════════════════════════
+
+let penActive = false;
+let drawHistory = [];
+let drawRedoStack = [];
+
+let graphData = {
+  nodes: [
+    { id: 0, label: 'A', x: 190, y: 60 },
+    { id: 1, label: 'B', x: 80, y: 150 },
+    { id: 2, label: 'C', x: 300, y: 150 },
+    { id: 3, label: 'D', x: 190, y: 240 },
+    { id: 4, label: 'E', x: 100, y: 320 },
+    { id: 5, label: 'F', x: 280, y: 320 }
+  ],
+  edges: [
+    [0, 1], [0, 2], [1, 3], [2, 3], [1, 4], [3, 5]
+  ]
+};
+
+function togglePen() {
+  penActive = !penActive;
+  const btn = document.getElementById('pen-toggle');
+  const canvas = document.getElementById('draw-canvas');
+  btn.classList.toggle('active', penActive);
+  canvas?.classList.toggle('pen-active', penActive);
+}
+
+function undoDraw() { if (drawHistory.length) drawRedoStack.push(drawHistory.pop()); document.getElementById('btn-undo').disabled = !drawHistory.length; document.getElementById('btn-redo').disabled = !drawRedoStack.length; }
+function redoDraw() { if (drawRedoStack.length) drawHistory.push(drawRedoStack.pop()); document.getElementById('btn-undo').disabled = !drawHistory.length; document.getElementById('btn-redo').disabled = !drawRedoStack.length; }
+function clearDraw() { drawHistory = []; drawRedoStack = []; document.getElementById('btn-undo').disabled = true; document.getElementById('btn-redo').disabled = true; }
+function setColor(color) { document.getElementById('pen-color').value = color; }
+function setSize(size) { document.getElementById('pen-size').value = size; }
+function switchImpl(impl) { document.querySelectorAll('.impl-grid').forEach(g => g.classList.add('hidden')); document.getElementById(impl + '-impl').classList.remove('hidden'); document.querySelectorAll('.impl-btn').forEach(b => b.classList.remove('active')); document.getElementById('impl-' + impl).classList.add('active'); }
+
+function drawGraph() {
+  const svg = document.getElementById('graph-svg');
+  svg.innerHTML = '';
+
+  // Draw edges
+  graphData.edges.forEach(([from, to]) => {
+    const fromNode = graphData.nodes[from];
+    const toNode = graphData.nodes[to];
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', fromNode.x);
+    line.setAttribute('y1', fromNode.y);
+    line.setAttribute('x2', toNode.x);
+    line.setAttribute('y2', toNode.y);
+    line.setAttribute('stroke', 'rgba(88,166,255,0.22)');
+    line.setAttribute('stroke-width', '2');
+    svg.appendChild(line);
+  });
+
+  // Draw nodes
+  graphData.nodes.forEach((node) => {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', node.x);
+    circle.setAttribute('cy', node.y);
+    circle.setAttribute('r', '18');
+    circle.setAttribute('fill', 'rgba(88,166,255,0.14)');
+    circle.setAttribute('stroke', 'rgba(88,166,255,0.4)');
+    circle.setAttribute('stroke-width', '2');
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', node.x);
+    text.setAttribute('y', node.y + 5);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('fill', '#e2e8f4');
+    text.setAttribute('font-family', 'monospace');
+    text.setAttribute('font-size', '14');
+    text.setAttribute('font-weight', '600');
+    text.textContent = node.label;
+
+    svg.appendChild(circle);
+    svg.appendChild(text);
+  });
+
+  updateRepresentations();
+}
+
+function updateRepresentations() {
+  // Update adjacency list
+  let adjListText = '';
+  graphData.nodes.forEach((node) => {
+    const neighbors = [];
+    graphData.edges.forEach(([from, to]) => {
+      if (from === node.id) neighbors.push(graphData.nodes[to].label);
+      if (to === node.id) neighbors.push(graphData.nodes[from].label);
+    });
+    adjListText += `${node.label} → [ ${neighbors.join(', ')} ]\n`;
+  });
+  document.getElementById('adj-list-display').textContent = adjListText.trim();
+
+  // Update adjacency matrix
+  const n = graphData.nodes.length;
+  const matrix = Array(n).fill().map(() => Array(n).fill(0));
+  graphData.edges.forEach(([from, to]) => {
+    matrix[from][to] = 1;
+    matrix[to][from] = 1;
+  });
+
+  let matrixText = '  ' + graphData.nodes.map(n => n.label).join(' ') + '\n';
+  graphData.nodes.forEach((node, idx) => {
+    matrixText += node.label + ' ' + matrix[idx].join(' ') + '\n';
+  });
+  document.getElementById('adj-matrix-display').textContent = matrixText.trim();
+
+  // Update stats
+  document.getElementById('node-count').textContent = graphData.nodes.length;
+  document.getElementById('edge-count').textContent = graphData.edges.length;
+
+  // Update dropdowns
+  const srcSelect = document.getElementById('source-select');
+  const dstSelect = document.getElementById('target-select');
+  srcSelect.innerHTML = '';
+  dstSelect.innerHTML = '';
+  graphData.nodes.forEach(node => {
+    const opt1 = document.createElement('option');
+    opt1.value = node.id;
+    opt1.textContent = node.label;
+    srcSelect.appendChild(opt1);
+
+    const opt2 = document.createElement('option');
+    opt2.value = node.id;
+    opt2.textContent = node.label;
+    dstSelect.appendChild(opt2);
+  });
+}
+
+function addNode() {
+  const nameInput = document.getElementById('node-name');
+  const label = (nameInput.value || 'N').toUpperCase();
+  const newId = graphData.nodes.length;
+  
+  graphData.nodes.push({
+    id: newId,
+    label: label,
+    x: Math.random() * 300 + 40,
+    y: Math.random() * 300 + 40
+  });
+
+  nameInput.value = '';
+  drawGraph();
+}
+
+function addEdge() {
+  const src = parseInt(document.getElementById('source-select').value);
+  const dst = parseInt(document.getElementById('target-select').value);
+  
+  if (src !== dst && !graphData.edges.some(e => (e[0] === src && e[1] === dst) || (e[0] === dst && e[1] === src))) {
+    graphData.edges.push([src, dst]);
+    drawGraph();
+  }
+}
+
+function removeEdge() {
+  const src = parseInt(document.getElementById('source-select').value);
+  const dst = parseInt(document.getElementById('target-select').value);
+  
+  graphData.edges = graphData.edges.filter(e => !((e[0] === src && e[1] === dst) || (e[0] === dst && e[1] === src)));
+  drawGraph();
+}
+
+function randomGraph() {
+  graphData.nodes = [];
+  graphData.edges = [];
+  
+  const count = Math.floor(Math.random() * 3) + 5;
+  for (let i = 0; i < count; i++) {
+    graphData.nodes.push({
+      id: i,
+      label: String.fromCharCode(65 + i),
+      x: Math.random() * 300 + 40,
+      y: Math.random() * 300 + 40
+    });
+  }
+
+  const edgeCount = Math.floor(Math.random() * (count * (count - 1) / 2 - count)) + count;
+  for (let i = 0; i < edgeCount; i++) {
+    const src = Math.floor(Math.random() * count);
+    const dst = Math.floor(Math.random() * count);
+    if (src !== dst && !graphData.edges.some(e => (e[0] === src && e[1] === dst) || (e[0] === dst && e[1] === src))) {
+      graphData.edges.push([src, dst]);
+    }
+  }
+
+  drawGraph();
+}
+
+function resetGraph() {
+  graphData = {
+    nodes: [
+      { id: 0, label: 'A', x: 190, y: 60 },
+      { id: 1, label: 'B', x: 80, y: 150 },
+      { id: 2, label: 'C', x: 300, y: 150 },
+      { id: 3, label: 'D', x: 190, y: 240 },
+      { id: 4, label: 'E', x: 100, y: 320 },
+      { id: 5, label: 'F', x: 280, y: 320 }
+    ],
+    edges: [
+      [0, 1], [0, 2], [1, 3], [2, 3], [1, 4], [3, 5]
+    ]
+  };
+  drawGraph();
+}
+
+function clearGraphCompletely() {
+  if (confirm('Are you sure you want to delete all nodes and edges? You can then add your own.')) {
+    graphData = {
+      nodes: [],
+      edges: []
+    };
+    document.getElementById('node-name').value = '';
+    drawGraph();
+  }
+}
+
+// Initialize
+window.addEventListener('load', () => {
+  drawGraph();
+  switchImpl('c');
+});
+</script>
+
+</body>
+</html>

@@ -982,7 +982,7 @@ function App() {
               </div>
 
               {/* Module selection bar */}
-              <div className="topic-bar">
+              <div className="topic-bar curriculum-topic-bar">
                 {topicsData.map(topic => {
                   const isUnlocked = unlockedTopics.includes(topic.id);
                   const isActive = currentTopicId === topic.id;
@@ -990,6 +990,7 @@ function App() {
                     <button
                       key={topic.id}
                       className={`topic-btn ${isActive ? 'active' : ''} ${!isUnlocked ? 'locked' : ''}`}
+                      aria-disabled={!isUnlocked}
                       onClick={() => {
                         if (isUnlocked) {
                           setCurrentTopicId(topic.id);
@@ -999,9 +1000,13 @@ function App() {
                         }
                       }}
                     >
-                      <span>{topic.icon}</span>
-                      <span>{topic.title}</span>
-                      {!isUnlocked && <Lock size={14} style={{ marginLeft: '4px' }} />}
+                      <span className="topic-icon" aria-hidden="true">{topic.icon}</span>
+                      <span className="topic-title">{topic.title}</span>
+                      {!isUnlocked && (
+                        <span className="topic-lock" title="Locked module">
+                          <Lock size={14} />
+                        </span>
+                      )}
                     </button>
                   );
                 })}

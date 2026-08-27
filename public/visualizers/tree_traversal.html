@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tree Traversal — Recursive Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a; --surface: #111827; --surface2: #1a2236; --border: #1e2d45; --border2: #263550;
+    --text: #e2e8f4; --muted: #6b7a99; --accent-main: #58a6ff; --accent-sel: #3fb950;
+    --accent2: #f472b6; --accent3: #34d399; --accent4: #fbbf24; --accent-orange: #f0883e;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+  .top-bar { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: rgba(10,14,26,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+  .top-title { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; }
+  .top-title span { color: var(--accent4); }
+  .page { position: relative; z-index: 1; }
+  header { padding: 36px 40px 28px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; }
+  .tag-blue { color: var(--accent-main); border: 1px solid rgba(88,166,255,0.25); background: rgba(88,166,255,0.06); }
+  .tag-sel { color: var(--accent-sel); border: 1px solid rgba(63,185,80,0.25); background: rgba(63,185,80,0.06); }
+  .tag-orange { color: var(--accent-orange); border: 1px solid rgba(240,136,62,0.25); background: rgba(240,136,62,0.06); }
+  h1 { font-size: clamp(22px, 4vw, 38px); line-height: 1.1; margin-bottom: 8px; letter-spacing: -0.5px; }
+  .subtitle { font-size: 13px; color: var(--muted); max-width: 760px; line-height: 1.75; }
+  .container { max-width: 1120px; margin: 0 auto; padding: 28px 24px 48px; }
+  .section-hdr { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin: 24px 0 16px; display: flex; align-items: center; gap: 12px; font-weight: 600; }
+  .section-hdr::after { content: ''; flex: 1; height: 2px; background: linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+  .card, .main-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .main-card { margin-bottom: 24px; }
+  .card-header { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .approach-box { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; padding: 16px; }
+  .approach-box h3 { font-family: 'IBM Plex Mono', monospace; font-size: 12px; margin-bottom: 8px; color: var(--accent4); }
+  .approach-box p { color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .viz-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; align-items: start; }
+  .tree-wrap { background: #0f172a; min-height: 430px; border: 1px solid var(--border2); border-radius: 10px; }
+  #tree-svg { width: 100%; display: block; }
+  .panel-stack { display: flex; flex-direction: column; gap: 12px; }
+  .panel { background: #0f172a; border: 1px solid var(--border2); border-radius: 10px; padding: 12px; }
+  .panel-title { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+  .panel pre { font-family: 'IBM Plex Mono', monospace; white-space: pre-wrap; font-size: 12px; line-height: 1.6; color: var(--text); }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 16px 20px; background: var(--surface2); border-top: 1px solid var(--border); }
+  .small-input, .btn, .select {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; border-radius: 10px; border: 1px solid var(--border2);
+    background: var(--surface); color: var(--muted); padding: 10px 12px;
+  }
+  .select { color: var(--text); background: var(--surface2); }
+  .btn { cursor: pointer; }
+  .btn:hover { border-color: var(--accent-main); color: var(--accent-main); }
+  .btn-primary { border-color: var(--accent-main); color: var(--text); background: linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+  .step-label { color: var(--muted); font-size: 12px; }
+  .node { fill: rgba(88,166,255,0.14); stroke: rgba(88,166,255,0.4); stroke-width: 2; }
+  .node.visited { fill: rgba(63,185,80,0.2); stroke: #3fb950; }
+  .node.active { fill: rgba(251,191,36,0.28); stroke: #fbbf24; stroke-width: 2.5; }
+  .edge { stroke: rgba(88,166,255,0.25); stroke-width: 2; }
+  .label { fill: #e2e8f4; font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; }
+  .code-line { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .code-line.active { color: var(--accent4); background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.35); border-radius: 6px; padding: 5px 8px; }
+  .lang-switch { display: flex; gap: 8px; margin-bottom: 12px; }
+  .lang-btn.active { border-color: var(--accent-sel); color: var(--accent-sel); background: rgba(63,185,80,0.12); }
+  .hidden { display: none !important; }
+  .code-block { background: #0f172a; border: 1px solid var(--border2); border-radius: 10px; padding: 16px; overflow: auto; }
+  .code-block pre { margin: 0; }
+  .keyword { color: #ff7b72; }
+  .func { color: #79c0ff; }
+  .string { color: #a5d6ff; }
+  .comment { color: #6b7a99; }
+  .number { color: #79c0ff; }
+  .theory-box { background: var(--surface); border-left: 4px solid var(--accent-main); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .theory-box h4 { color: var(--accent-main); margin-bottom: 8px; font-size: 14px; }
+  .theory-box p { color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .theory-list { list-style: none; padding-left: 0; }
+  .theory-list li { padding: 6px 0; color: var(--muted); font-size: 13px; }
+  .theory-list li::before { content: '▸ '; color: var(--accent-main); margin-right: 8px; }
+  
+  /* Pen Tool Styles */
+  #pen-canvas { position: fixed; top: 0; left: 0; z-index: 99999; cursor: crosshair; display: none; pointer-events: none; }
+  #pen-undo-btn:disabled, #pen-redo-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #pen-undo-btn:disabled:hover, #pen-redo-btn:disabled:hover { border-color: var(--border2); color: var(--muted); }
+  .pen-toolbar-top { position: fixed; top: 42px; left: 0; right: 0; z-index: 999; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 20px; background: rgba(10,14,26,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); pointer-events: auto; }
+  
+  @media (max-width: 900px) { .grid-2, .grid-3, .viz-layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<!-- Pen Tool Canvas -->
+<canvas id="pen-canvas"></canvas>
+<div class="top-bar">
+  <span class="top-title">Tree Traversal <span>Visualizer</span></span>
+</div>
+<!-- Pen Tool Toolbar -->
+<div class="pen-toolbar-top" id="pen-toolbar-top">
+  <button class="btn btn-primary" id="pen-toggle-btn" title="Toggle Drawing Mode (P)" style="padding: 8px 14px; font-size: 12px;">✏️ Start Drawing</button>
+  <button id="pen-undo-btn" class="btn" style="padding: 8px 12px; font-size: 12px;" title="Undo (Ctrl+Z)">↶ Undo</button>
+  <button id="pen-redo-btn" class="btn" style="padding: 8px 12px; font-size: 12px;" title="Redo (Ctrl+Y)">↷ Redo</button>
+  <button id="pen-clear-btn" class="btn" style="padding: 8px 12px; font-size: 12px;">🗑️ Clear</button>
+  <div style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
+    <label for="pen-color" style="font-size: 12px; color: var(--muted); font-family: 'IBM Plex Mono', monospace;">Color:</label>
+    <input type="color" id="pen-color" value="#fbbf24" style="width: 36px; height: 28px; border: 1px solid var(--border2); border-radius: 6px; cursor: pointer;">
+  </div>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <label for="pen-size" style="font-size: 12px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; min-width: 40px;">Size:</label>
+    <input type="range" id="pen-size" min="1" max="20" value="3" style="width: 100px;">
+    <span class="size-display" id="pen-size-display" style="font-size: 11px; color: var(--muted); min-width: 30px;">3px</span>
+  </div>
+</div>
+<div class="page">
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Binary Tree</span>
+      <span class="tag tag-sel">Recursion</span>
+      <span class="tag tag-orange">Traversal</span>
+    </div>
+    <h1>Recursive <span style="color:var(--accent4)">Tree Traversals</span></h1>
+    <p class="subtitle">Understand inorder, preorder, and postorder with a step-by-step recursive visualization. Watch active node, call stack, and output sequence together.</p>
+  </header>
+
+  <div class="container">
+    <p class="section-hdr">Theory & Concepts</p>
+    <div class="theory-box">
+      <h4>What is Tree Traversal?</h4>
+      <p>Tree traversal is the process of visiting all nodes in a tree data structure in a specific order. Each traversal method defines a unique visiting sequence, making them suitable for different problems. The choice of traversal depends on your use case: some problems require processing parent before children (preorder), some require processing left subtree first (inorder), and some require processing children before parent (postorder).</p>
+    </div>
+    
+    <p class="section-hdr" style="margin-top:20px;">Three Kinds of Tree Traversal</p>
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>Preorder (NLR)</h3></div>
+        <div style="padding:16px;">
+          <div style="color:var(--accent-orange);font-family:'IBM Plex Mono',monospace;font-size:12px;margin-bottom:10px;"><strong>Visit → Left → Right</strong></div>
+          <ul class="theory-list" style="margin-bottom:12px;">
+            <li>Process node first, then recursively traverse left subtree</li>
+            <li>Finally, recursively traverse right subtree</li>
+            <li>Order: Parent visited before children</li>
+          </ul>
+          <div style="background:rgba(240,136,62,0.1);border:1px solid rgba(240,136,62,0.2);border-radius:8px;padding:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);">Example: A→B→D→E→C→F→G</div>
+          <p style="color:var(--muted);font-size:12px;margin-top:10px;"><strong>Use cases:</strong> Create tree copy, print tree structure, prefix notation</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>Inorder (LNR)</h3></div>
+        <div style="padding:16px;">
+          <div style="color:var(--accent-sel);font-family:'IBM Plex Mono',monospace;font-size:12px;margin-bottom:10px;"><strong>Left → Visit → Right</strong></div>
+          <ul class="theory-list" style="margin-bottom:12px;">
+            <li>Recursively traverse left subtree first</li>
+            <li>Process node in the middle</li>
+            <li>Finally, recursively traverse right subtree</li>
+          </ul>
+          <div style="background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.2);border-radius:8px;padding:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);">Example: D→B→E→A→F→C→G</div>
+          <p style="color:var(--muted);font-size:12px;margin-top:10px;"><strong>Use cases:</strong> BST in-order = sorted, infix notation</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>Postorder (LRN)</h3></div>
+        <div style="padding:16px;">
+          <div style="color:var(--accent2);font-family:'IBM Plex Mono',monospace;font-size:12px;margin-bottom:10px;"><strong>Left → Right → Visit</strong></div>
+          <ul class="theory-list" style="margin-bottom:12px;">
+            <li>Recursively traverse left subtree first</li>
+            <li>Then recursively traverse right subtree</li>
+            <li>Process node last, after both children</li>
+          </ul>
+          <div style="background:rgba(244,114,182,0.1);border:1px solid rgba(244,114,182,0.2);border-radius:8px;padding:8px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);">Example: D→E→B→F→G→C→A</div>
+          <p style="color:var(--muted);font-size:12px;margin-top:10px;"><strong>Use cases:</strong> Delete tree, postfix notation, find height</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-hdr">Approach In Plain English</p>
+    <div class="grid-3">
+      <div class="approach-box">
+        <h3>Step 1: Choose Traversal Rule</h3>
+        <p>Pick the exact visit order for one node: preorder = Root-Left-Right, inorder = Left-Root-Right, postorder = Left-Right-Root.</p>
+      </div>
+      <div class="approach-box">
+        <h3>Step 2: Recurse on Subtrees</h3>
+        <p>At each node, recursion solves the left and right subtree using the same rule. Base case: null child returns immediately.</p>
+      </div>
+      <div class="approach-box">
+        <h3>Step 3: Build Final Sequence</h3>
+        <p>Whenever a node is visited as per rule, append it to output. Final list is the traversal result shown in the right panel.</p>
+      </div>
+    </div>
+
+    <div class="main-card">
+      <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>tree_traversal.svg</h3></div>
+      <div style="padding: 16px;">
+        <div class="viz-layout">
+          <div class="tree-wrap">
+            <svg id="tree-svg" viewBox="0 0 760 430" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+          <div class="panel-stack">
+            <div class="panel">
+              <div class="panel-title" id="pseudocode-title">Pseudocode (Inorder Selected)</div>
+              <div id="pseudocode-preorder" class="hidden">
+                <div class="code-line" id="pre-l1"><span class="keyword">function</span> <span class="func">preorder</span>(node):</div>
+                <div class="code-line" id="pre-l2"><span class="keyword">if</span> node == <span class="keyword">null</span>: <span class="keyword">return</span></div>
+                <div class="code-line" id="pre-l3"><span class="comment">// Visit node BEFORE children</span></div>
+                <div class="code-line" id="pre-l4"><span class="func">visit</span>(node) <span class="comment">← NLR approach</span></div>
+                <div class="code-line" id="pre-l5"><span class="func">preorder</span>(node.left)</div>
+                <div class="code-line" id="pre-l6"><span class="func">preorder</span>(node.right)</div>
+              </div>
+              <div id="pseudocode-inorder">
+                <div class="code-line" id="in-l1"><span class="keyword">function</span> <span class="func">inorder</span>(node):</div>
+                <div class="code-line" id="in-l2"><span class="keyword">if</span> node == <span class="keyword">null</span>: <span class="keyword">return</span></div>
+                <div class="code-line" id="in-l3"><span class="func">inorder</span>(node.left)</div>
+                <div class="code-line" id="in-l4"><span class="comment">// Visit node BETWEEN children</span></div>
+                <div class="code-line" id="in-l5"><span class="func">visit</span>(node) <span class="comment">← LNR approach</span></div>
+                <div class="code-line" id="in-l6"><span class="func">inorder</span>(node.right)</div>
+              </div>
+              <div id="pseudocode-postorder" class="hidden">
+                <div class="code-line" id="post-l1"><span class="keyword">function</span> <span class="func">postorder</span>(node):</div>
+                <div class="code-line" id="post-l2"><span class="keyword">if</span> node == <span class="keyword">null</span>: <span class="keyword">return</span></div>
+                <div class="code-line" id="post-l3"><span class="func">postorder</span>(node.left)</div>
+                <div class="code-line" id="post-l4"><span class="func">postorder</span>(node.right)</div>
+                <div class="code-line" id="post-l5"><span class="comment">// Visit node AFTER children</span></div>
+                <div class="code-line" id="post-l6"><span class="func">visit</span>(node) <span class="comment">← LRN approach</span></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">Call Stack</div>
+              <pre id="call-stack">(empty)</pre>
+            </div>
+            <div class="panel">
+              <div class="panel-title">Traversal Output</div>
+              <pre id="output-seq">[ ]</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="controls">
+        <label class="step-label">Traversal:</label>
+        <select id="traversal-type" class="select">
+          <option value="inorder" selected>Inorder (Left-Root-Right)</option>
+          <option value="preorder">Preorder (Root-Left-Right)</option>
+          <option value="postorder">Postorder (Left-Right-Root)</option>
+        </select>
+        <button class="btn btn-primary" onclick="play()">▶ Run</button>
+        <button class="btn" onclick="nextStep()">Step →</button>
+        <button class="btn" onclick="resetWalk()">Reset</button>
+        <span class="step-label" id="status">Ready to start</span>
+      </div>
+    </div>
+
+    <p class="section-hdr">Complexity</p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>Time Complexity</h3></div>
+        <div style="padding:18px;color:var(--muted);line-height:1.8;font-size:13px;">
+          Each traversal visits every node exactly once, so time complexity is <strong style="color:var(--accent-main)">O(n)</strong>.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>Space Complexity</h3></div>
+        <div style="padding:18px;color:var(--muted);line-height:1.8;font-size:13px;">
+          Recursive stack takes <strong style="color:var(--accent-main)">O(h)</strong>, where h is tree height. Worst case (skewed tree): <strong style="color:var(--accent-sel)">O(n)</strong>.
+        </div>
+      </div>
+    </div>
+
+    <p class="section-hdr">Implementation (Choose Language)</p>
+    
+    <div class="main-card">
+      <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>Creating & Connecting Tree Nodes</h3></div>
+      <div style="padding:16px;">
+        <div style="margin-bottom:16px;">
+          <p style="color:var(--muted);font-size:13px;line-height:1.8;margin-bottom:12px;"><strong style="color:var(--accent-main)">Step 1: Define Node Structure</strong><br/>Each node must store data and pointers/references to its left and right children. This creates the basic building block of the tree.</p>
+          <p style="color:var(--muted);font-size:13px;line-height:1.8;margin-bottom:12px;"><strong style="color:var(--accent-main)">Step 2: Create Nodes</strong><br/>Allocate memory for each node and initialize it with data. Set left and right children to null initially.</p>
+          <p style="color:var(--muted);font-size:13px;line-height:1.8;"><strong style="color:var(--accent-main)">Step 3: Connect Nodes</strong><br/>Link parent node's left/right pointers to child nodes. For example: root.left = nodeB; root.right = nodeC. This establishes parent-child relationships and builds the tree structure.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-main)"></div><h3>Tree Structure & Traversals</h3></div>
+        <div style="padding:16px;">
+          <div class="lang-switch">
+            <button id="btn-c" class="btn lang-btn active" onclick="setImplLanguage('c')">C</button>
+            <button id="btn-python" class="btn lang-btn" onclick="setImplLanguage('python')">Python</button>
+            <button id="btn-java" class="btn lang-btn" onclick="setImplLanguage('java')">Java</button>
+          </div>
+          
+          <div id="code-c-block" class="code-block">
+            <pre id="code-c"><span class="comment">// Node Structure</span>
+<span class="keyword">struct</span> Node {
+    <span class="keyword">char</span> data;
+    <span class="keyword">struct</span> Node* left;
+    <span class="keyword">struct</span> Node* right;
+};
+
+<span class="comment">// Create a new node</span>
+<span class="keyword">struct</span> Node* <span class="func">createNode</span>(<span class="keyword">char</span> val) {
+    <span class="keyword">struct</span> Node* node = 
+        (<span class="keyword">struct</span> Node*) <span class="func">malloc</span>(<span class="keyword">sizeof</span>(<span class="keyword">struct</span> Node));
+    node->data = val;
+    node->left = <span class="keyword">NULL</span>;
+    node->right = <span class="keyword">NULL</span>;
+    <span class="keyword">return</span> node;
+}
+
+<span class="comment">// Preorder: Root → Left → Right</span>
+<span class="keyword">void</span> <span class="func">preorder</span>(<span class="keyword">struct</span> Node* root) {
+    <span class="keyword">if</span> (root == <span class="keyword">NULL</span>) <span class="keyword">return</span>;
+    <span class="func">printf</span>(<span class="string">"%c "</span>, root->data);
+    <span class="func">preorder</span>(root->left);
+    <span class="func">preorder</span>(root->right);
+}
+
+<span class="comment">// Inorder: Left → Root → Right</span>
+<span class="keyword">void</span> <span class="func">inorder</span>(<span class="keyword">struct</span> Node* root) {
+    <span class="keyword">if</span> (root == <span class="keyword">NULL</span>) <span class="keyword">return</span>;
+    <span class="func">inorder</span>(root->left);
+    <span class="func">printf</span>(<span class="string">"%c "</span>, root->data);
+    <span class="func">inorder</span>(root->right);
+}
+
+<span class="comment">// Postorder: Left → Right → Root</span>
+<span class="keyword">void</span> <span class="func">postorder</span>(<span class="keyword">struct</span> Node* root) {
+    <span class="keyword">if</span> (root == <span class="keyword">NULL</span>) <span class="keyword">return</span>;
+    <span class="func">postorder</span>(root->left);
+    <span class="func">postorder</span>(root->right);
+    <span class="func">printf</span>(<span class="string">"%c "</span>, root->data);
+}
+
+<span class="comment">// Create and connect nodes</span>
+<span class="keyword">int</span> <span class="func">main</span>() {
+    <span class="keyword">struct</span> Node* root = <span class="func">createNode</span>(<span class="string">'A'</span>);
+    root->left = <span class="func">createNode</span>(<span class="string">'B'</span>);
+    root->right = <span class="func">createNode</span>(<span class="string">'C'</span>);
+    root->left->left = <span class="func">createNode</span>(<span class="string">'D'</span>);
+    root->left->right = <span class="func">createNode</span>(<span class="string">'E'</span>);
+    
+    <span class="func">inorder</span>(root);  <span class="comment">// Output: D B E A C</span>
+    <span class="keyword">return</span> <span class="number">0</span>;
+}</pre>
+          </div>
+
+          <div id="code-python-block" class="code-block hidden">
+            <pre id="code-python"><span class="comment"># Node Structure</span>
+<span class="keyword">class</span> <span class="func">Node</span>:
+    <span class="keyword">def</span> <span class="func">__init__</span>(<span class="keyword">self</span>, data):
+        <span class="keyword">self</span>.data = data
+        <span class="keyword">self</span>.left = <span class="keyword">None</span>
+        <span class="keyword">self</span>.right = <span class="keyword">None</span>
+
+<span class="comment"># Preorder: Root → Left → Right</span>
+<span class="keyword">def</span> <span class="func">preorder</span>(root):
+    <span class="keyword">if</span> root <span class="keyword">is</span> <span class="keyword">None</span>:
+        <span class="keyword">return</span>
+    <span class="func">print</span>(root.data, end=<span class="string">" "</span>)
+    <span class="func">preorder</span>(root.left)
+    <span class="func">preorder</span>(root.right)
+
+<span class="comment"># Inorder: Left → Root → Right</span>
+<span class="keyword">def</span> <span class="func">inorder</span>(root):
+    <span class="keyword">if</span> root <span class="keyword">is</span> <span class="keyword">None</span>:
+        <span class="keyword">return</span>
+    <span class="func">inorder</span>(root.left)
+    <span class="func">print</span>(root.data, end=<span class="string">" "</span>)
+    <span class="func">inorder</span>(root.right)
+
+<span class="comment"># Postorder: Left → Right → Root</span>
+<span class="keyword">def</span> <span class="func">postorder</span>(root):
+    <span class="keyword">if</span> root <span class="keyword">is</span> <span class="keyword">None</span>:
+        <span class="keyword">return</span>
+    <span class="func">postorder</span>(root.left)
+    <span class="func">postorder</span>(root.right)
+    <span class="func">print</span>(root.data, end=<span class="string">" "</span>)
+
+<span class="comment"># Create and connect nodes</span>
+root = <span class="func">Node</span>(<span class="string">'A'</span>)
+root.left = <span class="func">Node</span>(<span class="string">'B'</span>)
+root.right = <span class="func">Node</span>(<span class="string">'C'</span>)
+root.left.left = <span class="func">Node</span>(<span class="string">'D'</span>)
+root.left.right = <span class="func">Node</span>(<span class="string">'E'</span>)
+
+<span class="func">inorder</span>(root)  <span class="comment"># Output: D B E A C</span></pre>
+          </div>
+
+          <div id="code-java-block" class="code-block hidden">
+            <pre id="code-java"><span class="comment">// Node Structure</span>
+<span class="keyword">class</span> <span class="func">Node</span> {
+    <span class="keyword">char</span> data;
+    Node left, right;
+    
+    <span class="func">Node</span>(<span class="keyword">char</span> val) {
+        data = val;
+        left = <span class="keyword">null</span>;
+        right = <span class="keyword">null</span>;
+    }
+}
+
+<span class="comment">// Preorder: Root → Left → Right</span>
+<span class="keyword">void</span> <span class="func">preorder</span>(Node root) {
+    <span class="keyword">if</span> (root == <span class="keyword">null</span>) <span class="keyword">return</span>;
+    System.<span class="func">out</span>.print(root.data + <span class="string">" "</span>);
+    <span class="func">preorder</span>(root.left);
+    <span class="func">preorder</span>(root.right);
+}
+
+<span class="comment">// Inorder: Left → Root → Right</span>
+<span class="keyword">void</span> <span class="func">inorder</span>(Node root) {
+    <span class="keyword">if</span> (root == <span class="keyword">null</span>) <span class="keyword">return</span>;
+    <span class="func">inorder</span>(root.left);
+    System.<span class="func">out</span>.print(root.data + <span class="string">" "</span>);
+    <span class="func">inorder</span>(root.right);
+}
+
+<span class="comment">// Postorder: Left → Right → Root</span>
+<span class="keyword">void</span> <span class="func">postorder</span>(Node root) {
+    <span class="keyword">if</span> (root == <span class="keyword">null</span>) <span class="keyword">return</span>;
+    <span class="func">postorder</span>(root.left);
+    <span class="func">postorder</span>(root.right);
+    System.<span class="func">out</span>.print(root.data + <span class="string">" "</span>);
+}
+
+<span class="comment">// Create and connect nodes</span>
+Node root = <span class="keyword">new</span> <span class="func">Node</span>(<span class="string">'A'</span>);
+root.left = <span class="keyword">new</span> <span class="func">Node</span>(<span class="string">'B'</span>);
+root.right = <span class="keyword">new</span> <span class="func">Node</span>(<span class="string">'C'</span>);
+root.left.left = <span class="keyword">new</span> <span class="func">Node</span>(<span class="string">'D'</span>);
+root.left.right = <span class="keyword">new</span> <span class="func">Node</span>(<span class="string">'E'</span>);
+
+<span class="func">inorder</span>(root);  <span class="comment">// Output: D B E A C</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>Key Concepts</h3></div>
+        <div style="padding:16px;">
+          <ul id="exp-c" style="list-style:none;display:flex;flex-direction:column;gap:10px;color:var(--muted);font-size:13px;line-height:1.7;">
+            <li><strong style="color:var(--accent4)">Base Case:</strong> <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:4px;">root == NULL</code> stops recursion when reaching null child.</li>
+            <li><strong style="color:var(--accent4)">Preorder:</strong> Root processed first. Use when order of parent matters.</li>
+            <li><strong style="color:var(--accent4)">Inorder:</strong> Root processed between children. For BST, gives sorted output.</li>
+            <li><strong style="color:var(--accent4)">Postorder:</strong> Root processed last. Use for cleanup/deletion operations.</li>
+            <li><strong style="color:var(--accent4)">Memory:</strong> Use <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:4px;">malloc</code> for allocation, <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:4px;">free</code> for deallocation.</li>
+          </ul>
+          <ul id="exp-python" class="hidden" style="list-style:none;display:flex;flex-direction:column;gap:10px;color:var(--muted);font-size:13px;line-height:1.7;">
+            <li><strong style="color:var(--accent4)">Base Case:</strong> <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:4px;">root is None</code> stops recursion safely.</li>
+            <li><strong style="color:var(--accent4)">Class Definition:</strong> Node class stores data and child references.</li>
+            <li><strong style="color:var(--accent4)">Flexibility:</strong> Python's dynamic typing lets any data type be stored.</li>
+            <li><strong style="color:var(--accent4)">Readability:</strong> Python code is clean and mirrors algorithm logic directly.</li>
+            <li><strong style="color:var(--accent4)">Memory:</strong> Python handles garbage collection automatically.</li>
+          </ul>
+          <ul id="exp-java" class="hidden" style="list-style:none;display:flex;flex-direction:column;gap:10px;color:var(--muted);font-size:13px;line-height:1.7;">
+            <li><strong style="color:var(--accent4)">Base Case:</strong> <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:4px;">root == null</code> stops recursion when reaching null child.</li>
+            <li><strong style="color:var(--accent4)">Constructor:</strong> Node(char val) initializes new node with data.</li>
+            <li><strong style="color:var(--accent4)">Type Safety:</strong> Strong typing ensures correct node structure.</li>
+            <li><strong style="color:var(--accent4)">Output:</strong> Use System.out.print() for displaying traversal result.</li>
+            <li><strong style="color:var(--accent4)">Memory:</strong> Java's garbage collector handles memory deallocation.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const svg = document.getElementById('tree-svg');
+const traversalTypeEl = document.getElementById('traversal-type');
+const outputEl = document.getElementById('output-seq');
+const stackEl = document.getElementById('call-stack');
+const statusEl = document.getElementById('status');
+
+const nodes = [
+  { id: 'A', x: 380, y: 60, left: 'B', right: 'C' },
+  { id: 'B', x: 250, y: 155, left: 'D', right: 'E' },
+  { id: 'C', x: 510, y: 155, left: 'F', right: 'G' },
+  { id: 'D', x: 180, y: 255, left: null, right: null },
+  { id: 'E', x: 320, y: 255, left: null, right: null },
+  { id: 'F', x: 440, y: 255, left: null, right: null },
+  { id: 'G', x: 580, y: 255, left: null, right: null }
+];
+const map = Object.fromEntries(nodes.map(n => [n.id, n]));
+
+let steps = [];
+let stepIndex = 0;
+let output = [];
+let timer = null;
+let running = false;
+
+function getLinePrefix() {
+  const t = traversalTypeEl.value;
+  if (t === 'preorder') return 'pre-';
+  if (t === 'inorder') return 'in-';
+  return 'post-';
+}
+
+function lineForEvent(type) {
+  const prefix = getLinePrefix();
+  if (type === 'null') return prefix + 'l2';
+  if (type === 'goLeft') return prefix + 'l3';
+  if (type === 'goRight') {
+    const t = traversalTypeEl.value;
+    if (t === 'preorder') return 'pre-l5';
+    if (t === 'inorder') return 'in-l6';
+    return 'post-l4';
+  }
+  if (type === 'visit') {
+    const t = traversalTypeEl.value;
+    if (t === 'preorder') return 'pre-l4';
+    if (t === 'inorder') return 'in-l5';
+    return 'post-l6';
+  }
+  return prefix + 'l1';
+}
+
+function buildSteps(order) {
+  const events = [];
+  function walk(id, stack) {
+    if (!id) {
+      events.push({ type: 'null', active: null, stack: [...stack], text: 'Reached null child, return.' });
+      return;
+    }
+    const node = map[id];
+    const nowStack = [...stack, id];
+    events.push({ type: 'enter', active: id, stack: nowStack, text: `Enter node ${id}` });
+
+    if (order === 'preorder') events.push({ type: 'visit', active: id, stack: nowStack, visit: id, text: `Visit ${id} before children (Preorder - NLR).` });
+    events.push({ type: 'goLeft', active: id, stack: nowStack, text: `Go left from ${id}.` });
+    walk(node.left, nowStack);
+    if (order === 'inorder') events.push({ type: 'visit', active: id, stack: nowStack, visit: id, text: `Visit ${id} between left and right (Inorder - LNR).` });
+    events.push({ type: 'goRight', active: id, stack: nowStack, text: `Go right from ${id}.` });
+    walk(node.right, nowStack);
+    if (order === 'postorder') events.push({ type: 'visit', active: id, stack: nowStack, visit: id, text: `Visit ${id} after both children (Postorder - LRN).` });
+
+    events.push({ type: 'return', active: id, stack: stack, text: `Return from ${id}.` });
+  }
+  walk('A', []);
+  return events;
+}
+
+function draw(activeId, visitedIds) {
+  svg.innerHTML = '';
+  for (const n of nodes) {
+    if (n.left) {
+      const c = map[n.left];
+      const e = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      e.setAttribute('x1', n.x); e.setAttribute('y1', n.y + 24);
+      e.setAttribute('x2', c.x); e.setAttribute('y2', c.y - 24);
+      e.setAttribute('class', 'edge');
+      svg.appendChild(e);
+    }
+    if (n.right) {
+      const c = map[n.right];
+      const e = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      e.setAttribute('x1', n.x); e.setAttribute('y1', n.y + 24);
+      e.setAttribute('x2', c.x); e.setAttribute('y2', c.y - 24);
+      e.setAttribute('class', 'edge');
+      svg.appendChild(e);
+    }
+  }
+  for (const n of nodes) {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', n.x); circle.setAttribute('cy', n.y); circle.setAttribute('r', '24');
+    let cls = 'node';
+    if (visitedIds.includes(n.id)) cls += ' visited';
+    if (activeId === n.id) cls += ' active';
+    circle.setAttribute('class', cls);
+    svg.appendChild(circle);
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', n.x); text.setAttribute('y', n.y + 1); text.setAttribute('class', 'label');
+    text.textContent = n.id;
+    svg.appendChild(text);
+  }
+}
+
+function clearCodeHighlights() {
+  const prefix = getLinePrefix();
+  for (let i = 1; i <= 6; i++) {
+    const el = document.getElementById(prefix + 'l' + i);
+    if (el) el.classList.remove('active');
+  }
+}
+
+function applyStep() {
+  const cur = steps[Math.min(stepIndex - 1, steps.length - 1)];
+  if (!cur) {
+    draw(null, []);
+    stackEl.textContent = '(empty)';
+    outputEl.textContent = '[ ]';
+    statusEl.textContent = 'Ready to start';
+    clearCodeHighlights();
+    return;
+  }
+  output = [];
+  for (let i = 0; i < stepIndex; i++) if (steps[i].visit) output.push(steps[i].visit);
+  draw(cur.active, output);
+  stackEl.textContent = cur.stack.length ? `[ ${cur.stack.join(' → ')} ]` : '(empty)';
+  outputEl.textContent = output.length ? `[ ${output.join(' → ')} ]` : '[ ]';
+  statusEl.textContent = `Step ${stepIndex}/${steps.length}: ${cur.text}`;
+  clearCodeHighlights();
+  const lineId = lineForEvent(cur.type);
+  if (lineId) {
+    const el = document.getElementById(lineId);
+    if (el) el.classList.add('active');
+  }
+}
+
+function updatePseudocodeDisplay() {
+  const t = traversalTypeEl.value;
+  const titleMap = {
+    'preorder': 'Pseudocode (Preorder Selected)',
+    'inorder': 'Pseudocode (Inorder Selected)',
+    'postorder': 'Pseudocode (Postorder Selected)'
+  };
+  document.getElementById('pseudocode-title').textContent = titleMap[t];
+  document.getElementById('pseudocode-preorder').classList.toggle('hidden', t !== 'preorder');
+  document.getElementById('pseudocode-inorder').classList.toggle('hidden', t !== 'inorder');
+  document.getElementById('pseudocode-postorder').classList.toggle('hidden', t !== 'postorder');
+}
+
+function regenerate() {
+  stopRun();
+  steps = buildSteps(traversalTypeEl.value);
+  stepIndex = 0;
+  output = [];
+  updatePseudocodeDisplay();
+  applyStep();
+}
+
+function nextStep() {
+  if (!steps.length) regenerate();
+  stepIndex = Math.min(stepIndex + 1, steps.length);
+  applyStep();
+  if (stepIndex >= steps.length) stopRun();
+}
+
+function play() {
+  if (running) return;
+  if (!steps.length || stepIndex >= steps.length) regenerate();
+  running = true;
+  timer = setInterval(() => {
+    if (stepIndex >= steps.length) { stopRun(); return; }
+    nextStep();
+  }, 800);
+}
+
+function stopRun() {
+  clearInterval(timer);
+  timer = null;
+  running = false;
+}
+
+function resetWalk() {
+  regenerate();
+}
+
+function setImplLanguage(lang) {
+  const isC = lang === 'c';
+  const isPython = lang === 'python';
+  const isJava = lang === 'java';
+  
+  document.getElementById('code-c-block').classList.toggle('hidden', !isC);
+  document.getElementById('code-python-block').classList.toggle('hidden', !isPython);
+  document.getElementById('code-java-block').classList.toggle('hidden', !isJava);
+  
+  document.getElementById('exp-c').classList.toggle('hidden', !isC);
+  document.getElementById('exp-python').classList.toggle('hidden', !isPython);
+  document.getElementById('exp-java').classList.toggle('hidden', !isJava);
+  
+  document.getElementById('btn-c').classList.toggle('active', isC);
+  document.getElementById('btn-python').classList.toggle('active', isPython);
+  document.getElementById('btn-java').classList.toggle('active', isJava);
+}
+
+// ===================== PEN TOOL FUNCTIONALITY =====================
+let penActive = false;
+let isDrawing = false;
+let drawingHistory = [];
+let historyStep = -1;
+
+function initPenTool() {
+  const canvas = document.getElementById('pen-canvas');
+  const ctx = canvas.getContext('2d');
+  const toggleBtn = document.getElementById('pen-toggle-btn');
+  const undoBtn = document.getElementById('pen-undo-btn');
+  const redoBtn = document.getElementById('pen-redo-btn');
+  const colorInput = document.getElementById('pen-color');
+  const sizeInput = document.getElementById('pen-size');
+  const sizeDisplay = document.getElementById('pen-size-display');
+  const clearBtn = document.getElementById('pen-clear-btn');
+
+  // Set canvas size to window size and restore drawing
+  function resizeCanvas() {
+    // Set both CSS and canvas element dimensions to match viewport
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    
+    if (penActive && drawingHistory.length > 0 && historyStep >= 0) {
+      const img = new Image();
+      img.src = drawingHistory[historyStep];
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      };
+    }
+  }
+  
+  // Initial canvas setup
+  resizeCanvas();
+  
+  // Handle resize to maintain canvas size
+  window.addEventListener('resize', resizeCanvas);
+
+  // Save canvas state to history
+  function saveToHistory() {
+    historyStep++;
+    if (historyStep < drawingHistory.length) {
+      drawingHistory.length = historyStep;
+    }
+    drawingHistory.push(canvas.toDataURL());
+    updateUndoRedoButtons();
+  }
+
+  // Update undo/redo button states
+  function updateUndoRedoButtons() {
+    undoBtn.disabled = historyStep <= 0;
+    redoBtn.disabled = historyStep >= drawingHistory.length - 1;
+  }
+
+  // Undo action
+  function undo() {
+    if (historyStep > 0) {
+      historyStep--;
+      const img = new Image();
+      img.src = drawingHistory[historyStep];
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        updateUndoRedoButtons();
+      };
+    }
+  }
+
+  // Redo action
+  function redo() {
+    if (historyStep < drawingHistory.length - 1) {
+      historyStep++;
+      const img = new Image();
+      img.src = drawingHistory[historyStep];
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        updateUndoRedoButtons();
+      };
+    }
+  }
+
+  // Toggle pen mode
+  function togglePenMode() {
+    penActive = !penActive;
+    canvas.style.display = penActive ? 'block' : 'none';
+    canvas.style.pointerEvents = penActive ? 'auto' : 'none';
+    toggleBtn.textContent = penActive ? '✏️ Stop Drawing' : '✏️ Start Drawing';
+    toggleBtn.classList.toggle('active', penActive);
+    if (penActive) {
+      canvas.style.cursor = 'crosshair';
+      if (drawingHistory.length === 0) {
+        saveToHistory();
+      }
+    } else {
+      canvas.style.cursor = 'default';
+    }
+  }
+
+  // Mouse events for drawing
+  let lastX = 0, lastY = 0;
+
+  function startDrawing(e) {
+    if (!penActive) return;
+    isDrawing = true;
+    [lastX, lastY] = [e.clientX, e.clientY];
+  }
+
+  function draw(e) {
+    if (!penActive || !isDrawing) return;
+    
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    ctx.strokeStyle = colorInput.value;
+    ctx.lineWidth = sizeInput.value;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    
+    [lastX, lastY] = [x, y];
+  }
+
+  function stopDrawing() {
+    if (isDrawing) {
+      isDrawing = false;
+      saveToHistory();
+    }
+  }
+
+  // Touch events for mobile
+  function getTouchCoords(e) {
+    return {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY
+    };
+  }
+
+  function startDrawingTouch(e) {
+    if (!penActive) return;
+    isDrawing = true;
+    const coords = getTouchCoords(e);
+    [lastX, lastY] = [coords.x, coords.y];
+  }
+
+  function drawTouch(e) {
+    if (!penActive || !isDrawing) return;
+    e.preventDefault();
+    
+    const coords = getTouchCoords(e);
+    
+    ctx.strokeStyle = colorInput.value;
+    ctx.lineWidth = sizeInput.value;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(coords.x, coords.y);
+    ctx.stroke();
+    
+    [lastX, lastY] = [coords.x, coords.y];
+  }
+
+  function stopDrawingTouch() {
+    if (isDrawing) {
+      isDrawing = false;
+      saveToHistory();
+    }
+  }
+
+  // Event listeners - with proper pen mode checks
+  canvas.addEventListener('mousedown', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    startDrawing(e);
+  });
+  canvas.addEventListener('mousemove', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    draw(e);
+  });
+  canvas.addEventListener('mouseup', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    stopDrawing(e);
+  });
+  canvas.addEventListener('mouseout', (e) => {
+    if (!penActive) return;
+    stopDrawing(e);
+  });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    startDrawingTouch(e);
+  });
+  canvas.addEventListener('touchmove', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    drawTouch(e);
+  });
+  canvas.addEventListener('touchend', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    stopDrawingTouch(e);
+  });
+
+  // Button events
+  toggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    togglePenMode();
+  });
+
+  undoBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    undo();
+  });
+  
+  redoBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    redo();
+  });
+
+  clearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawingHistory = [];
+    historyStep = -1;
+    updateUndoRedoButtons();
+  });
+
+  sizeInput.addEventListener('input', (e) => {
+    sizeDisplay.textContent = e.target.value + 'px';
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // P for Pen toggle
+    if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey) {
+      if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        togglePenMode();
+      }
+    }
+    
+    // Ctrl+Z for Undo
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      undo();
+    }
+    
+    // Ctrl+Y for Redo
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      redo();
+    }
+  });
+
+  // Initialize button states
+  updateUndoRedoButtons();
+}
+
+traversalTypeEl.addEventListener('change', regenerate);
+window.addEventListener('load', () => {
+  regenerate();
+  setImplLanguage('c');
+  initPenTool();
+});
+</script>
+</body>
+</html>

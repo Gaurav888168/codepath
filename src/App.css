@@ -306,6 +306,95 @@
   padding: 16px;
 }
 
+.curriculum-topic-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.curriculum-topic-bar .topic-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  min-height: 48px;
+  padding: 10px 16px 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.curriculum-topic-bar .topic-btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(168, 85, 247, 0.45);
+  background: rgba(168, 85, 247, 0.1);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+.curriculum-topic-bar .topic-btn.active {
+  border-color: rgba(236, 72, 153, 0.65);
+  background: var(--primary-gradient);
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(168, 85, 247, 0.28);
+}
+
+.curriculum-topic-bar .topic-btn.locked {
+  color: rgba(243, 244, 246, 0.62);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+  cursor: not-allowed;
+}
+
+.curriculum-topic-bar .topic-btn.locked:hover {
+  transform: none;
+  border-color: rgba(239, 68, 68, 0.32);
+  background: rgba(239, 68, 68, 0.06);
+  box-shadow: none;
+}
+
+.topic-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 16px;
+}
+
+.topic-title {
+  white-space: nowrap;
+}
+
+.topic-lock {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.13);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+}
+
 .topic-item {
   display: flex;
   align-items: center;

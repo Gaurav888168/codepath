@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Sequencing with Deadlines — Interactive Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d45;
+    --border2: #263550;
+    --text: #e2e8f4;
+    --muted: #6b7a99;
+    --accent-main: #58a6ff;
+    --accent-sel: #3fb950;
+    --accent2: #f472b6;
+    --accent3: #34d399;
+    --accent4: #fbbf24;
+    --accent-orange: #f0883e;
+    --rejected: #ef4444;
+  }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body { min-height:100vh; background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+  .top-bar { position:sticky; top:0; z-index:100; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 20px; background:rgba(10,14,26,0.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+  .top-title { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; }
+  .top-title span { color:var(--accent4); }
+  .page { position:relative; z-index:1; }
+  header { padding:36px 40px 28px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+  .tag-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+  .tag { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:4px 12px; border-radius:20px; }
+  .tag-orange { color:var(--accent-orange); border:1px solid rgba(240,136,62,0.25); background:rgba(240,136,62,0.06); }
+  .tag-sel { color:var(--accent-sel); border:1px solid rgba(63,185,80,0.25); background:rgba(63,185,80,0.06); }
+  h1 { font-size:clamp(22px,4vw,38px); line-height:1.1; margin-bottom:8px; letter-spacing:-0.5px; }
+  .subtitle { font-size:13px; color:var(--muted); max-width:640px; line-height:1.75; }
+  .container { max-width:1100px; margin:0 auto; padding:28px 24px 48px; position:relative; }
+  .theory-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent3); }
+  .theory-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-points { list-style:none; padding:0; }
+  .theory-points li { margin-bottom:12px; line-height:1.6; }
+  .theory-points li strong { color:var(--accent4); }
+  .theory-points li ul { margin-top:8px; margin-left:20px; }
+  .theory-points li ul li { margin-bottom:6px; color:var(--muted); }
+  .problem-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent-main); }
+  .problem-box h2 { font-size:16px; margin-bottom:14px; }
+  .problem-body { color:var(--muted); font-size:13px; line-height:1.8; }
+  .problem-body strong { color:var(--text); }
+  .main-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface2); }
+  .dot { width:8px; height:8px; border-radius:50%; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:18px 20px; background:var(--surface2); border-top:1px solid var(--border); }
+  .btn { font-family:'IBM Plex Mono',monospace; font-size:12px; padding:10px 16px; border-radius:10px; border:1px solid var(--border2); background:var(--surface); color:var(--muted); cursor:pointer; }
+  .btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .btn-primary { border-color:var(--accent-main); color:var(--text); background:linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+  .step-label { color:var(--muted); font-size:12px; }
+  .section-hdr { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text); margin:24px 0 16px 0; display:flex; align-items:center; gap:12px; font-weight:600; }
+  .section-hdr::after { content:''; flex:1; height:2px; background:linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .code-block { padding:20px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.8; overflow-x:auto; max-height:400px; }
+  .code-line { display:flex; gap:10px; }
+  .ln { color:var(--muted); min-width:18px; user-select:none; font-size:11px; }
+  .kw { color:var(--accent2); }
+  .fn { color:var(--accent-main); }
+  .cm { color:var(--muted); font-style:italic; }
+  .vr { color:var(--accent-sel); }
+  .op { color:var(--accent4); }
+  .dt { color:var(--accent3); }
+  .str { color:var(--accent-orange); }
+  .pp { color:var(--accent2); }
+  .i1 { padding-left:16px; }
+  .i2 { padding-left:32px; }
+  .i3 { padding-left:48px; }
+  .i4 { padding-left:64px; }
+  .impl-selector { display:flex; gap:8px; align-items:center; margin-bottom:16px; }
+  .impl-selector label { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .impl-toggle { display:flex; gap:6px; }
+  .impl-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; }
+  .impl-btn.active { border-color:var(--accent-main); color:var(--accent-main); background:rgba(88,166,255,0.12); }
+  .impl-btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .impl-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .impl-grid.hidden { display:none; }
+  .schedule-wrap { position:relative; display:block; line-height:0; background:#0f172a; min-height:250px; border-radius:10px; overflow:hidden; }
+  #schedule-svg { width:100%; display:block; }
+  .status-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:20px; }
+  .status-box { background:var(--surface2); border:1px solid var(--border2); border-radius:10px; padding:14px 16px; }
+  .status-box h3 { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  .status-box pre { font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent3); white-space:pre-wrap; word-break:break-all; }
+  table { width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:12px; }
+  table th { text-align:left; padding:8px 14px; color:var(--muted); font-size:10px; letter-spacing:1px; text-transform:uppercase; border-bottom:1px solid var(--border); background:var(--surface2); font-weight:600; }
+  table td { padding:10px 14px; border-bottom:1px solid rgba(30,45,69,0.6); }
+  table tr:hover { background:rgba(88,166,255,0.06); }
+  table td:first-child { color:var(--accent-main); }
+  @media(max-width:860px) { .grid-2 { grid-template-columns:1fr; } .status-grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <span class="top-title">Job Sequencing <span>Visualizer</span></span>
+</div>
+
+<div class="page">
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-orange">Greedy Algorithms</span>
+      <span class="tag tag-sel">Scheduling</span>
+    </div>
+    <h1>Job Sequencing with Deadlines</h1>
+    <p class="subtitle">Maximize profit by scheduling jobs with deadlines greedily. Sort jobs by profit descending, then assign each job to the latest available slot before its deadline.</p>
+  </header>
+
+  <div class="container">
+    <!-- Theory -->
+    <div class="theory-box">
+      <h2>Theory</h2>
+      <div class="theory-body">
+        <p style="color:var(--muted); margin-bottom:16px; line-height:1.7;">Job sequencing with deadlines is a greedy algorithm that maximizes profit by scheduling jobs optimally. Each job has a deadline and profit; a job cannot be started after its deadline. The key insight is to process jobs in decreasing order of profit and place each job in the latest available time slot before its deadline.</p>
+        <ul class="theory-points">
+          <li><strong>Greedy Choice:</strong> Sort jobs by profit descending. For each job, try to schedule it as late as possible (before deadline) to leave room for other jobs.</li>
+          <li><strong>Why It Works:</strong> By scheduling profitable jobs first, and placing them late, we maximize flexibility for remaining jobs while ensuring maximum total profit.</li>
+          <li><strong>Time Complexity:</strong> O(n² + n log n) — O(n log n) for sorting + O(n × maxDeadline) for scheduling. Can be optimized with Union-Find to O(n log n).</li>
+          <li><strong>Common Applications:</strong>
+            <ul>
+              <li>Project scheduling with deadlines</li>
+              <li>Resource allocation in manufacturing</li>
+              <li>Task prioritization in systems</li>
+              <li>Maximizing revenue with time constraints</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Problem Statement -->
+    <div class="problem-box">
+      <h2>Problem Statement</h2>
+      <div class="problem-body">
+        Given n jobs with profit[i] and deadline[i], compute the maximum profit by scheduling jobs optimally. Each job takes 1 unit of time. Only one job can be done at a time. Use the visualizer to <strong>step through the job sequencing algorithm</strong>, observing how jobs are scheduled in time slots to maximize total profit.
+      </div>
+    </div>
+
+    <!-- Info Grid -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>Greedy Strategy</h3></div>
+        <div style="padding:20px; color:var(--muted); font-size:13px; line-height:1.7;">
+          <p style="margin-bottom:12px;"><strong style="color:var(--text);">1. Sort by Profit:</strong> Arrange jobs in decreasing order of profit. Ensures highest-value jobs are considered first.</p>
+          <p style="margin-bottom:12px;"><strong style="color:var(--text);">2. Backward Scheduling:</strong> For each job, search backward from (deadline - 1) to 0 to find the latest available slot.</p>
+          <p style="margin-bottom:12px;"><strong style="color:var(--text);">3. Slot Assignment:</strong> If a free slot exists before the deadline, assign the job there. Otherwise, skip the job (no capacity).</p>
+          <p style="margin-bottom:12px;"><strong style="color:var(--text);">4. Feasibility:</strong> This order ensures maximum flexibility — by placing jobs late, we leave early slots for lower-profit jobs.</p>
+          <p><strong style="color:var(--text);">5. Optimality:</strong> Greedy choice of maximum profit first guarantees globally optimal solution for this problem.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>schedule_anatomy.svg</h3></div>
+        <div style="padding:20px; text-align:center;">
+          <svg width="100%" height="180" viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg" style="max-width:240px; margin:0 auto;">
+            <!-- Timeline -->
+            <line x1="20" y1="80" x2="220" y2="80" stroke="rgba(88,166,255,0.3)" stroke-width="2"/>
+            <!-- Slots -->
+            <line x1="40" y1="70" x2="40" y2="90" stroke="rgba(88,166,255,0.3)" stroke-width="1.5"/>
+            <text x="40" y="105" text-anchor="middle" fill="var(--muted)" font-family="monospace" font-size="10">0</text>
+            <line x1="80" y1="70" x2="80" y2="90" stroke="rgba(88,166,255,0.3)" stroke-width="1.5"/>
+            <text x="80" y="105" text-anchor="middle" fill="var(--muted)" font-family="monospace" font-size="10">1</text>
+            <line x1="120" y1="70" x2="120" y2="90" stroke="rgba(88,166,255,0.3)" stroke-width="1.5"/>
+            <text x="120" y="105" text-anchor="middle" fill="var(--muted)" font-family="monospace" font-size="10">2</text>
+            <line x1="160" y1="70" x2="160" y2="90" stroke="rgba(88,166,255,0.3)" stroke-width="1.5"/>
+            <text x="160" y="105" text-anchor="middle" fill="var(--muted)" font-family="monospace" font-size="10">3</text>
+            <!-- Scheduled jobs -->
+            <rect x="105" y="35" width="30" height="25" rx="3" fill="rgba(63,185,80,0.3)" stroke="var(--accent-sel)" stroke-width="2"/>
+            <text x="120" y="53" text-anchor="middle" fill="var(--text)" font-family="monospace" font-size="11" font-weight="bold">J1</text>
+            <rect x="145" y="35" width="30" height="25" rx="3" fill="rgba(63,185,80,0.3)" stroke="var(--accent-sel)" stroke-width="2"/>
+            <text x="160" y="53" text-anchor="middle" fill="var(--text)" font-family="monospace" font-size="11" font-weight="bold">J3</text>
+            <!-- Legend -->
+            <text x="20" y="145" fill="var(--muted)" font-family="monospace" font-size="9">Time slots</text>
+            <text x="20" y="158" fill="var(--muted)" font-family="monospace" font-size="9">Scheduled jobs</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visualization -->
+    <div class="main-card">
+      <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>schedule.svg — Job Scheduling Timeline</h3></div>
+      <div class="schedule-wrap">
+        <svg id="schedule-svg" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div class="controls">
+        <button class="btn btn-primary" onclick="solveSequencing()">▶ Solve Greedy</button>
+        <button class="btn" onclick="stepSequencing()" id="btn-step">Step →</button>
+        <button class="btn" onclick="randomJobs()">⟳ Random</button>
+        <button class="btn" onclick="resetSequencing()">Reset</button>
+        <span class="step-label" id="step-status">Ready to start</span>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <p class="section-hdr">Job Schedule State</p>
+    <div class="grid-2" style="margin-bottom:24px;">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>jobs_sorted.log</h3></div>
+        <div style="padding:18px 20px;">
+          <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">Sorted by Profit (Descending)</p>
+          <pre id="jobs-view" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent-sel);white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;">Press 'Solve Greedy'</pre>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>schedule_result.log</h3></div>
+        <div style="padding:18px 20px;">
+          <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">Maximum Profit Schedule</p>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent-orange);">
+            <div>Total Profit: <span id="total-profit">0</span></div>
+            <div style="margin-top:10px;color:var(--accent3);" id="schedule-result">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Jobs Table -->
+    <p class="section-hdr">Jobs Input</p>
+    <div class="card">
+      <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>jobs.csv</h3></div>
+      <div style="padding:20px; overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Job</th>
+              <th>Profit</th>
+              <th>Deadline</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="jobs-table">
+            <tr>
+              <td>J1</td>
+              <td>60</td>
+              <td>2</td>
+              <td style="color:var(--muted);">—</td>
+            </tr>
+            <tr>
+              <td>J2</td>
+              <td>100</td>
+              <td>3</td>
+              <td style="color:var(--muted);">—</td>
+            </tr>
+            <tr>
+              <td>J3</td>
+              <td>80</td>
+              <td>2</td>
+              <td style="color:var(--muted);">—</td>
+            </tr>
+            <tr>
+              <td>J4</td>
+              <td>70</td>
+              <td>3</td>
+              <td style="color:var(--muted);">—</td>
+            </tr>
+            <tr>
+              <td>J5</td>
+              <td>50</td>
+              <td>1</td>
+              <td style="color:var(--muted);">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pseudocode -->
+    <p class="section-hdr">Pseudocode</p>
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-header"><div class="dot" style="background:var(--accent-main)"></div><h3>job_sequencing.pseudo</h3></div>
+      <div class="code-block" style="max-height:none;">
+        <div class="code-line"><span class="ln">1</span><span><span class="kw">FUNCTION</span> <span class="fn">JobSequencing</span>(<span class="vr">jobs</span>[<span class="dt">1..n</span>], <span class="vr">maxDeadline</span>):</span></div>
+        <div class="code-line"><span class="ln">2</span><span></span></div>
+        <div class="code-line"><span class="ln">3</span><span class="i1"><span class="cm">// Step 1 — Sort jobs by profit in descending order</span></span></div>
+        <div class="code-line"><span class="ln">4</span><span class="i1"><span class="fn">SORT</span> <span class="vr">jobs</span> <span class="kw">BY</span> <span class="vr">jobs[i].profit</span> <span class="kw">DESCENDING</span></span></div>
+        <div class="code-line"><span class="ln">5</span><span></span></div>
+        <div class="code-line"><span class="ln">6</span><span class="i1"><span class="cm">// Step 2 — Initialize time slot array (all slots free)</span></span></div>
+        <div class="code-line"><span class="ln">7</span><span class="i1"><span class="kw">CREATE</span> <span class="vr">slot</span>[<span class="dt">0..maxDeadline-1</span>] <span class="op">=</span> <span class="dt">EMPTY</span></span></div>
+        <div class="code-line"><span class="ln">8</span><span class="i1"><span class="vr">totalProfit</span> <span class="op">←</span> <span class="dt">0</span></span></div>
+        <div class="code-line"><span class="ln">9</span><span></span></div>
+        <div class="code-line"><span class="ln">10</span><span class="i1"><span class="cm">// Step 3 — Greedily assign each job to latest available slot</span></span></div>
+        <div class="code-line"><span class="ln">11</span><span class="i1"><span class="kw">FOR</span> <span class="vr">i</span> <span class="op">←</span> <span class="dt">1</span> <span class="kw">TO</span> <span class="vr">n</span> <span class="kw">DO</span></span></div>
+        <div class="code-line"><span class="ln">12</span><span></span></div>
+        <div class="code-line"><span class="ln">13</span><span class="i2"><span class="cm">// Search backward from (deadline - 1) to find latest free slot</span></span></div>
+        <div class="code-line"><span class="ln">14</span><span class="i2"><span class="kw">FOR</span> <span class="vr">j</span> <span class="op">←</span> (<span class="vr">jobs[i].deadline</span> <span class="op">-</span> <span class="dt">1</span>) <span class="kw">DOWNTO</span> <span class="dt">0</span> <span class="kw">DO</span></span></div>
+        <div class="code-line"><span class="ln">15</span><span></span></div>
+        <div class="code-line"><span class="ln">16</span><span class="i3"><span class="kw">IF</span> <span class="vr">slot[j]</span> <span class="op">==</span> <span class="dt">EMPTY</span> <span class="kw">THEN</span></span></div>
+        <div class="code-line"><span class="ln">17</span><span class="i4"><span class="vr">slot[j]</span> <span class="op">←</span> <span class="vr">jobs[i].id</span>          <span class="cm">// assign job to this slot</span></span></div>
+        <div class="code-line"><span class="ln">18</span><span class="i4"><span class="vr">totalProfit</span> <span class="op">←</span> <span class="vr">totalProfit</span> <span class="op">+</span> <span class="vr">jobs[i].profit</span></span></div>
+        <div class="code-line"><span class="ln">19</span><span class="i4"><span class="kw">BREAK</span>                          <span class="cm">// move to next job</span></span></div>
+        <div class="code-line"><span class="ln">20</span><span class="i3"><span class="kw">END IF</span></span></div>
+        <div class="code-line"><span class="ln">21</span><span></span></div>
+        <div class="code-line"><span class="ln">22</span><span class="i2"><span class="kw">END FOR</span>                            <span class="cm">// if no slot found, job is skipped</span></span></div>
+        <div class="code-line"><span class="ln">23</span><span></span></div>
+        <div class="code-line"><span class="ln">24</span><span class="i1"><span class="kw">END FOR</span></span></div>
+        <div class="code-line"><span class="ln">25</span><span></span></div>
+        <div class="code-line"><span class="ln">26</span><span class="i1"><span class="cm">// Step 4 — Return result</span></span></div>
+        <div class="code-line"><span class="ln">27</span><span class="i1"><span class="kw">RETURN</span> <span class="vr">slot</span>, <span class="vr">totalProfit</span></span></div>
+        <div class="code-line"><span class="ln">28</span><span></span></div>
+        <div class="code-line"><span class="ln">29</span><span><span class="kw">END FUNCTION</span></span></div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; padding:16px 20px; border-top:1px solid var(--border); background:var(--surface2);">
+        <div style="font-size:12px; color:var(--muted); line-height:1.6;">
+          <span style="color:var(--accent4); font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; display:block; margin-bottom:6px;">Input</span>
+          Array of <strong style="color:var(--text);">n jobs</strong>, each with <code style="color:var(--accent3);">id</code>, <code style="color:var(--accent3);">profit</code>, <code style="color:var(--accent3);">deadline</code> — plus <code style="color:var(--accent3);">maxDeadline</code>
+        </div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.6;">
+          <span style="color:var(--accent4); font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; display:block; margin-bottom:6px;">Key Invariant</span>
+          Each job is placed in the <strong style="color:var(--text);">latest possible free slot</strong> before its deadline to preserve early slots for others
+        </div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.6;">
+          <span style="color:var(--accent4); font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; display:block; margin-bottom:6px;">Output</span>
+          Filled <strong style="color:var(--text);">slot[ ]</strong> array with scheduled job IDs and <strong style="color:var(--text);">maximum total profit</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Implementation -->
+    <p class="section-hdr">Algorithm & Implementation</p>
+    <div class="impl-selector">
+      <label>Language:</label>
+      <div class="impl-toggle">
+        <button class="impl-btn active" id="impl-c" onclick="switchImpl('c')">C</button>
+        <button class="impl-btn" id="impl-python" onclick="switchImpl('python')">Python</button>
+      </div>
+    </div>
+
+    <div class="impl-grid" id="c-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>job_sequencing.c</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span>#<span class="pp">include</span> &lt;stdio.h&gt;</span></div>
+          <div class="code-line"><span class="ln">2</span><span>#<span class="pp">include</span> &lt;stdlib.h&gt;</span></div>
+          <div class="code-line"><span class="ln">3</span><span><span class="kw">typedef</span> <span class="kw">struct</span> {</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="dt">int</span> id, profit, deadline;</span></div>
+          <div class="code-line"><span class="ln">5</span><span>} Job;</span></div>
+          <div class="code-line"><span class="ln">6</span><span></span></div>
+          <div class="code-line"><span class="ln">7</span><span><span class="kw">int</span> <span class="fn">compare</span>(<span class="kw">const</span> <span class="kw">void</span> *a, <span class="kw">const</span> <span class="kw">void</span> *b) {</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="kw">return</span> ((Job*)b)-&gt;profit - ((Job*)a)-&gt;profit;</span></div>
+          <div class="code-line"><span class="ln">9</span><span>}</span></div>
+          <div class="code-line"><span class="ln">10</span><span></span></div>
+          <div class="code-line"><span class="ln">11</span><span><span class="dt">int</span> <span class="fn">jobSequencing</span>(<span class="dt">Job</span> *jobs, <span class="dt">int</span> n, <span class="dt">int</span> maxD) {</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i1">qsort(jobs, n, <span class="kw">sizeof</span>(Job), compare);</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i1"><span class="dt">int</span> *slot = (<span class="dt">int</span> *)malloc(maxD * <span class="kw">sizeof</span>(<span class="dt">int</span>));</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> i = 0; i &lt; maxD; i++) slot[i] = -1;</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i1"><span class="dt">int</span> profit = 0;</span></div>
+          <div class="code-line"><span class="ln">16</span><span></span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> i = 0; i &lt; n; i++) {</span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i2"><span class="kw">for</span> (<span class="dt">int</span> j = jobs[i].deadline - 1; j &gt;= 0; j--) {</span></div>
+          <div class="code-line"><span class="ln">19</span><span class="i3"><span class="kw">if</span> (slot[j] == -1) {</span></div>
+          <div class="code-line"><span class="ln">20</span><span class="i4">slot[j] = jobs[i].id;</span></div>
+          <div class="code-line"><span class="ln">21</span><span class="i4">profit += jobs[i].profit;</span></div>
+          <div class="code-line"><span class="ln">22</span><span class="i4"><span class="kw">break</span>;</span></div>
+          <div class="code-line"><span class="ln">23</span><span class="i3">}</span></div>
+          <div class="code-line"><span class="ln">24</span><span class="i2">}</span></div>
+          <div class="code-line"><span class="ln">25</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">26</span><span class="i1">free(slot);</span></div>
+          <div class="code-line"><span class="ln">27</span><span class="i1"><span class="kw">return</span> profit;</span></div>
+          <div class="code-line"><span class="ln">28</span><span>}</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>Explanation</h3></div>
+        <div style="padding:20px; color:var(--muted); font-size:13px; line-height:1.7;">
+          <p><strong style="color:var(--text);">1. Job Structure (lines 3-5):</strong> typedef struct with id, profit (gain), and deadline (latest time). Encapsulates all job data for sorting and scheduling.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">2. Compare Function (lines 7-9):</strong> Comparator for qsort() sorting jobs in descending profit order: ((Job*)b)->profit - ((Job*)a)->profit. Ensures highest-profit jobs processed first, greedy choice.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">3. Slot Array (lines 13-14):</strong> Represents time slots 0 to maxDeadline-1. slot[j] stores job ID scheduled at slot j, initialized to -1 (empty). Each index = one unit of time.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">4. Backward Scheduling (lines 17-24):</strong> For each sorted job: iterate backward from (deadline-1) to 0. If slot[j] == -1 (empty), place job and break. Backward search ensures latest available slot used, maximizing flexibility for remaining jobs. If no slot available, skip job.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">5. Time Complexity O(n² + n log n):</strong> qsort() is O(n log n). For each of n jobs, search backward through up to maxDeadline slots: O(n × maxDeadline) = O(n²) worst case. Total: O(n log n + n²) ≈ O(n²). Space O(maxDeadline) for slot array.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="impl-grid hidden" id="python-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>job_sequencing.py</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="kw">def</span> <span class="fn">job_sequencing</span>(<span class="vr">jobs</span>, <span class="vr">max_deadline</span>):</span></div>
+          <div class="code-line"><span class="ln">2</span><span class="i1"><span class="cm">"""Maximize profit via greedy scheduling"""</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="vr">jobs</span> = <span class="fn">sorted</span>(<span class="vr">jobs</span>, <span class="vr">key</span>=<span class="kw">lambda</span> x: x[<span class="str">'profit'</span>], reverse=<span class="kw">True</span>)</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="vr">slot</span> = [<span class="dt">None</span>] * <span class="vr">max_deadline</span></span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1"><span class="vr">profit</span> = 0</span></div>
+          <div class="code-line"><span class="ln">6</span><span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="kw">for</span> <span class="vr">job</span> <span class="op">in</span> <span class="vr">jobs</span>:</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i2"><span class="kw">for</span> <span class="vr">j</span> <span class="op">in</span> <span class="fn">range</span>(<span class="vr">job</span>[<span class="str">'deadline'</span>] - 1, -1, -1):</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i3"><span class="kw">if</span> <span class="vr">slot</span>[<span class="vr">j</span>] <span class="op">is</span> <span class="dt">None</span>:</span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i4"><span class="vr">slot</span>[<span class="vr">j</span>] = <span class="vr">job</span>[<span class="str">'id'</span>]</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i4"><span class="vr">profit</span> += <span class="vr">job</span>[<span class="str">'profit'</span>]</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i4"><span class="kw">break</span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i3">}</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i1"><span class="kw">return</span> {<span class="str">'profit'</span>: <span class="vr">profit</span>, <span class="str">'schedule'</span>: <span class="vr">slot</span>}</span></div>
+          <div class="code-line"><span class="ln">15</span><span></span></div>
+          <div class="code-line"><span class="ln">16</span><span><span class="vr">jobs</span> = [</span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i1">{<span class="str">'id'</span>: 1, <span class="str">'profit'</span>: 60, <span class="str">'deadline'</span>: 2},</span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i1">{<span class="str">'id'</span>: 2, <span class="str">'profit'</span>: 100, <span class="str">'deadline'</span>: 3}</span></div>
+          <div class="code-line"><span class="ln">19</span><span>]</span></div>
+          <div class="code-line"><span class="ln">20</span><span><span class="vr">result</span> = <span class="fn">job_sequencing</span>(<span class="vr">jobs</span>, 4)</span></div>
+          <div class="code-line"><span class="ln">21</span><span><span class="fn">print</span>(<span class="str">'Profit:'</span>, <span class="vr">result</span>[<span class="str">'profit'</span>])</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>Explanation</h3></div>
+        <div style="padding:20px; color:var(--muted); font-size:13px; line-height:1.7;">
+          <p><strong style="color:var(--text);">1. Function Signature (lines 1-2):</strong> job_sequencing() takes jobs list (dicts with 'id', 'profit', 'deadline' keys) and max_deadline. Returns dict with total profit and schedule. Docstring describes greedy profit maximization strategy.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">2. Sorting by Profit (line 3):</strong> sorted() with lambda key=lambda x: x['profit'], reverse=True sorts jobs descending by profit. Lambdas extract field for comparison. Timsort O(n log n). Ensures highest-profit jobs considered first.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">3. Slot Array (lines 4-5):</strong> slot = [None] * max_deadline creates list of None values (empty). List index represents time slot (0 to max_deadline-1). profit accumulator starts 0, incremented when job scheduled.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">4. Greedy Loop (lines 7-13):</strong> For each job in profit order: use range(deadline-1, -1, -1) to iterate backward from (deadline-1) to 0. Check if slot[j] is None (empty). If yes, assign job['id'] to slot, add job['profit'], break. Backward iteration ensures latest slot used, maximizing availability for remaining jobs. If no empty slot, skip job.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">5. Time Complexity O(n² + n log n):</strong> sorted() is O(n log n) with Timsort. Nested loops: for each job iterate backward through up to max_deadline slots, worst O(n × max_deadline) = O(n²). Total: O(n log n + n²) ≈ O(n²). Space O(max_deadline) for slot list. Same asymptotic as C but more Pythonic (dicts, lambdas, list operations).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let jobs = [
+  { id: 1, name: 'J1', profit: 60, deadline: 2 },
+  { id: 2, name: 'J2', profit: 100, deadline: 3 },
+  { id: 3, name: 'J3', profit: 80, deadline: 2 },
+  { id: 4, name: 'J4', profit: 70, deadline: 3 },
+  { id: 5, name: 'J5', profit: 50, deadline: 1 }
+];
+
+let sortedJobs = [];
+let schedule = {};
+let currentStep = 0;
+let isSolving = false;
+
+function drawVisualization() {
+  const svg = document.getElementById('schedule-svg');
+  svg.innerHTML = '';
+  
+  const maxD = Math.max(...jobs.map(j => j.deadline), 4);
+  const slotWidth = 700 / maxD;
+  const slotHeight = 60;
+  
+  // Draw timeline
+  for (let i = 0; i <= maxD; i++) {
+    const x = 50 + i * slotWidth;
+    svg.innerHTML += `<line x1="${x}" y1="30" x2="${x}" y2="120" stroke="rgba(30,45,69,0.5)" stroke-width="1"/>`;
+    svg.innerHTML += `<text x="${x}" y="145" text-anchor="middle" font-size="13" fill="var(--muted)" font-family="monospace">${i}</text>`;
+  }
+  
+  // Draw slot boundaries
+  for (let i = 0; i < maxD; i++) {
+    const x = 50 + i * slotWidth;
+    svg.innerHTML += `<rect x="${x}" y="30" width="${slotWidth}" height="${slotHeight}" fill="none" stroke="rgba(30,45,69,0.4)" stroke-width="1"/>`;
+  }
+  
+  // Draw scheduled jobs
+  Object.entries(schedule).forEach(([jobId, slot]) => {
+    const job = jobs.find(j => j.id == jobId);
+    if (!job) return;
+    const x = 50 + slot * slotWidth + 5;
+    const y = 40;
+    const w = slotWidth - 10;
+    const h = slotHeight - 20;
+    
+    svg.innerHTML += `
+      <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgba(63,185,80,0.3)" stroke="var(--accent-sel)" stroke-width="2" rx="6"/>
+      <text x="${x + w/2}" y="${y + h/2 + 6}" text-anchor="middle" font-size="14" fill="var(--accent-sel)" font-family="monospace" font-weight="bold">${job.name}</text>
+    `;
+  });
+}
+
+function updateJobsTable() {
+  const table = document.getElementById('jobs-table');
+  table.innerHTML = '';
+  
+  jobs.forEach(job => {
+    const status = schedule[job.id] !== undefined ? '✓ Slot ' + schedule[job.id] : '—';
+    const statusColor = schedule[job.id] !== undefined ? 'var(--accent-sel)' : 'var(--muted)';
+    
+    const row = `
+      <tr>
+        <td>${job.name}</td>
+        <td>${job.profit}</td>
+        <td>${job.deadline}</td>
+        <td style="color:${statusColor}">${status}</td>
+      </tr>
+    `;
+    table.innerHTML += row;
+  });
+}
+
+function updateJobsList() {
+  const list = sortedJobs.map((j, i) => `${i + 1}. ${j.name} (profit=${j.profit}, deadline=${j.deadline})`).join('\n');
+  document.getElementById('jobs-view').textContent = list || 'Press "Solve Greedy"';
+}
+
+function updateDisplay() {
+  const totalProfit = Object.keys(schedule).reduce((sum, jId) => sum + jobs.find(j => j.id == jId).profit, 0);
+  document.getElementById('total-profit').textContent = totalProfit;
+  
+  const scheduleArray = Array.from({length: Math.max(...jobs.map(j => j.deadline), 4)}, (_, i) => {
+    for (let [jId, slot] of Object.entries(schedule)) {
+      if (slot === i) return jobs.find(j => j.id == jId).name;
+    }
+    return '—';
+  });
+  document.getElementById('schedule-result').textContent = scheduleArray.join(' | ');
+  
+  updateJobsTable();
+  drawVisualization();
+}
+
+function solveSequencing() {
+  sortedJobs = [...jobs].sort((a, b) => b.profit - a.profit);
+  schedule = {};
+  currentStep = 0;
+  isSolving = true;
+  document.getElementById('step-status').textContent = 'Ready to sequence jobs';
+  updateJobsList();
+  updateDisplay();
+}
+
+function stepSequencing() {
+  if (!isSolving) {
+    document.getElementById('step-status').textContent = 'Press "Solve Greedy" first';
+    return;
+  }
+  
+  if (currentStep >= sortedJobs.length) {
+    document.getElementById('step-status').textContent = '✓ Algorithm Complete!';
+    isSolving = false;
+    return;
+  }
+  
+  const job = sortedJobs[currentStep];
+  let scheduled = false;
+  
+  for (let j = job.deadline - 1; j >= 0; j--) {
+    let occupied = Object.values(schedule).includes(j);
+    if (!occupied) {
+      schedule[job.id] = j;
+      document.getElementById('step-status').textContent = `Step ${currentStep + 1}: Scheduled ${job.name} at slot ${j} (profit=${job.profit})`;
+      scheduled = true;
+      break;
+    }
+  }
+  
+  if (!scheduled) {
+    document.getElementById('step-status').textContent = `Step ${currentStep + 1}: Skipped ${job.name} (no available slot before deadline ${job.deadline})`;
+  }
+  
+  currentStep++;
+  updateDisplay();
+  
+  if (currentStep >= sortedJobs.length) {
+    document.getElementById('step-status').textContent = '✓ Algorithm Complete!';
+    isSolving = false;
+  }
+}
+
+function randomJobs() {
+  jobs = [];
+  for (let i = 0; i < 5; i++) {
+    jobs.push({
+      id: i + 1,
+      name: `J${i + 1}`,
+      profit: Math.floor(Math.random() * 80) + 20,
+      deadline: Math.floor(Math.random() * 4) + 1
+    });
+  }
+  schedule = {};
+  sortedJobs = [];
+  currentStep = 0;
+  isSolving = false;
+  updateDisplay();
+  document.getElementById('step-status').textContent = 'Random jobs generated';
+}
+
+function resetSequencing() {
+  schedule = {};
+  sortedJobs = [];
+  currentStep = 0;
+  isSolving = false;
+  updateDisplay();
+  document.getElementById('step-status').textContent = 'Ready to start';
+  document.getElementById('jobs-view').textContent = 'Press "Solve Greedy"';
+}
+
+function switchImpl(lang) {
+  document.getElementById('c-impl').classList.toggle('hidden', lang !== 'c');
+  document.getElementById('python-impl').classList.toggle('hidden', lang !== 'python');
+  
+  document.querySelectorAll('.impl-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// Initialize
+updateDisplay();
+</script>
+</body>
+</html>

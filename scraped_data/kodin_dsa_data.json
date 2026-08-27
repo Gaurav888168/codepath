@@ -1,0 +1,737 @@
+{
+  "scrapedAt": "2026-08-27T03:05:07.600Z",
+  "source": "https://www.getkodin.com/dsa",
+  "totalTopics": 18,
+  "topics": {
+    "timecomplexity": {
+      "title": "Time Complexity",
+      "problems": [
+        {
+          "title": "Time Complexity Foundation",
+          "desc": "Big-O notation, algorithm analysis, and complexity comparison.",
+          "difficulty": "easy",
+          "visualizer": "time_complexity_foundation.html"
+        },
+        {
+          "title": "Recursion Tree Method",
+          "desc": "Visualize recursive calls as a tree to derive time complexity — ideal for divide & conquer.",
+          "difficulty": "medium",
+          "visualizer": "recursion_tree_method.html"
+        },
+        {
+          "title": "Master Theorem",
+          "desc": "Apply the Master Theorem to solve T(n) = aT(n/b) + f(n) recurrences instantly.",
+          "difficulty": "medium",
+          "visualizer": "master_theorem.html"
+        },
+        {
+          "title": "Substitution Method",
+          "desc": "Guess and prove time complexity by mathematical induction step-by-step.",
+          "difficulty": "medium",
+          "visualizer": "substitution_method.html"
+        },
+        {
+          "title": "Amortized Analysis",
+          "desc": "Aggregate, accounting, and potential methods for amortized cost analysis.",
+          "difficulty": "hard",
+          "visualizer": "amortized_analysis.html"
+        }
+      ]
+    },
+    "greedy": {
+      "title": "Greedy Algorithms",
+      "problems": [
+        {
+          "title": "Activity Selection",
+          "desc": "Select maximum activities without overlap.",
+          "difficulty": "medium",
+          "visualizer": "activity_selection.html"
+        },
+        {
+          "title": "MST Algorithms",
+          "desc": "Kruskal's and Prim's algorithms.",
+          "difficulty": "hard",
+          "visualizer": "mst_algorithms.html"
+        },
+        {
+          "title": "Job Sequencing",
+          "desc": "Maximize profit with deadlines.",
+          "difficulty": "medium",
+          "visualizer": "job_sequencing.html"
+        },
+        {
+          "title": "Fractional Knapsack",
+          "desc": "Maximum value with weight limit.",
+          "difficulty": "easy",
+          "visualizer": "fractional_knapsack.html"
+        },
+        {
+          "title": "Huffman Encoding",
+          "desc": "Build optimal prefix-free binary codes.",
+          "difficulty": "medium",
+          "visualizer": "huffman_encoding.html"
+        }
+      ]
+    },
+    "stack": {
+      "title": "Stack",
+      "problems": [
+        {
+          "title": "Stack Foundation",
+          "desc": "Push and pop using LIFO.",
+          "difficulty": "easy",
+          "visualizer": "stack_foundation.html"
+        },
+        {
+          "title": "Valid Parentheses",
+          "desc": "Check balanced brackets.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        },
+        {
+          "title": "Next Greater Element",
+          "desc": "Find next greater element.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        },
+        {
+          "title": "Reverse Stack",
+          "desc": "Reverse stack efficiently.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "queue": {
+      "title": "Queue",
+      "problems": [
+        {
+          "title": "Queue Foundation",
+          "desc": "Enqueue and dequeue using FIFO.",
+          "difficulty": "easy",
+          "visualizer": "queue_foundation.html"
+        },
+        {
+          "title": "Sliding Window Maximum",
+          "desc": "Maximum in window using deque.",
+          "difficulty": "hard",
+          "visualizer": "#"
+        },
+        {
+          "title": "Generate Numbers",
+          "desc": "Generate numbers with given digits.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        },
+        {
+          "title": "First Negative Integer",
+          "desc": "First negative in window.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "heap": {
+      "title": "Heap",
+      "problems": [
+        {
+          "title": "Heap Foundation",
+          "desc": "Min/Max Heap operations and properties.",
+          "difficulty": "medium",
+          "visualizer": "heap_foundation.html"
+        },
+        {
+          "title": "Kth Largest Element",
+          "desc": "Find kth largest in stream.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        },
+        {
+          "title": "Merge K Sorted Lists",
+          "desc": "Merge multiple sorted lists.",
+          "difficulty": "hard",
+          "visualizer": "#"
+        },
+        {
+          "title": "Top K Frequent Elements",
+          "desc": "Find k most frequent elements.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "linkedlist": {
+      "title": "Linked List",
+      "problems": [
+        {
+          "title": "Linked List Foundation",
+          "desc": "Node structure, insert, delete, traverse.",
+          "difficulty": "easy",
+          "visualizer": "linked_list_foundation.html"
+        },
+        {
+          "title": "Reverse Linked List",
+          "desc": "Reverse a linked list iteratively.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        },
+        {
+          "title": "Detect Cycle",
+          "desc": "Detect cycle using Floyd's algorithm.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        },
+        {
+          "title": "Merge Sorted Lists",
+          "desc": "Merge two sorted linked lists.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "binarytree": {
+      "title": "Binary Tree",
+      "problems": [
+        {
+          "title": "Binary Tree Foundation",
+          "desc": "Insert nodes in a binary tree.",
+          "difficulty": "medium",
+          "visualizer": "binary_tree_foundation.html"
+        },
+        {
+          "title": "Tree Traversal",
+          "desc": "Inorder, Preorder, Postorder.",
+          "difficulty": "easy",
+          "visualizer": "tree_traversal.html"
+        },
+        {
+          "title": "Binary Search Tree",
+          "desc": "BST operations and properties.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        },
+        {
+          "title": "Path Sum",
+          "desc": "Find path with given sum.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "recursion": {
+      "title": "Recursion",
+      "problems": [
+        {
+          "title": "Recursion Foundation",
+          "desc": "Understand function calls, base cases, and recursion tree.",
+          "difficulty": "easy",
+          "visualizer": "recursion_visualizer.html"
+        },
+        {
+          "title": "Factorial",
+          "desc": "Calculate factorial recursively.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        },
+        {
+          "title": "Fibonacci",
+          "desc": "Generate Fibonacci series recursively.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        },
+        {
+          "title": "Tower of Hanoi",
+          "desc": "Solve Tower of Hanoi problem.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "dynamic": {
+      "title": "Dynamic Programming",
+      "problems": [
+        {
+          "title": "Dynamic Programming Foundation",
+          "desc": "Understand DP core ideas with Fibonacci visualization.",
+          "difficulty": "easy",
+          "visualizer": "dynamic_programming_foundation.html"
+        },
+        {
+          "title": "0/1 Knapsack",
+          "desc": "Maximum value with weight capacity.",
+          "difficulty": "medium",
+          "visualizer": "knapsack_01.html"
+        },
+        {
+          "title": "Rod Cutting",
+          "desc": "Maximize profit by cutting rod lengths.",
+          "difficulty": "medium",
+          "visualizer": "rod_cutting.html"
+        },
+        {
+          "title": "Longest Common Subsequence",
+          "desc": "Find LCS between sequences.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        },
+        {
+          "title": "Matrix Chain Multiplication",
+          "desc": "Optimal matrix multiplication order.",
+          "difficulty": "hard",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "array": {
+      "title": "Array Problems",
+      "problems": [
+        {
+          "title": "Array Foundation",
+          "desc": "1D & 2D arrays — access, insert, delete, memory layout.",
+          "difficulty": "easy",
+          "visualizer": "array_foundation.html"
+        },
+        {
+          "title": "Two Sum",
+          "desc": "Find two numbers that sum to target.",
+          "difficulty": "easy",
+          "visualizer": "two_sum.html"
+        },
+        {
+          "title": "Maximum Subarray Sum",
+          "desc": "Largest contiguous sum.",
+          "difficulty": "easy",
+          "visualizer": "maximum_subarray_sum.html"
+        },
+        {
+          "title": "Merge Intervals",
+          "desc": "Merge overlapping intervals.",
+          "difficulty": "medium",
+          "visualizer": "merge_intervals.html"
+        }
+      ]
+    },
+    "twopointer": {
+      "title": "Two Pointer Technique",
+      "problems": [
+        {
+          "title": "Remove Duplicates",
+          "desc": "Remove duplicates from sorted array.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        },
+        {
+          "title": "Container With Most Water",
+          "desc": "Maximum water container area.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "divide": {
+      "title": "Divide & Conquer",
+      "problems": [
+        {
+          "title": "Merge Sort",
+          "desc": "Sort using divide and conquer.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        },
+        {
+          "title": "Quick Sort",
+          "desc": "Fast sorting algorithm.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        },
+        {
+          "title": "Binary Search",
+          "desc": "Search in sorted array.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "graph": {
+      "title": "Graph Algorithms",
+      "problems": [
+        {
+          "title": "Graph Foundation",
+          "desc": "Build graph structure and inspect adjacency representations.",
+          "difficulty": "easy",
+          "visualizer": "graph_foundation.html"
+        },
+        {
+          "title": "Breadth-First Search",
+          "desc": "Level-order graph traversal.",
+          "difficulty": "easy",
+          "visualizer": "breadth_first_search.html"
+        },
+        {
+          "title": "Depth-First Search",
+          "desc": "Explore graph deeply.",
+          "difficulty": "easy",
+          "visualizer": "depth_first_search.html"
+        },
+        {
+          "title": "Dijkstra's Algorithm",
+          "desc": "Shortest path in weighted graph.",
+          "difficulty": "medium",
+          "visualizer": "dijkstras_algorithm.html"
+        }
+      ]
+    },
+    "tree": {
+      "title": "Tree Algorithms",
+      "problems": [
+        {
+          "title": "Binary Tree Traversal",
+          "desc": "Inorder, Preorder, Postorder.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        },
+        {
+          "title": "Binary Search Tree",
+          "desc": "BST operations and properties.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "sorting": {
+      "title": "Sorting Algorithms",
+      "problems": [
+        {
+          "title": "Bubble Sort",
+          "desc": "Simple comparison sort.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        },
+        {
+          "title": "Insertion Sort",
+          "desc": "Build sorted array incrementally.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        },
+        {
+          "title": "Selection Sort",
+          "desc": "Find minimum and swap.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "searching": {
+      "title": "Searching Algorithms",
+      "problems": [
+        {
+          "title": "Linear Search",
+          "desc": "Search unsorted array.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        },
+        {
+          "title": "Binary Search",
+          "desc": "Search sorted array efficiently.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "string": {
+      "title": "String Algorithms",
+      "problems": [
+        {
+          "title": "String Matching",
+          "desc": "Find pattern in text.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        },
+        {
+          "title": "Palindrome Check",
+          "desc": "Check if string is palindrome.",
+          "difficulty": "easy",
+          "visualizer": "#"
+        }
+      ]
+    },
+    "sliding": {
+      "title": "Sliding Window",
+      "problems": [
+        {
+          "title": "Max in Window",
+          "desc": "Find maximum element in sliding window.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        },
+        {
+          "title": "Longest Substring",
+          "desc": "Longest substring without repeating chars.",
+          "difficulty": "medium",
+          "visualizer": "#"
+        },
+        {
+          "title": "Minimum Window",
+          "desc": "Minimum window substring.",
+          "difficulty": "hard",
+          "visualizer": "#"
+        }
+      ]
+    }
+  },
+  "faqs": [
+    {
+      "question": "How do I solve the Two Sum LeetCode problem?",
+      "answer": "The Two Sum problem (LeetCode 1) requires finding two numbers in an array that sum to a target. The optimal solution uses a hash map to store values and their indices, achieving O(n) time complexity. Kodin provides interactive visualization to understand this algorithm step-by-step."
+    },
+    {
+      "question": "What is the best approach for Valid Parentheses problem?",
+      "answer": "Valid Parentheses (LeetCode 20) is best solved using a stack data structure. Push opening brackets and pop when encountering closing brackets. This approach ensures O(n) time and O(n) space complexity. Learn with Kodin's interactive visualizations."
+    },
+    {
+      "question": "How to reverse a linked list efficiently?",
+      "answer": "Reverse Linked List (LeetCode 206) can be solved iteratively using three pointers (prev, current, next) in O(n) time with O(1) space complexity. Kodin visualizes each step to help you understand the pointer manipulation."
+    },
+    {
+      "question": "What is the most efficient solution for Merge K Sorted Lists?",
+      "answer": "Merge K Sorted Lists (LeetCode 23) can be solved using a min-heap or priority queue approach with O(nk log k) time complexity, where n is the average list length and k is the number of lists. Kodin provides step-by-step visualization."
+    },
+    {
+      "question": "How to find the Kth Largest Element in a stream?",
+      "answer": "Kth Largest Element (LeetCode 215) is efficiently solved using a min-heap of size k. Each new element takes O(log k) to process. Kodin visualizes this technique for better understanding."
+    },
+    {
+      "question": "What is the 0/1 Knapsack problem and how to solve it?",
+      "answer": "The 0/1 Knapsack problem (LeetCode 416) is a classic dynamic programming problem. You cannot take partial items. Build a 2D DP table where dp[i][w] represents the maximum value using first i items with weight w. Time: O(nW), Space: O(nW)."
+    },
+    {
+      "question": "How does Dijkstra's algorithm find shortest paths?",
+      "answer": "Dijkstra's Algorithm (LeetCode 743) uses a min-heap to greedily select the closest unvisited node. Update distances to neighbors and repeat until all nodes are visited. Time: O((V+E) log V). Perfect for weighted, positive-edge graphs."
+    },
+    {
+      "question": "What is the difference between BFS and DFS?",
+      "answer": "BFS (Breadth-First Search) explores nodes level by level using a queue, finding shortest paths. DFS (Depth-First Search) explores as far as possible using a stack or recursion, useful for topological sorting. Both are O(V+E) time complexity."
+    },
+    {
+      "question": "How to find the Longest Substring Without Repeating Characters?",
+      "answer": "Longest Substring Without Repeating Characters (LeetCode 3) uses a sliding window with a hash map. Maintain two pointers and expand/contract the window based on character frequency. Time: O(n), Space: O(min(n, charset))."
+    },
+    {
+      "question": "What is the Container With Most Water problem?",
+      "answer": "Container With Most Water (LeetCode 11) uses the two-pointer technique. Start from both ends and move the pointer pointing to smaller height inward. This greedy approach finds the maximum area in O(n) time."
+    },
+    {
+      "question": "How to find Top K Frequent Elements?",
+      "answer": "Top K Frequent Elements (LeetCode 347) uses a min-heap of size k. Count frequencies with a hash map, then keep k largest elements in heap. Time: O(n log k), Space: O(n)."
+    },
+    {
+      "question": "What is Dynamic Programming and why is it important?",
+      "answer": "Dynamic Programming is an optimization technique that solves overlapping subproblems by storing results. It breaks problems into smaller subproblems and combines solutions. Essential for problems like Fibonacci, Knapsack, and Longest Common Subsequence."
+    },
+    {
+      "question": "How does Binary Tree traversal work?",
+      "answer": "Binary Tree traversal has three methods: Inorder (Left-Root-Right), Preorder (Root-Left-Right), and Postorder (Left-Right-Root). Each has O(n) time complexity. Kodin visualizes each traversal technique step-by-step."
+    },
+    {
+      "question": "What data structures are essential for coding interviews?",
+      "answer": "Essential data structures include Arrays, Linked Lists, Stacks, Queues, Hash Tables, Trees (Binary, BST), Heaps, and Graphs. Master these fundamentals to solve 80% of LeetCode problems. Kodin provides interactive visualizations for all."
+    }
+  ],
+  "tutorials": [
+    {
+      "title": "How to solve Two Sum LeetCode Problem 1",
+      "description": "Learn the optimal hash map approach for Two Sum problem",
+      "steps": [
+        {
+          "title": "Create a hash map to store values",
+          "details": "Initialize an empty hash map to store number-index pairs"
+        },
+        {
+          "title": "Iterate through the array",
+          "details": "For each number, check if complement (target - num) exists in hash map"
+        },
+        {
+          "title": "Return indices",
+          "details": "If complement found, return both indices; otherwise add current number to map"
+        }
+      ]
+    },
+    {
+      "title": "How to solve Valid Parentheses LeetCode Problem 20",
+      "description": "Use stack to validate balanced brackets",
+      "steps": [
+        {
+          "title": "Initialize a stack",
+          "details": "Create empty stack to track opening brackets"
+        },
+        {
+          "title": "Process each character",
+          "details": "Push opening bracket, pop and match closing bracket"
+        },
+        {
+          "title": "Validate result",
+          "details": "Stack must be empty for valid sequence"
+        }
+      ]
+    },
+    {
+      "title": "How to solve Reverse Linked List LeetCode Problem 206",
+      "description": "Iterative approach using three pointers",
+      "steps": [
+        {
+          "title": "Initialize pointers",
+          "details": "Set prev=null, current=head, next=null"
+        },
+        {
+          "title": "Traverse and reverse",
+          "details": "Store next node, reverse current link, move pointers forward"
+        },
+        {
+          "title": "Return new head",
+          "details": "Previous pointer becomes the new head"
+        }
+      ]
+    }
+  ],
+  "visualizerFiles": [
+    {
+      "file": "time_complexity_foundation.html",
+      "status": "SUCCESS",
+      "size": 56807
+    },
+    {
+      "file": "recursion_tree_method.html",
+      "status": "FAILED",
+      "error": "HTTP Error 404 for https://www.getkodin.com/recursion_tree_method.html"
+    },
+    {
+      "file": "master_theorem.html",
+      "status": "FAILED",
+      "error": "HTTP Error 404 for https://www.getkodin.com/master_theorem.html"
+    },
+    {
+      "file": "substitution_method.html",
+      "status": "FAILED",
+      "error": "HTTP Error 404 for https://www.getkodin.com/substitution_method.html"
+    },
+    {
+      "file": "amortized_analysis.html",
+      "status": "FAILED",
+      "error": "HTTP Error 404 for https://www.getkodin.com/amortized_analysis.html"
+    },
+    {
+      "file": "activity_selection.html",
+      "status": "SUCCESS",
+      "size": 41940
+    },
+    {
+      "file": "mst_algorithms.html",
+      "status": "SUCCESS",
+      "size": 50774
+    },
+    {
+      "file": "job_sequencing.html",
+      "status": "SUCCESS",
+      "size": 42495
+    },
+    {
+      "file": "fractional_knapsack.html",
+      "status": "SUCCESS",
+      "size": 58092
+    },
+    {
+      "file": "huffman_encoding.html",
+      "status": "SUCCESS",
+      "size": 39945
+    },
+    {
+      "file": "stack_foundation.html",
+      "status": "SUCCESS",
+      "size": 30400
+    },
+    {
+      "file": "queue_foundation.html",
+      "status": "SUCCESS",
+      "size": 30934
+    },
+    {
+      "file": "heap_foundation.html",
+      "status": "SUCCESS",
+      "size": 37105
+    },
+    {
+      "file": "linked_list_foundation.html",
+      "status": "SUCCESS",
+      "size": 35780
+    },
+    {
+      "file": "binary_tree_foundation.html",
+      "status": "SUCCESS",
+      "size": 31460
+    },
+    {
+      "file": "tree_traversal.html",
+      "status": "SUCCESS",
+      "size": 47251
+    },
+    {
+      "file": "recursion_visualizer.html",
+      "status": "SUCCESS",
+      "size": 39251
+    },
+    {
+      "file": "dynamic_programming_foundation.html",
+      "status": "SUCCESS",
+      "size": 41674
+    },
+    {
+      "file": "knapsack_01.html",
+      "status": "SUCCESS",
+      "size": 51148
+    },
+    {
+      "file": "rod_cutting.html",
+      "status": "SUCCESS",
+      "size": 70695
+    },
+    {
+      "file": "array_foundation.html",
+      "status": "SUCCESS",
+      "size": 96199
+    },
+    {
+      "file": "two_sum.html",
+      "status": "SUCCESS",
+      "size": 62501
+    },
+    {
+      "file": "maximum_subarray_sum.html",
+      "status": "SUCCESS",
+      "size": 28262
+    },
+    {
+      "file": "merge_intervals.html",
+      "status": "SUCCESS",
+      "size": 32222
+    },
+    {
+      "file": "graph_foundation.html",
+      "status": "SUCCESS",
+      "size": 42103
+    },
+    {
+      "file": "breadth_first_search.html",
+      "status": "SUCCESS",
+      "size": 51306
+    },
+    {
+      "file": "depth_first_search.html",
+      "status": "SUCCESS",
+      "size": 80033
+    },
+    {
+      "file": "dijkstras_algorithm.html",
+      "status": "SUCCESS",
+      "size": 59018
+    }
+  ]
+}

@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Depth-First Search — Interactive Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d45;
+    --border2: #263550;
+    --text: #e2e8f4;
+    --muted: #6b7a99;
+    --accent-main: #58a6ff;
+    --accent-sel: #3fb950;
+    --accent2: #f472b6;
+    --accent3: #34d399;
+    --accent4: #fbbf24;
+    --accent-orange: #f0883e;
+    --rejected: #ef4444;
+  }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body { min-height:100vh; background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+
+  /* ── Top Bar ── */
+  .top-bar { position:sticky; top:0; z-index:100; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 20px; background:rgba(10,14,26,0.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+  .top-title { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; }
+  .top-title span { color:var(--accent4); }
+  .divider { width:1px; height:28px; background:var(--border2); flex-shrink:0; }
+
+  /* ── Pen Toolbar ── */
+  .pen-toolbar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tool-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .tool-btn:hover { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.06); }
+  .tool-btn.active { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.12); }
+  .pen-toolbar input[type="color"] { width:34px; height:34px; padding:0; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); cursor:pointer; }
+  .pen-toolbar input[type="range"] { width:110px; }
+  .pen-toolbar > *:not(#pen-toggle) { display:none; }
+  .pen-toolbar.active > *:not(#pen-toggle) { display:inline-flex; }
+
+  /* ── Page / Header ── */
+  .page { position:relative; z-index:1; }
+  header { padding:36px 40px 28px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+  .tag-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+  .tag { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:4px 12px; border-radius:20px; }
+  .tag-blue   { color:var(--accent-main);   border:1px solid rgba(88,166,255,0.25);  background:rgba(88,166,255,0.06); }
+  .tag-sel    { color:var(--accent-sel);    border:1px solid rgba(63,185,80,0.25);   background:rgba(63,185,80,0.06); }
+  .tag-orange { color:var(--accent-orange); border:1px solid rgba(240,136,62,0.25);  background:rgba(240,136,62,0.06); }
+  h1 { font-size:clamp(22px,4vw,38px); line-height:1.1; margin-bottom:8px; letter-spacing:-0.5px; }
+  .subtitle { font-size:13px; color:var(--muted); max-width:640px; line-height:1.75; }
+  .progress-bar { height:2px; background:var(--border); margin-top:16px; }
+  .progress-fill { height:100%; width:100%; background:linear-gradient(90deg, var(--accent-sel), var(--accent3), var(--accent-main)); transition:width .4s ease; }
+
+  /* ── Layout ── */
+  .container { max-width:1100px; margin:0 auto; padding:28px 24px 48px; position:relative; }
+
+  /* ── Theory / Problem boxes ── */
+  .theory-box  { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent3); }
+  .theory-box h2 { font-size:16px; margin-bottom:14px; }
+  .problem-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent-main); }
+  .problem-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-points { list-style:none; padding:0; }
+  .theory-points li { margin-bottom:12px; line-height:1.6; }
+  .theory-points li strong { color:var(--accent4); }
+  .theory-points li ul { margin-top:8px; margin-left:20px; }
+  .theory-points li ul li { margin-bottom:6px; color:var(--muted); }
+  .problem-body { color:var(--muted); font-size:13px; line-height:1.8; }
+  .problem-body strong { color:var(--text); }
+
+  /* ── Cards ── */
+  .main-card  { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+  .card       { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface2); }
+  .dot { width:8px; height:8px; border-radius:50%; }
+
+  /* ── Controls ── */
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:18px 20px; background:var(--surface2); border-top:1px solid var(--border); }
+  .btn { font-family:'IBM Plex Mono',monospace; font-size:12px; padding:10px 16px; border-radius:10px; border:1px solid var(--border2); background:var(--surface); color:var(--muted); cursor:pointer; transition:all .15s; }
+  .btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .btn-primary { border-color:var(--accent-main); color:var(--text); background:linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+  .step-label { color:var(--muted); font-size:12px; }
+  .small-input { padding:10px 12px; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:12px; }
+
+  /* ── Graph / Canvas wrap ── */
+  .graph-wrap { position:relative; display:block; line-height:0; background:#0f172a; min-height:320px; border-radius:10px; }
+  #graph-svg  { width:100%; display:block; }
+  #draw-canvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; }
+  #draw-canvas.pen-active { pointer-events:all; cursor:crosshair; }
+
+  /* ── Legend ── */
+  .legend { display:flex; flex-wrap:wrap; gap:14px; padding:0 20px 16px; }
+  .legend-item { display:flex; align-items:center; gap:7px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+  .legend-dot { width:12px; height:12px; border-radius:50%; border:2px solid; }
+
+  /* ── Section headers ── */
+  .section-hdr { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text); margin:24px 0 16px 0; display:flex; align-items:center; gap:12px; font-weight:600; }
+  .section-hdr::after { content:''; flex:1; height:2px; background:linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+
+  /* ── Grid ── */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .grid-viz { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:0; align-items:start; }
+
+  /* ── Code blocks ── */
+  .code-block { padding:20px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .code-line { display:flex; gap:10px; }
+  .ln  { color:var(--muted); min-width:18px; user-select:none; font-size:11px; }
+  .kw  { color:var(--accent2); }
+  .fn  { color:var(--accent-main); }
+  .cm  { color:var(--muted); font-style:italic; }
+  .vr  { color:var(--accent-sel); }
+  .op  { color:var(--accent4); }
+  .dt  { color:var(--accent3); }
+  .str { color:var(--accent-orange); }
+  .pp  { color:var(--accent2); }
+  .i1  { padding-left:16px; }
+  .i2  { padding-left:32px; }
+  .i3  { padding-left:48px; }
+
+  @media(max-width:860px) { .grid-2 { grid-template-columns:1fr; } .grid-viz { grid-template-columns:1fr; } }
+
+  /* ── Implementation selector ── */
+  .impl-selector { display:flex; gap:8px; align-items:center; margin-bottom:16px; }
+  .impl-selector label { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .impl-toggle { display:flex; gap:6px; }
+  .impl-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; }
+  .impl-btn.active { border-color:var(--accent-main); color:var(--accent-main); background:rgba(88,166,255,0.12); }
+  .impl-btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .impl-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .impl-grid.hidden { display:none; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ══ -->
+<div class="top-bar">
+  <span class="top-title">Depth-First Search <span>Visualizer</span></span>
+  <div class="divider"></div>
+  <div class="pen-toolbar">
+    <button class="tool-btn" id="pen-toggle" onclick="togglePen()">✏️ Pen</button>
+    <button class="tool-btn" id="btn-undo" onclick="undoDraw()" disabled title="Undo">↶ Undo</button>
+    <button class="tool-btn" id="btn-redo" onclick="redoDraw()" disabled title="Redo">↷ Redo</button>
+    <input type="color" id="pen-color" value="#fbbf24" onchange="setColor(this.value)" title="Pen Color" />
+    <input type="range" id="pen-size" min="1" max="12" value="3" onchange="setSize(this.value)" title="Thickness" />
+    <button class="tool-btn" id="btn-clear" onclick="clearDraw()" title="Clear Drawing">🧹 Clear</button>
+  </div>
+</div>
+
+<div class="page">
+  <!-- ══ HEADER ══ -->
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Graph Traversal</span>
+      <span class="tag tag-sel">DFS</span>
+      <span class="tag tag-orange">Foundation</span>
+    </div>
+    <h1>Depth-First Search <span style="color:var(--accent4)">Visualizer</span></h1>
+    <p class="subtitle">Explore recursive DFS with call stack frames and backtracking visualization. Watch how the recursion dives deep, pauses at each level, and backtracks when no more neighbors exist. Step through the execution to see the complete picture.</p>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  </header>
+
+  <div class="container">
+
+    <!-- ══ THEORY ══ -->
+    <div class="theory-box">
+      <h2>Theory</h2>
+      <div class="theory-body">
+        <p style="color:var(--muted);margin-bottom:16px;line-height:1.7;">Depth-First Search (DFS) is a graph traversal algorithm that explores as far as possible along each branch before backtracking. It uses a stack — either explicitly or via the call stack during recursion — to maintain the frontier of unexplored nodes. DFS is fundamental to many graph algorithms including topological sorting, cycle detection, and connectivity analysis.</p>
+        <ul class="theory-points">
+          <li><strong>Strategy:</strong> Explore deeply before exploring siblings — uses LIFO (stack) ordering to dive into branches first</li>
+          <li><strong>Time Complexity:</strong> O(V + E) where V is vertices and E is edges in the graph</li>
+          <li><strong>Space Complexity:</strong> O(V) for the recursion or explicit stack in the worst case</li>
+          <li><strong>Common Applications:</strong>
+            <ul>
+              <li>Topological sorting in directed acyclic graphs</li>
+              <li>Detecting cycles in graphs</li>
+              <li>Finding strongly connected components</li>
+              <li>Solving mazes and backtracking puzzles</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ══ PROBLEM ══ -->
+    <div class="problem-box">
+      <h2>Problem Statement</h2>
+      <div class="problem-body">
+        Given a graph with nodes and edges, DFS starts from a chosen node and plunges as deep as possible before backtracking. Use the visualizer to <strong>run DFS step-by-step</strong>, observing how the stack drives the traversal and how the visited order differs fundamentally from BFS level-order expansion.
+      </div>
+    </div>
+
+    <!-- ══ GRID: Structure card + Anatomy SVG ══ -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>stack_structure.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// LIFO Stack used by DFS</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">struct</span> Stack {</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="dt">Node</span>* top;</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="dt">bool</span>[] visited;</span></div>
+          <div class="code-line"><span class="ln">5</span><span>}</span></div>
+          <div class="code-line"><span class="ln">6</span><span></span></div>
+          <div class="code-line"><span class="ln">7</span><span><span class="cm">// push → top, pop → top (last in first out)</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span><span class="cm">// or: use recursion call stack implicitly</span></span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>dfs_anatomy.svg</h3></div>
+        <div style="padding:20px;text-align:center;">
+          <svg width="100%" height="200" viewBox="0 0 220 180" xmlns="http://www.w3.org/2000/svg" style="max-width:220px;margin:0 auto;">
+            <!-- root A -->
+            <circle cx="110" cy="28" r="18" fill="rgba(251,191,36,0.2)" stroke="rgba(251,191,36,0.7)" stroke-width="2"/>
+            <text x="110" y="33" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="11">A</text>
+            <!-- edges to B, C -->
+            <line x1="100" y1="46" x2="65" y2="80" stroke="rgba(88,166,255,0.25)" stroke-width="1.5"/>
+            <line x1="120" y1="46" x2="155" y2="80" stroke="rgba(88,166,255,0.18)" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <!-- B visited -->
+            <circle cx="65" cy="96" r="16" fill="rgba(63,185,80,0.2)" stroke="rgba(63,185,80,0.6)" stroke-width="2"/>
+            <text x="65" y="101" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="11">B</text>
+            <!-- C skipped for now -->
+            <circle cx="155" cy="96" r="16" fill="rgba(88,166,255,0.10)" stroke="rgba(88,166,255,0.3)" stroke-width="1.5"/>
+            <text x="155" y="101" text-anchor="middle" fill="#6b7a99" font-family="monospace" font-size="11">C</text>
+            <!-- edge to D -->
+            <line x1="65" y1="112" x2="65" y2="144" stroke="rgba(88,166,255,0.25)" stroke-width="1.5"/>
+            <!-- D deep -->
+            <circle cx="65" cy="158" r="14" fill="rgba(63,185,80,0.2)" stroke="rgba(63,185,80,0.6)" stroke-width="2"/>
+            <text x="65" y="163" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="10">D</text>
+            <!-- labels -->
+            <text x="170" y="100" fill="var(--muted)" font-family="monospace" font-size="8">skipped</text>
+            <text x="80" y="155" fill="var(--muted)" font-family="monospace" font-size="8">deep first</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TREE EXAMPLE VISUALIZER ══ -->
+    <p class="section-hdr">DFS on Tree — Example 1</p>
+    
+    <div class="grid-viz">
+      <!-- LEFT COLUMN: Tree Visualization -->
+      <div class="main-card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>tree.svg</h3></div>
+        <div class="graph-wrap" id="tree-wrap" style="min-height:320px;">
+          <svg id="tree-svg" viewBox="0 0 380 360" xmlns="http://www.w3.org/2000/svg"></svg>
+          <canvas id="tree-canvas"></canvas>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.25);border-color:var(--accent4);"></div>Current</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(63,185,80,0.18);border-color:var(--accent-sel);"></div>Visited</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(244,114,182,0.18);border-color:var(--accent2);"></div>In Stack</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(88,166,255,0.14);border-color:rgba(88,166,255,0.4);"></div>Unvisited</div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Tree Visualization Panels -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <!-- Mode Selector -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>Execution Mode</h3></div>
+          <div class="controls" style="border:none;padding:12px 16px;gap:10px;justify-content:center;">
+            <button class="btn btn-primary" id="tree-mode-iterative" onclick="switchTreeMode('iterative')" style="flex:1;border-color:var(--accent-main);">Stack-Based</button>
+            <button class="btn" id="tree-mode-recursive" onclick="switchTreeMode('recursive')" style="flex:1;">Recursive</button>
+          </div>
+        </div>
+
+        <!-- Iterative Mode Panel -->
+        <div id="tree-iterative-panel" style="display:block;flex:1;">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>Stack</h3></div>
+            <div style="padding:14px 16px;background:var(--surface2);">
+              <pre id="tree-stack-view" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent2);white-space:pre-wrap;margin:0;line-height:1.6;">[ ]</pre>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>Visited Order</h3></div>
+            <div style="padding:14px 16px;background:var(--surface2);">
+              <pre id="tree-visited-view" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent-sel);white-space:pre-wrap;margin:0;line-height:1.6;">[ ]</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recursive Mode Panel -->
+        <div id="tree-recursive-panel" style="display:none;flex:1;">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><div class="dot" style="background:var(--accent-main)"></div><h3>Call Stack</h3></div>
+            <div style="padding:12px 16px;background:var(--surface2);font-family:'IBM Plex Mono',monospace;font-size:11px;max-height:140px;overflow-y:auto;">
+              <div id="tree-call-stack-view" style="color:var(--accent-main);white-space:pre-wrap;line-height:1.5;">(empty)</div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>Visited</h3></div>
+            <div style="padding:12px 16px;background:var(--surface2);">
+              <pre id="tree-visited-recursive-view" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent-sel);white-space:pre-wrap;margin:0;line-height:1.5;">[ ]</pre>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>Backtrack Log</h3></div>
+            <div style="padding:12px 16px;background:var(--surface2);font-family:'IBM Plex Mono',monospace;font-size:11px;max-height:100px;overflow-y:auto;">
+              <pre id="tree-backtrack-view" style="color:var(--accent-orange);white-space:pre-wrap;margin:0;line-height:1.5;">[ ]</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tree Controls -->
+    <div class="card" style="margin-bottom:24px;margin-top:16px;">
+      <div class="controls">
+        <label style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);">Start:</label>
+        <select class="small-input" id="tree-start-select" style="width:80px;"></select>
+        <button class="btn btn-primary" onclick="runTreeMode()">▶ Run DFS</button>
+        <button class="btn" onclick="nextTreeStep()" id="tree-btn-next">Step →</button>
+        <button class="btn" onclick="randomTree()">⟳ Random</button>
+        <button class="btn" onclick="resetTree()">Reset</button>
+        <span class="step-label" id="tree-step-status">Ready to start</span>
+      </div>
+    </div>
+
+    <!-- ══ GRAPH EXAMPLE VISUALIZER ══ -->
+    <p class="section-hdr">DFS on Graph — Example 2</p>
+    
+    <div class="grid-viz">
+      <!-- LEFT COLUMN: Graph Visualization -->
+      <div class="main-card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>graph.svg</h3></div>
+        <div class="graph-wrap" id="graph-wrap">
+          <svg id="graph-svg" viewBox="0 0 380 360" xmlns="http://www.w3.org/2000/svg"></svg>
+          <canvas id="draw-canvas"></canvas>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.25);border-color:var(--accent4);"></div>Current</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(63,185,80,0.18);border-color:var(--accent-sel);"></div>Visited</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(244,114,182,0.18);border-color:var(--accent2);"></div>In Stack</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(88,166,255,0.14);border-color:rgba(88,166,255,0.4);"></div>Unvisited</div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Visualization Panels -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <!-- Mode Selector -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>Execution Mode</h3></div>
+          <div class="controls" style="border:none;padding:12px 16px;gap:10px;justify-content:center;">
+            <button class="btn btn-primary" id="mode-iterative" onclick="switchMode('iterative')" style="flex:1;border-color:var(--accent-main);">Stack-Based</button>
+            <button class="btn" id="mode-recursive" onclick="switchMode('recursive')" style="flex:1;">Recursive</button>
+          </div>
+        </div>
+
+        <!-- Iterative Mode Panel -->
+        <div id="iterative-panel" style="display:block;flex:1;">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>Stack</h3></div>
+            <div style="padding:14px 16px;background:var(--surface2);">
+              <pre id="stack-view" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent2);white-space:pre-wrap;margin:0;line-height:1.6;">[ ]</pre>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>Visited Order</h3></div>
+            <div style="padding:14px 16px;background:var(--surface2);">
+              <pre id="visited-view" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent-sel);white-space:pre-wrap;margin:0;line-height:1.6;">[ ]</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recursive Mode Panel -->
+        <div id="recursive-panel" style="display:none;flex:1;">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><div class="dot" style="background:var(--accent-main)"></div><h3>Call Stack</h3></div>
+            <div style="padding:12px 16px;background:var(--surface2);font-family:'IBM Plex Mono',monospace;font-size:11px;max-height:140px;overflow-y:auto;">
+              <div id="call-stack-view" style="color:var(--accent-main);white-space:pre-wrap;line-height:1.5;">(empty)</div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>Visited</h3></div>
+            <div style="padding:12px 16px;background:var(--surface2);">
+              <pre id="visited-recursive-view" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent-sel);white-space:pre-wrap;margin:0;line-height:1.5;">[ ]</pre>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>Backtrack Log</h3></div>
+            <div style="padding:12px 16px;background:var(--surface2);font-family:'IBM Plex Mono',monospace;font-size:11px;max-height:100px;overflow-y:auto;">
+              <pre id="backtrack-view" style="color:var(--accent-orange);white-space:pre-wrap;margin:0;line-height:1.5;">[ ]</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="card" style="margin-bottom:24px;margin-top:16px;">
+      <div class="controls">
+        <label style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);">Start:</label>
+        <select class="small-input" id="start-select" style="width:80px;"></select>
+        <button class="btn btn-primary" onclick="runCurrentMode()">▶ Run DFS</button>
+        <button class="btn" onclick="nextStepCurrent()" id="btn-next">Step →</button>
+        <button class="btn" onclick="randomGraph()">⟳ Random</button>
+        <button class="btn" onclick="resetGraph()">Reset</button>
+        <span class="step-label" id="step-status">Ready to start</span>
+      </div>
+    </div>
+
+    <!-- ══ ALGORITHM & COMPLEXITY ══ -->
+    <p class="section-hdr">Algorithm & Pseudocode</p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>dfs_iterative.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// DFS using explicit stack</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">function</span> <span class="fn">dfs</span>(<span class="vr">graph</span>, <span class="vr">start</span>):</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="vr">stack</span> = [<span class="vr">start</span>]</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="vr">visited</span> = <span class="kw">set</span>()</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1"><span class="vr">result</span> = []</span></div>
+          <div class="code-line"><span class="ln">6</span><span></span></div>
+          <div class="code-line"><span class="ln">7</span><span><span class="kw">while</span> <span class="vr">stack</span> <span class="op">is not</span> <span class="vr">empty</span>:</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="vr">node</span> = <span class="vr">stack</span>.<span class="fn">pop</span>()</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i1"><span class="kw">if</span> <span class="vr">node</span> <span class="op">in</span> <span class="vr">visited</span>: <span class="kw">continue</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i1"><span class="vr">visited</span>.<span class="fn">add</span>(<span class="vr">node</span>)</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i1"><span class="vr">result</span>.<span class="fn">append</span>(<span class="vr">node</span>)</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i1"><span class="kw">for</span> <span class="vr">neighbor</span> <span class="op">in</span> <span class="vr">graph</span>[<span class="vr">node</span>]:</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i2"><span class="kw">if</span> <span class="vr">neighbor</span> <span class="op">not in</span> <span class="vr">visited</span>:</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i3"><span class="vr">stack</span>.<span class="fn">push</span>(<span class="vr">neighbor</span>)</span></div>
+          <div class="code-line"><span class="ln">15</span><span><span class="kw">return</span> <span class="vr">result</span></span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>dfs_recursive.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// DFS using recursion</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="cm">// Call stack manages depth</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span><span class="kw">function</span> <span class="fn">dfs</span>(<span class="vr">node</span>, <span class="vr">graph</span>, <span class="vr">visited</span>):</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="vr">visited</span>.<span class="fn">add</span>(<span class="vr">node</span>)</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1"><span class="fn">print</span>(<span class="vr">node</span>)  <span class="cm">// process node</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span></span></div>
+          <div class="code-line"><span class="ln">7</span><span><span class="i1"><span class="kw">for</span> <span class="vr">neighbor</span> <span class="op">in</span> <span class="vr">graph</span>[<span class="vr">node</span>]:</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i2"><span class="kw">if</span> <span class="vr">neighbor</span> <span class="op">not in</span> <span class="vr">visited</span>:</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i3"><span class="fn">dfs</span>(<span class="vr">neighbor</span>, <span class="vr">graph</span>, <span class="vr">visited</span>)</span></div>
+          <div class="code-line"><span class="ln">10</span><span></span></div>
+          <div class="code-line"><span class="ln">11</span><span><span class="cm">// Backtrack here (function returns)</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ COMPLEXITY TABLE ══ -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>complexity.md</h3></div>
+      <div style="padding:20px;">
+        <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+          <tr>
+            <th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Aspect</th>
+            <th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Complexity</th>
+          </tr>
+          <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Time</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(V + E)</td></tr>
+          <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Space (Recursive)</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(V) — call stack depth</td></tr>
+          <tr><td style="padding:10px 14px;color:var(--text);font-weight:600;">Space (Iterative)</td><td style="padding:10px 14px;color:var(--accent-sel);font-weight:600;">O(V) — explicit stack</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ IMPLEMENTATION SECTION ══ -->
+    <p class="section-hdr">Implementation</p>
+    <div class="impl-selector">
+      <label>Language:</label>
+      <div class="impl-toggle">
+        <button class="impl-btn active" id="impl-c" onclick="switchImpl('c')">C</button>
+        <button class="impl-btn" id="impl-python" onclick="switchImpl('python')">Python</button>
+      </div>
+    </div>
+
+    <!-- C IMPLEMENTATION -->
+    <div class="impl-grid" id="c-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>dfs.c</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="pp">#include</span> <span class="str">&lt;stdio.h&gt;</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="pp">#include</span> <span class="str">&lt;string.h&gt;</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span><span class="pp">#define</span> MAX_NODES 100</span></div>
+          <div class="code-line"><span class="ln">4</span><span></span></div>
+          <div class="code-line"><span class="ln">5</span><span><span class="cm">// ── ITERATIVE DFS ──────────────────────</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span><span class="kw">void</span> <span class="fn">dfs_iterative</span>(<span class="dt">int</span> adj[][MAX_NODES], <span class="dt">int</span> start, <span class="dt">int</span> n) {</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="dt">int</span> stack[MAX_NODES], top = -1;</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="dt">int</span> visited[MAX_NODES] = {0};</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i1">stack[++top] = start;  <span class="cm">// push start</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i1"><span class="kw">while</span> (top &gt;= 0) {</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i2"><span class="dt">int</span> v = stack[top--];  <span class="cm">// pop</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i2"><span class="kw">if</span> (visited[v]) <span class="kw">continue</span>;</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i2">visited[v] = 1;</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i2">printf(<span class="str">"%d "</span>, v);</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i2"><span class="kw">for</span> (<span class="dt">int</span> i = n-1; i &gt;= 0; i--)  <span class="cm">// reverse</span></span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i3"><span class="kw">if</span> (adj[v][i] &amp;&amp; !visited[i])</span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i3">  stack[++top] = i;</span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">19</span><span>}</span></div>
+          <div class="code-line"><span class="ln">20</span><span></span></div>
+          <div class="code-line"><span class="ln">21</span><span><span class="cm">// ── RECURSIVE DFS ──────────────────────</span></span></div>
+          <div class="code-line"><span class="ln">22</span><span><span class="kw">void</span> <span class="fn">dfs_recursive</span>(<span class="dt">int</span> v, <span class="dt">int</span> adj[][MAX_NODES],</span></div>
+          <div class="code-line"><span class="ln">23</span><span class="i3"><span class="dt">int</span>* visited, <span class="dt">int</span> n) {</span></div>
+          <div class="code-line"><span class="ln">24</span><span class="i1">visited[v] = 1;</span></div>
+          <div class="code-line"><span class="ln">25</span><span class="i1">printf(<span class="str">"%d "</span>, v);</span></div>
+          <div class="code-line"><span class="ln">26</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> i = 0; i &lt; n; i++)</span></div>
+          <div class="code-line"><span class="ln">27</span><span class="i2"><span class="kw">if</span> (adj[v][i] &amp;&amp; !visited[i])</span></div>
+          <div class="code-line"><span class="ln">28</span><span class="i3"><span class="fn">dfs_recursive</span>(i, adj, visited, n);</span></div>
+          <div class="code-line"><span class="ln">29</span><span class="i1"><span class="cm">// &#8617; backtrack on return</span></span></div>
+          <div class="code-line"><span class="ln">30</span><span>}</span></div>
+          <div class="code-line"><span class="ln">31</span><span></span></div>
+          <div class="code-line"><span class="ln">32</span><span><span class="dt">int</span> main() {</span></div>
+          <div class="code-line"><span class="ln">33</span><span class="i1"><span class="dt">int</span> n = 6;</span></div>
+          <div class="code-line"><span class="ln">34</span><span class="i1"><span class="dt">int</span> adj[MAX_NODES][MAX_NODES] = {0};</span></div>
+          <div class="code-line"><span class="ln">35</span><span class="i1">adj[0][1]=adj[1][0]=1;  <span class="cm">// 0-1</span></span></div>
+          <div class="code-line"><span class="ln">36</span><span class="i1">adj[0][3]=adj[3][0]=1;  <span class="cm">// 0-3</span></span></div>
+          <div class="code-line"><span class="ln">37</span><span class="i1">adj[1][2]=adj[2][1]=1;  <span class="cm">// 1-2</span></span></div>
+          <div class="code-line"><span class="ln">38</span><span class="i1">adj[1][4]=adj[4][1]=1;  <span class="cm">// 1-4</span></span></div>
+          <div class="code-line"><span class="ln">39</span><span class="i1">adj[2][5]=adj[5][2]=1;  <span class="cm">// 2-5</span></span></div>
+          <div class="code-line"><span class="ln">40</span><span class="i1">adj[3][4]=adj[4][3]=1;  <span class="cm">// 3-4</span></span></div>
+          <div class="code-line"><span class="ln">41</span><span></span></div>
+          <div class="code-line"><span class="ln">42</span><span class="i1">printf(<span class="str">"Iterative: "</span>); <span class="fn">dfs_iterative</span>(adj,0,n); printf(<span class="str">"\n"</span>);</span></div>
+          <div class="code-line"><span class="ln">43</span><span class="i1"><span class="dt">int</span> visited[MAX_NODES] = {0};</span></div>
+          <div class="code-line"><span class="ln">44</span><span class="i1">printf(<span class="str">"Recursive: "</span>); <span class="fn">dfs_recursive</span>(0,adj,visited,n); printf(<span class="str">"\n"</span>);</span></div>
+          <div class="code-line"><span class="ln">45</span><span class="i1"><span class="kw">return</span> 0;</span></div>
+          <div class="code-line"><span class="ln">46</span><span>}</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-main)"></div><h3>Explanation</h3></div>
+        <div style="padding:20px; color:var(--muted); font-size:13px; line-height:1.7;">
+          <p><strong style="color:var(--text);">1. Iterative DFS — Manual Stack (lines 6–19):</strong> Declares a plain <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:3px;color:var(--accent-main);">int stack[]</code> with <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:3px;color:var(--accent-main);">top = -1</code>. Push increments <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:3px;color:var(--accent-main);">top</code> before assigning; pop reads then decrements. Loop runs while <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:3px;color:var(--accent-main);">top &ge; 0</code>. Neighbors are pushed in reverse order (line 15) so the lowest-indexed neighbor surfaces on the next pop, ensuring left-to-right traversal.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">2. Recursive DFS — Call Stack (lines 22–30):</strong> The OS call stack is the implicit DFS stack. Mark node visited, print it, then iterate neighbors. Each unvisited neighbor triggers a recursive call — diving deeper. When the call returns on line 28, the CPU pops the frame and continues the for-loop: that is the backtrack. Deep graphs can overflow the C stack (default ~1–8 MB).</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">3. Adjacency Matrix (lines 33–40):</strong> A 2-D array where <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:3px;color:var(--accent-main);">adj[u][v] = 1</code> means an undirected edge exists. Simple to write; costs O(V&sup2;) space. Swap for an adjacency list on large sparse graphs to save memory.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">4. Time &amp; Space Complexity:</strong> Both variants run in O(V + E) — each node is visited once and each edge checked once. Space is O(V) for visited array plus O(V) worst-case stack depth. The matrix itself adds O(V&sup2;) storage regardless of edge count.</p>
+        </div>
+      </div>
+    </div><!-- /c-impl -->
+
+    <!-- PYTHON IMPLEMENTATION -->
+    <div class="impl-grid hidden" id="python-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>dfs.py</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="pp">from</span> collections <span class="pp">import</span> defaultdict</span></div>
+          <div class="code-line"><span class="ln">2</span><span></span></div>
+          <div class="code-line"><span class="ln">3</span><span><span class="cm"># ── ITERATIVE DFS ──────────────────────</span></span></div>
+          <div class="code-line"><span class="ln">4</span><span><span class="kw">def</span> <span class="fn">dfs_iterative</span>(<span class="vr">graph</span>, <span class="vr">start</span>):</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1"><span class="vr">visited</span> = <span class="kw">set</span>()</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i1"><span class="vr">stack</span>   = [<span class="vr">start</span>]</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="vr">result</span>  = []</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="kw">while</span> <span class="vr">stack</span>:</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i2"><span class="vr">node</span> = <span class="vr">stack</span>.<span class="fn">pop</span>()  <span class="cm"># LIFO</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i2"><span class="kw">if</span> <span class="vr">node</span> <span class="op">in</span> <span class="vr">visited</span>:</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i3"><span class="kw">continue</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i2"><span class="vr">visited</span>.<span class="fn">add</span>(<span class="vr">node</span>)</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i2"><span class="vr">result</span>.<span class="fn">append</span>(<span class="vr">node</span>)</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i2"><span class="kw">for</span> <span class="vr">nb</span> <span class="op">in</span> <span class="fn">reversed</span>(<span class="vr">graph</span>[<span class="vr">node</span>]):</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i3"><span class="kw">if</span> <span class="vr">nb</span> <span class="op">not in</span> <span class="vr">visited</span>:</span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i3">  <span class="vr">stack</span>.<span class="fn">append</span>(<span class="vr">nb</span>)</span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i1"><span class="kw">return</span> <span class="vr">result</span></span></div>
+          <div class="code-line"><span class="ln">18</span><span></span></div>
+          <div class="code-line"><span class="ln">19</span><span><span class="cm"># ── RECURSIVE DFS ──────────────────────</span></span></div>
+          <div class="code-line"><span class="ln">20</span><span><span class="kw">def</span> <span class="fn">dfs_recursive</span>(<span class="vr">graph</span>, <span class="vr">node</span>, <span class="vr">visited</span>=<span class="kw">None</span>, <span class="vr">result</span>=<span class="kw">None</span>):</span></div>
+          <div class="code-line"><span class="ln">21</span><span class="i1"><span class="kw">if</span> <span class="vr">visited</span> <span class="op">is</span> <span class="kw">None</span>: <span class="vr">visited</span> = <span class="kw">set</span>()</span></div>
+          <div class="code-line"><span class="ln">22</span><span class="i1"><span class="kw">if</span> <span class="vr">result</span>  <span class="op">is</span> <span class="kw">None</span>: <span class="vr">result</span>  = []</span></div>
+          <div class="code-line"><span class="ln">23</span><span class="i1"><span class="vr">visited</span>.<span class="fn">add</span>(<span class="vr">node</span>)</span></div>
+          <div class="code-line"><span class="ln">24</span><span class="i1"><span class="vr">result</span>.<span class="fn">append</span>(<span class="vr">node</span>)</span></div>
+          <div class="code-line"><span class="ln">25</span><span class="i1"><span class="kw">for</span> <span class="vr">nb</span> <span class="op">in</span> <span class="vr">graph</span>[<span class="vr">node</span>]:</span></div>
+          <div class="code-line"><span class="ln">26</span><span class="i2"><span class="kw">if</span> <span class="vr">nb</span> <span class="op">not in</span> <span class="vr">visited</span>:</span></div>
+          <div class="code-line"><span class="ln">27</span><span class="i3"><span class="fn">dfs_recursive</span>(<span class="vr">graph</span>, <span class="vr">nb</span>, <span class="vr">visited</span>, <span class="vr">result</span>)</span></div>
+          <div class="code-line"><span class="ln">28</span><span class="i1"><span class="cm"># &#8617; backtrack on return</span></span></div>
+          <div class="code-line"><span class="ln">29</span><span class="i1"><span class="kw">return</span> <span class="vr">result</span></span></div>
+          <div class="code-line"><span class="ln">30</span><span></span></div>
+          <div class="code-line"><span class="ln">31</span><span><span class="cm"># ── Example ────────────────────────────</span></span></div>
+          <div class="code-line"><span class="ln">32</span><span><span class="vr">graph</span> = defaultdict(<span class="dt">list</span>)</span></div>
+          <div class="code-line"><span class="ln">33</span><span><span class="kw">for</span> <span class="vr">u</span>, <span class="vr">v</span> <span class="op">in</span> [(<span class="str">'A'</span>,<span class="str">'B'</span>),(<span class="str">'A'</span>,<span class="str">'D'</span>),(<span class="str">'B'</span>,<span class="str">'C'</span>),</span></div>
+          <div class="code-line"><span class="ln">34</span><span class="i3">(<span class="str">'B'</span>,<span class="str">'E'</span>),(<span class="str">'C'</span>,<span class="str">'F'</span>),(<span class="str">'D'</span>,<span class="str">'E'</span>),(<span class="str">'E'</span>,<span class="str">'F'</span>)]:</span></div>
+          <div class="code-line"><span class="ln">35</span><span class="i1"><span class="vr">graph</span>[<span class="vr">u</span>].<span class="fn">append</span>(<span class="vr">v</span>); <span class="vr">graph</span>[<span class="vr">v</span>].<span class="fn">append</span>(<span class="vr">u</span>)</span></div>
+          <div class="code-line"><span class="ln">36</span><span></span></div>
+          <div class="code-line"><span class="ln">37</span><span>print(<span class="fn">dfs_iterative</span>(<span class="vr">graph</span>, <span class="str">'A'</span>))</span></div>
+          <div class="code-line"><span class="ln">38</span><span>print(<span class="fn">dfs_recursive</span>(<span class="vr">graph</span>, <span class="str">'A'</span>))</span></div>
+          <div class="code-line"><span class="ln">39</span><span><span class="cm"># Both &rarr; ['A', 'B', 'C', 'F', 'E', 'D']</span></span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>Explanation</h3></div>
+        <div style="padding:20px; color:var(--muted); font-size:13px; line-height:1.7;">
+          <p><strong style="color:var(--text);">1. Iterative DFS — Explicit Stack (lines 4–17):</strong> Uses Python's list as a stack (<code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:3px;color:var(--accent-main);">.append()</code> / <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:3px;color:var(--accent-main);">.pop()</code>). Neighbors are pushed in <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:3px;color:var(--accent-main);">reversed()</code> order (line 14) so the first neighbor surfaces on the next pop, mirroring recursive left-to-right order. The visited check on pop (line 10) handles duplicate stack entries gracefully.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">2. Recursive DFS — Call Stack (lines 20–29):</strong> Python's own call stack drives the traversal. Default mutable arguments are avoided by using <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:3px;color:var(--accent-main);">None</code> sentinel defaults (lines 21–22) — a Python best practice. Each recursive call on line 27 dives deeper; returning from it is the implicit backtrack, continuing the for-loop at the caller level.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">3. Graph as defaultdict (lines 32–35):</strong> Uses <code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:3px;color:var(--accent-main);">defaultdict(list)</code> — an adjacency list. This is O(V + E) space vs the O(V&sup2;) matrix in C, and is idiomatic Python for sparse graphs. Both directions are appended to model an undirected edge.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">4. Python vs C — Key Difference:</strong> Python's default recursion limit is 1000 frames (<code style="background:rgba(88,166,255,0.1);padding:2px 6px;border-radius:3px;color:var(--accent-main);">sys.setrecursionlimit()</code> can raise it). For large graphs prefer iterative. Both versions run in O(V + E) time and O(V) space and produce the same traversal order.</p>
+        </div>
+      </div>
+    </div><!-- /python-impl -->
+
+  </div><!-- /container -->
+</div><!-- /page -->
+
+<script>
+/* ════════════════════════════════
+   PEN / DRAW LAYER
+   ════════════════════════════════ */
+const canvas = document.getElementById('draw-canvas');
+const ctx    = canvas.getContext('2d');
+let penActive = false, isDrawing = false;
+let penColor  = '#fbbf24', penSize = 3;
+let drawHistory = [], redoStack = [];
+let lastX = 0, lastY = 0;
+
+function resizeCanvas() {
+  let old = null;
+  try { old = ctx.getImageData(0,0,canvas.width,canvas.height); } catch(e) {}
+  const wrap = document.getElementById('graph-wrap');
+  const rect = wrap.getBoundingClientRect();
+  canvas.width  = rect.width;
+  canvas.height = rect.height;
+  if (old) { try { ctx.putImageData(old,0,0); } catch(e) {} }
+}
+function saveSnapshot()  { try { drawHistory.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e){} redoStack=[]; updateUndoRedo(); }
+function updateUndoRedo(){ document.getElementById('btn-undo').disabled = drawHistory.length===0; document.getElementById('btn-redo').disabled = redoStack.length===0; }
+function undoDraw() { if (!drawHistory.length) return; try { redoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e){} ctx.putImageData(drawHistory.pop(),0,0); updateUndoRedo(); }
+function redoDraw() { if (!redoStack.length)   return; try { drawHistory.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e){} ctx.putImageData(redoStack.pop(),0,0);  updateUndoRedo(); }
+function clearDraw() { saveSnapshot(); ctx.clearRect(0,0,canvas.width,canvas.height); }
+function getCanvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x:(cx-rect.left)*(canvas.width/rect.width), y:(cy-rect.top)*(canvas.height/rect.height) };
+}
+canvas.addEventListener('mousedown',  e => { if(!penActive) return; const p=getCanvasPos(e); saveSnapshot(); isDrawing=true; lastX=p.x; lastY=p.y; ctx.beginPath(); ctx.moveTo(lastX,lastY); });
+canvas.addEventListener('mousemove',  e => { if(!isDrawing||!penActive) return; const p=getCanvasPos(e); ctx.lineWidth=penSize; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=penColor; ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x,p.y); lastX=p.x; lastY=p.y; });
+canvas.addEventListener('mouseup',    () => { isDrawing=false; });
+canvas.addEventListener('mouseleave', () => { isDrawing=false; });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); if(!penActive) return; const p=getCanvasPos(e); saveSnapshot(); isDrawing=true; lastX=p.x; lastY=p.y; ctx.beginPath(); ctx.moveTo(lastX,lastY); }, {passive:false});
+canvas.addEventListener('touchmove',  e => { e.preventDefault(); if(!isDrawing||!penActive) return; const p=getCanvasPos(e); ctx.lineWidth=penSize; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=penColor; ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x,p.y); lastX=p.x; lastY=p.y; }, {passive:false});
+canvas.addEventListener('touchend',   () => { isDrawing=false; });
+
+function togglePen() {
+  penActive = !penActive;
+  const toolbar = document.querySelector('.pen-toolbar');
+  const btn     = document.getElementById('pen-toggle');
+  toolbar.classList.toggle('active', penActive);
+  if (penActive) { canvas.classList.add('pen-active');    btn.classList.add('active');    btn.innerHTML='✏️ Pen ON'; resizeCanvas(); }
+  else           { canvas.classList.remove('pen-active'); btn.classList.remove('active'); btn.innerHTML='✏️ Pen'; }
+}
+function setColor(c) { penColor = c; }
+function setSize(v)  { penSize  = parseInt(v,10); }
+
+/* ════════════════════════════════
+   DFS GRAPH LOGIC
+   ════════════════════════════════ */
+const svg = document.getElementById('graph-svg');
+
+const defaultNodes = [
+  {id:'A', x:95, y:80},
+  {id:'B', x:190, y:60},
+  {id:'C', x:300, y:80},
+  {id:'D', x:110, y:200},
+  {id:'E', x:210, y:200},
+  {id:'F', x:305, y:220}
+];
+const defaultEdges = [
+  {from:'A',to:'B'},{from:'A',to:'D'},
+  {from:'B',to:'C'},{from:'B',to:'E'},
+  {from:'C',to:'F'},{from:'D',to:'E'},
+  {from:'E',to:'F'}
+];
+
+let nodes = JSON.parse(JSON.stringify(defaultNodes));
+let edges = JSON.parse(JSON.stringify(defaultEdges));
+
+// DFS state
+let currentMode = 'iterative';
+let dfsStack   = [];
+let dfsVisited = [];
+let dfsInStack = new Set();
+let dfsCurrent = null;
+let dfsGraph   = {};
+let dfsTimer   = null;
+let dfsRunning = false;
+let dfsStep    = 0;
+
+// Recursive DFS state
+let callStack = [];
+let backtrackLog = [];
+let visitedRecursive = [];
+let dfsStep_recursive = 0;
+
+function getNode(id) { return nodes.find(n => n.id === id); }
+
+function buildAdjacency() {
+  const map = {};
+  nodes.forEach(n => map[n.id] = []);
+  edges.forEach(e => { map[e.from].push(e.to); map[e.to].push(e.from); });
+  Object.keys(map).forEach(k => map[k].sort());
+  return map;
+}
+
+function populateStartSelect() {
+  const sel = document.getElementById('start-select');
+  sel.innerHTML = nodes.map(n => `<option value="${n.id}">${n.id}</option>`).join('');
+}
+
+function drawGraph() {
+  svg.innerHTML = '';
+
+  // Edges
+  edges.forEach(edge => {
+    const from = getNode(edge.from), to = getNode(edge.to);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', from.x); line.setAttribute('y1', from.y);
+    line.setAttribute('x2', to.x);   line.setAttribute('y2', to.y);
+    line.setAttribute('stroke', 'rgba(88,166,255,0.22)');
+    line.setAttribute('stroke-width', '2');
+    svg.appendChild(line);
+  });
+
+  // Nodes
+  nodes.forEach(node => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+
+    let fill, stroke, sw = '2';
+    if (dfsCurrent === node.id) {
+      fill='rgba(251,191,36,0.28)'; stroke='#fbbf24'; sw='2.5';
+    } else if (dfsVisited.includes(node.id) || visitedRecursive.includes(node.id)) {
+      fill='rgba(63,185,80,0.2)';  stroke='#3fb950';
+    } else if (dfsInStack.has(node.id)) {
+      fill='rgba(244,114,182,0.2)'; stroke='#f472b6';
+    } else {
+      fill='rgba(88,166,255,0.14)'; stroke='rgba(88,166,255,0.4)';
+    }
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', node.x); circle.setAttribute('cy', node.y);
+    circle.setAttribute('r', '18');
+    circle.setAttribute('fill', fill); circle.setAttribute('stroke', stroke); circle.setAttribute('stroke-width', sw);
+    g.appendChild(circle);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x', node.x); text.setAttribute('y', node.y + 5);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-family', 'IBM Plex Mono, monospace');
+    text.setAttribute('font-size', '14');
+    text.setAttribute('fill', '#e2e8f4');
+    text.textContent = node.id;
+    g.appendChild(text);
+
+    svg.appendChild(g);
+  });
+}
+
+function updateTraversalDisplay() {
+  if (currentMode === 'iterative') {
+    document.getElementById('stack-view').textContent   = dfsStack.length   ? `[ ${[...dfsStack].reverse().join(' → ')} ]` : '[ ]';
+    document.getElementById('visited-view').textContent = dfsVisited.length ? `[ ${dfsVisited.join(' → ')} ]`              : '[ ]';
+  } else {
+    updateRecursiveDisplay();
+  }
+}
+
+function updateRecursiveDisplay() {
+  // Call stack visualization
+  let callStackStr = '[Call Stack]\n';
+  if (callStack.length === 0) {
+    callStackStr += '(empty)';
+  } else {
+    for (let i = callStack.length - 1; i >= 0; i--) {
+      const indent = (callStack.length - 1 - i) * 2;
+      callStackStr += ' '.repeat(indent) + `→ dfs(${callStack[i].node})\n`;
+      if (i < callStack.length - 1) {
+        callStackStr += ' '.repeat(indent + 2) + `[neighbors: ${callStack[i].neighbors.join(', ')}]\n`;
+      }
+    }
+  }
+  document.getElementById('call-stack-view').textContent = callStackStr;
+  
+  document.getElementById('visited-recursive-view').textContent = visitedRecursive.length ? `[ ${visitedRecursive.join(' → ')} ]` : '[ ]';
+  document.getElementById('backtrack-view').textContent = backtrackLog.length ? backtrackLog.join('\n') : '[ ]';
+}
+
+function setStatus(msg) { document.getElementById('step-status').textContent = msg || 'Ready'; }
+
+function switchMode(mode) {
+  stopDFS();
+  currentMode = mode;
+  
+  // Update button states
+  document.getElementById('mode-iterative').classList.toggle('btn-primary', mode === 'iterative');
+  document.getElementById('mode-iterative').classList.toggle('btn', mode !== 'iterative');
+  document.getElementById('mode-recursive').classList.toggle('btn-primary', mode === 'recursive');
+  document.getElementById('mode-recursive').classList.toggle('btn', mode !== 'recursive');
+  
+  // Show/hide relevant UI
+  document.getElementById('iterative-panel').style.display = mode === 'iterative' ? 'block' : 'none';
+  document.getElementById('recursive-panel').style.display = mode === 'recursive' ? 'block' : 'none';
+  
+  resetGraph();
+}
+
+// ──── ITERATIVE DFS ────
+function initDFS() {
+  const start = document.getElementById('start-select').value;
+  if (!start) { setStatus('Select a start node'); return false; }
+  dfsGraph   = buildAdjacency();
+  dfsStack   = [start];
+  dfsVisited = [];
+  dfsInStack = new Set([start]);
+  dfsCurrent = null;
+  dfsStep    = 0;
+  updateTraversalDisplay();
+  drawGraph();
+  return true;
+}
+
+function doStep() {
+  if (dfsStack.length === 0) {
+    dfsCurrent = null;
+    drawGraph();
+    setStatus(`DFS complete — visited ${dfsVisited.length} node(s)`);
+    stopDFS();
+    return;
+  }
+
+  const node = dfsStack.pop();
+
+  // Skip already-visited (stack may hold duplicates)
+  if (dfsVisited.includes(node)) {
+    dfsInStack.delete(node);
+    updateTraversalDisplay();
+    drawGraph();
+    if (dfsStack.length === 0) { setStatus(`DFS complete — visited ${dfsVisited.length} node(s)`); stopDFS(); }
+    return;
+  }
+
+  dfsCurrent = node;
+  dfsVisited.push(node);
+  dfsInStack.delete(node);
+  dfsStep++;
+
+  const neighbors = (dfsGraph[node] || []).slice().reverse();
+  neighbors.forEach(nb => {
+    if (!dfsVisited.includes(nb)) {
+      dfsStack.push(nb);
+      dfsInStack.add(nb);
+    }
+  });
+
+  updateTraversalDisplay();
+  drawGraph();
+  setStatus(`Step ${dfsStep}: Visiting ${node} — pushed neighbors: [${neighbors.filter(n=>!dfsVisited.includes(n)).join(', ')||'none'}]`);
+
+  if (dfsStack.length === 0) {
+    dfsCurrent = null;
+    drawGraph();
+    setStatus(`DFS complete — visited ${dfsVisited.length} node(s)`);
+    stopDFS();
+  }
+}
+
+// ──── RECURSIVE DFS ────
+function initRecursiveDFS() {
+  const start = document.getElementById('start-select').value;
+  if (!start) { setStatus('Select a start node'); return false; }
+  dfsGraph = buildAdjacency();
+  callStack = [];
+  backtrackLog = [];
+  visitedRecursive = [];
+  dfsStep_recursive = 0;
+  dfsCurrent = null;
+  updateRecursiveDisplay();
+  drawGraph();
+  return true;
+}
+
+function doRecursiveStep() {
+  // If call stack is empty and we haven't started, initialize with start node
+  if (callStack.length === 0 && visitedRecursive.length === 0) {
+    const start = document.getElementById('start-select').value;
+    callStack.push({node: start, neighbors: dfsGraph[start] || [], index: 0});
+    updateRecursiveDisplay();
+    drawGraph();
+    dfsCurrent = start;
+    setStatus(`Entered dfs(${start})`);
+    return;
+  }
+
+  if (callStack.length === 0) {
+    dfsCurrent = null;
+    drawGraph();
+    setStatus(`DFS complete — visited ${visitedRecursive.length} node(s)`);
+    stopDFS();
+    return;
+  }
+
+  const frame = callStack[callStack.length - 1];
+  const currentNode = frame.node;
+
+  // First time visiting this frame?
+  if (frame.index === 0) {
+    visitedRecursive.push(currentNode);
+    dfsCurrent = currentNode;
+    dfsStep_recursive++;
+    setStatus(`Step ${dfsStep_recursive}: Marked ${currentNode} as visited`);
+    updateRecursiveDisplay();
+    drawGraph();
+    frame.index++;
+    return;
+  }
+
+  // Try to find next unvisited neighbor
+  const neighbors = frame.neighbors;
+  let nextNeighbor = null;
+  for (let i = frame.index - 1; i < neighbors.length; i++) {
+    if (!visitedRecursive.includes(neighbors[i])) {
+      nextNeighbor = neighbors[i];
+      frame.index = i + 1;
+      break;
+    }
+  }
+
+  if (nextNeighbor) {
+    // Recurse into neighbor
+    callStack.push({node: nextNeighbor, neighbors: dfsGraph[nextNeighbor] || [], index: 0});
+    dfsCurrent = nextNeighbor;
+    dfsStep_recursive++;
+    setStatus(`Recursively calling dfs(${nextNeighbor})`);
+    updateRecursiveDisplay();
+    drawGraph();
+  } else {
+    // No more neighbors, backtrack
+    const popped = callStack.pop();
+    backtrackLog.push(`↩ Backtrack from ${popped.node}`);
+    dfsStep_recursive++;
+    
+    if (callStack.length > 0) {
+      dfsCurrent = callStack[callStack.length - 1].node;
+      setStatus(`Backtracked from ${popped.node}, continue with ${dfsCurrent}`);
+    } else {
+      dfsCurrent = null;
+      setStatus(`DFS complete — visited ${visitedRecursive.length} node(s)`);
+    }
+    
+    updateRecursiveDisplay();
+    drawGraph();
+  }
+}
+
+function runCurrentMode() {
+  stopDFS();
+  if (currentMode === 'iterative') {
+    if (!initDFS()) return;
+  } else {
+    if (!initRecursiveDFS()) return;
+  }
+  dfsRunning = true;
+  dfsTimer = setInterval(() => {
+    if (currentMode === 'iterative') {
+      if (dfsStack.length === 0 && dfsVisited.length > 0) { stopDFS(); return; }
+    } else {
+      if (callStack.length === 0 && visitedRecursive.length > 0) { stopDFS(); return; }
+    }
+    nextStepCurrent();
+  }, 900);
+}
+
+function nextStepCurrent() {
+  if (!dfsRunning && dfsStep === 0 && dfsStep_recursive === 0) {
+    if (currentMode === 'iterative') {
+      if (!initDFS()) return;
+    } else {
+      if (!initRecursiveDFS()) return;
+    }
+  }
+  
+  if (currentMode === 'iterative') {
+    doStep();
+  } else {
+    doRecursiveStep();
+  }
+}
+
+function stopDFS() {
+  clearInterval(dfsTimer);
+  dfsTimer   = null;
+  dfsRunning = false;
+}
+
+function resetGraph() {
+  stopDFS();
+  nodes      = JSON.parse(JSON.stringify(defaultNodes));
+  edges      = JSON.parse(JSON.stringify(defaultEdges));
+  dfsStack   = []; dfsVisited = []; dfsInStack = new Set();
+  dfsCurrent = null; dfsStep = 0;
+  callStack = []; backtrackLog = []; visitedRecursive = []; dfsStep_recursive = 0;
+  updateTraversalDisplay();
+  drawGraph();
+  setStatus('Ready to start');
+  populateStartSelect();
+}
+
+function randomGraph() {
+  stopDFS();
+  const combos = [['A','B'],['A','D'],['A','E'],['B','C'],['B','E'],['C','F'],['D','E'],['D','F'],['E','F']];
+  edges = [];
+  for (const [u,v] of combos) { if (Math.random() > 0.45) edges.push({from:u,to:v}); }
+  if (edges.length < 4) edges = JSON.parse(JSON.stringify(defaultEdges));
+  dfsStack=[]; dfsVisited=[]; dfsInStack=new Set();
+  dfsCurrent=null; dfsStep=0;
+  callStack = []; backtrackLog = []; visitedRecursive = []; dfsStep_recursive = 0;
+  updateTraversalDisplay();
+  drawGraph();
+  setStatus('Random graph — press Run DFS');
+}
+
+/* ════════════════════════════════
+   TREE DFS LOGIC
+   ════════════════════════════════ */
+const treeSvg = document.getElementById('tree-svg');
+const treeCanvas = document.getElementById('tree-canvas');
+const treeCtx = treeCanvas.getContext('2d');
+
+const treeDefaultNodes = [
+  {id:'1', x:190, y:30},
+  {id:'2', x:110, y:100},
+  {id:'3', x:270, y:100},
+  {id:'4', x:60, y:170},
+  {id:'5', x:160, y:170},
+  {id:'6', x:220, y:170},
+  {id:'7', x:320, y:170}
+];
+const treeDefaultEdges = [
+  {from:'1',to:'2'},{from:'1',to:'3'},
+  {from:'2',to:'4'},{from:'2',to:'5'},
+  {from:'3',to:'6'},{from:'3',to:'7'}
+];
+
+let treeNodes = JSON.parse(JSON.stringify(treeDefaultNodes));
+let treeEdges = JSON.parse(JSON.stringify(treeDefaultEdges));
+
+// Tree DFS state
+let treeCurrentMode = 'iterative';
+let treeStack   = [];
+let treeVisited = [];
+let treeInStack = new Set();
+let treeCurrent = null;
+let treeGraph   = {};
+let treeTimer   = null;
+let treeRunning = false;
+let treeStep    = 0;
+
+// Tree recursive DFS state
+let treeCallStack = [];
+let treeBacktrackLog = [];
+let treeVisitedRecursive = [];
+let treeStep_recursive = 0;
+
+function getTreeNode(id) { return treeNodes.find(n => n.id === id); }
+
+function buildTreeAdjacency() {
+  const map = {};
+  treeNodes.forEach(n => map[n.id] = []);
+  treeEdges.forEach(e => { map[e.from].push(e.to); map[e.to].push(e.from); });
+  Object.keys(map).forEach(k => map[k].sort());
+  return map;
+}
+
+function populateTreeStartSelect() {
+  const sel = document.getElementById('tree-start-select');
+  sel.innerHTML = treeNodes.map(n => `<option value="${n.id}">${n.id}</option>`).join('');
+  sel.value = '1';
+}
+
+function drawTree() {
+  treeSvg.innerHTML = '';
+
+  // Edges
+  treeEdges.forEach(edge => {
+    const from = getTreeNode(edge.from), to = getTreeNode(edge.to);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', from.x); line.setAttribute('y1', from.y);
+    line.setAttribute('x2', to.x);   line.setAttribute('y2', to.y);
+    line.setAttribute('stroke', 'rgba(88,166,255,0.22)');
+    line.setAttribute('stroke-width', '2');
+    treeSvg.appendChild(line);
+  });
+
+  // Nodes
+  treeNodes.forEach(node => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+
+    let fill, stroke, sw = '2';
+    if (treeCurrent === node.id) {
+      fill='rgba(251,191,36,0.28)'; stroke='#fbbf24'; sw='2.5';
+    } else if (treeVisited.includes(node.id) || treeVisitedRecursive.includes(node.id)) {
+      fill='rgba(63,185,80,0.2)';  stroke='#3fb950';
+    } else if (treeInStack.has(node.id)) {
+      fill='rgba(244,114,182,0.2)'; stroke='#f472b6';
+    } else {
+      fill='rgba(88,166,255,0.14)'; stroke='rgba(88,166,255,0.4)';
+    }
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', node.x); circle.setAttribute('cy', node.y);
+    circle.setAttribute('r', '18');
+    circle.setAttribute('fill', fill); circle.setAttribute('stroke', stroke); circle.setAttribute('stroke-width', sw);
+    g.appendChild(circle);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x', node.x); text.setAttribute('y', node.y + 5);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-family', 'IBM Plex Mono, monospace');
+    text.setAttribute('font-size', '14');
+    text.setAttribute('fill', '#e2e8f4');
+    text.textContent = node.id;
+    g.appendChild(text);
+
+    treeSvg.appendChild(g);
+  });
+}
+
+function updateTreeTraversalDisplay() {
+  if (treeCurrentMode === 'iterative') {
+    document.getElementById('tree-stack-view').textContent   = treeStack.length   ? `[ ${[...treeStack].reverse().join(' → ')} ]` : '[ ]';
+    document.getElementById('tree-visited-view').textContent = treeVisited.length ? `[ ${treeVisited.join(' → ')} ]`              : '[ ]';
+  } else {
+    updateTreeRecursiveDisplay();
+  }
+}
+
+function updateTreeRecursiveDisplay() {
+  let callStackStr = '[Call Stack]\n';
+  if (treeCallStack.length === 0) {
+    callStackStr += '(empty)';
+  } else {
+    for (let i = treeCallStack.length - 1; i >= 0; i--) {
+      const indent = (treeCallStack.length - 1 - i) * 2;
+      callStackStr += ' '.repeat(indent) + `→ dfs(${treeCallStack[i].node})\n`;
+      if (i < treeCallStack.length - 1) {
+        callStackStr += ' '.repeat(indent + 2) + `[neighbors: ${treeCallStack[i].neighbors.join(', ')}]\n`;
+      }
+    }
+  }
+  document.getElementById('tree-call-stack-view').textContent = callStackStr;
+  
+  document.getElementById('tree-visited-recursive-view').textContent = treeVisitedRecursive.length ? `[ ${treeVisitedRecursive.join(' → ')} ]` : '[ ]';
+  document.getElementById('tree-backtrack-view').textContent = treeBacktrackLog.length ? treeBacktrackLog.join('\n') : '[ ]';
+}
+
+function setTreeStatus(msg) { document.getElementById('tree-step-status').textContent = msg || 'Ready'; }
+
+function switchTreeMode(mode) {
+  stopTreeDFS();
+  treeCurrentMode = mode;
+  
+  document.getElementById('tree-mode-iterative').classList.toggle('btn-primary', mode === 'iterative');
+  document.getElementById('tree-mode-iterative').classList.toggle('btn', mode !== 'iterative');
+  document.getElementById('tree-mode-recursive').classList.toggle('btn-primary', mode === 'recursive');
+  document.getElementById('tree-mode-recursive').classList.toggle('btn', mode !== 'recursive');
+  
+  document.getElementById('tree-iterative-panel').style.display = mode === 'iterative' ? 'block' : 'none';
+  document.getElementById('tree-recursive-panel').style.display = mode === 'recursive' ? 'block' : 'none';
+  
+  resetTree();
+}
+
+// ──── TREE ITERATIVE DFS ────
+function initTreeDFS() {
+  const start = document.getElementById('tree-start-select').value;
+  if (!start) { setTreeStatus('Select a start node'); return false; }
+  treeGraph   = buildTreeAdjacency();
+  treeStack   = [start];
+  treeVisited = [];
+  treeInStack = new Set([start]);
+  treeCurrent = null;
+  treeStep    = 0;
+  updateTreeTraversalDisplay();
+  drawTree();
+  return true;
+}
+
+function doTreeStep() {
+  if (treeStack.length === 0) {
+    treeCurrent = null;
+    drawTree();
+    setTreeStatus(`DFS complete — visited ${treeVisited.length} node(s)`);
+    stopTreeDFS();
+    return;
+  }
+
+  const node = treeStack.pop();
+
+  if (treeVisited.includes(node)) {
+    treeInStack.delete(node);
+    updateTreeTraversalDisplay();
+    drawTree();
+    if (treeStack.length === 0) { setTreeStatus(`DFS complete — visited ${treeVisited.length} node(s)`); stopTreeDFS(); }
+    return;
+  }
+
+  treeCurrent = node;
+  treeVisited.push(node);
+  treeInStack.delete(node);
+  treeStep++;
+
+  const neighbors = (treeGraph[node] || []).slice().reverse();
+  neighbors.forEach(nb => {
+    if (!treeVisited.includes(nb)) {
+      treeStack.push(nb);
+      treeInStack.add(nb);
+    }
+  });
+
+  updateTreeTraversalDisplay();
+  drawTree();
+  setTreeStatus(`Step ${treeStep}: Visiting ${node} — pushed neighbors: [${neighbors.filter(n=>!treeVisited.includes(n)).join(', ')||'none'}]`);
+
+  if (treeStack.length === 0) {
+    treeCurrent = null;
+    drawTree();
+    setTreeStatus(`DFS complete — visited ${treeVisited.length} node(s)`);
+    stopTreeDFS();
+  }
+}
+
+// ──── TREE RECURSIVE DFS ────
+function initTreeRecursiveDFS() {
+  const start = document.getElementById('tree-start-select').value;
+  if (!start) { setTreeStatus('Select a start node'); return false; }
+  treeGraph = buildTreeAdjacency();
+  treeCallStack = [];
+  treeBacktrackLog = [];
+  treeVisitedRecursive = [];
+  treeStep_recursive = 0;
+  treeCurrent = null;
+  updateTreeRecursiveDisplay();
+  drawTree();
+  return true;
+}
+
+function doTreeRecursiveStep() {
+  if (treeCallStack.length === 0 && treeVisitedRecursive.length === 0) {
+    const start = document.getElementById('tree-start-select').value;
+    treeCallStack.push({node: start, neighbors: treeGraph[start] || [], index: 0});
+    updateTreeRecursiveDisplay();
+    drawTree();
+    treeCurrent = start;
+    setTreeStatus(`Entered dfs(${start})`);
+    return;
+  }
+
+  if (treeCallStack.length === 0) {
+    treeCurrent = null;
+    drawTree();
+    setTreeStatus(`DFS complete — visited ${treeVisitedRecursive.length} node(s)`);
+    stopTreeDFS();
+    return;
+  }
+
+  const frame = treeCallStack[treeCallStack.length - 1];
+  const currentNode = frame.node;
+
+  if (frame.index === 0) {
+    treeVisitedRecursive.push(currentNode);
+    treeCurrent = currentNode;
+    treeStep_recursive++;
+    setTreeStatus(`Step ${treeStep_recursive}: Marked ${currentNode} as visited`);
+    updateTreeRecursiveDisplay();
+    drawTree();
+    frame.index++;
+    return;
+  }
+
+  const neighbors = frame.neighbors;
+  let nextNeighbor = null;
+  for (let i = frame.index - 1; i < neighbors.length; i++) {
+    if (!treeVisitedRecursive.includes(neighbors[i])) {
+      nextNeighbor = neighbors[i];
+      frame.index = i + 1;
+      break;
+    }
+  }
+
+  if (nextNeighbor) {
+    treeCallStack.push({node: nextNeighbor, neighbors: treeGraph[nextNeighbor] || [], index: 0});
+    treeCurrent = nextNeighbor;
+    treeStep_recursive++;
+    setTreeStatus(`Recursively calling dfs(${nextNeighbor})`);
+    updateTreeRecursiveDisplay();
+    drawTree();
+  } else {
+    const popped = treeCallStack.pop();
+    treeBacktrackLog.push(`↩ Backtrack from ${popped.node}`);
+    treeStep_recursive++;
+    
+    if (treeCallStack.length > 0) {
+      treeCurrent = treeCallStack[treeCallStack.length - 1].node;
+      setTreeStatus(`Backtracked from ${popped.node}, continue with ${treeCurrent}`);
+    } else {
+      treeCurrent = null;
+      setTreeStatus(`DFS complete — visited ${treeVisitedRecursive.length} node(s)`);
+    }
+    
+    updateTreeRecursiveDisplay();
+    drawTree();
+  }
+}
+
+function runTreeMode() {
+  stopTreeDFS();
+  if (treeCurrentMode === 'iterative') {
+    if (!initTreeDFS()) return;
+  } else {
+    if (!initTreeRecursiveDFS()) return;
+  }
+  treeRunning = true;
+  treeTimer = setInterval(() => {
+    if (treeCurrentMode === 'iterative') {
+      if (treeStack.length === 0 && treeVisited.length > 0) { stopTreeDFS(); return; }
+    } else {
+      if (treeCallStack.length === 0 && treeVisitedRecursive.length > 0) { stopTreeDFS(); return; }
+    }
+    nextTreeStep();
+  }, 900);
+}
+
+function nextTreeStep() {
+  if (!treeRunning && treeStep === 0 && treeStep_recursive === 0) {
+    if (treeCurrentMode === 'iterative') {
+      if (!initTreeDFS()) return;
+    } else {
+      if (!initTreeRecursiveDFS()) return;
+    }
+  }
+  
+  if (treeCurrentMode === 'iterative') {
+    doTreeStep();
+  } else {
+    doTreeRecursiveStep();
+  }
+}
+
+function stopTreeDFS() {
+  clearInterval(treeTimer);
+  treeTimer   = null;
+  treeRunning = false;
+}
+
+function resetTree() {
+  stopTreeDFS();
+  treeNodes      = JSON.parse(JSON.stringify(treeDefaultNodes));
+  treeEdges      = JSON.parse(JSON.stringify(treeDefaultEdges));
+  treeStack   = []; treeVisited = []; treeInStack = new Set();
+  treeCurrent = null; treeStep = 0;
+  treeCallStack = []; treeBacktrackLog = []; treeVisitedRecursive = []; treeStep_recursive = 0;
+  updateTreeTraversalDisplay();
+  drawTree();
+  setTreeStatus('Ready to start');
+}
+
+function randomTree() {
+  stopTreeDFS();
+  // For a tree, just keep default edges or simple modification
+  treeEdges = JSON.parse(JSON.stringify(treeDefaultEdges));
+  treeStack=[]; treeVisited=[]; treeInStack=new Set();
+  treeCurrent=null; treeStep=0;
+  treeCallStack = []; treeBacktrackLog = []; treeVisitedRecursive = []; treeStep_recursive = 0;
+  updateTreeTraversalDisplay();
+  drawTree();
+  setTreeStatus('Tree — press Run DFS');
+}
+
+/* ════════════════════════════════
+   IMPLEMENTATION SELECTOR
+   ════════════════════════════════ */
+function switchImpl(lang) {
+  const cImpl = document.getElementById('c-impl');
+  const pythonImpl = document.getElementById('python-impl');
+  const cBtn = document.getElementById('impl-c');
+  const pythonBtn = document.getElementById('impl-python');
+  
+  if (lang === 'c') {
+    cImpl.classList.remove('hidden');
+    pythonImpl.classList.add('hidden');
+    cBtn.classList.add('active');
+    pythonBtn.classList.remove('active');
+  } else if (lang === 'python') {
+    cImpl.classList.add('hidden');
+    pythonImpl.classList.remove('hidden');
+    cBtn.classList.remove('active');
+    pythonBtn.classList.add('active');
+  }
+}
+
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  // Note: tree canvas resizing can be added here if needed
+});
+window.addEventListener('load', () => {
+  resizeCanvas();
+  populateStartSelect();
+  populateTreeStartSelect();
+  switchMode('iterative');
+  switchTreeMode('iterative');
+  drawGraph();
+  drawTree();
+  updateTraversalDisplay();
+  updateTreeTraversalDisplay();
+  updateUndoRedo();
+  setStatus('Ready to start');
+  setTreeStatus('Ready to start');
+});
+</script>
+</body>
+</html>

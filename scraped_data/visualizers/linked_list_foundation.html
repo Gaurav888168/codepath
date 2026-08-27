@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linked List Foundation — Interactive Visual</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d45;
+    --border2: #263550;
+    --text: #e2e8f4;
+    --muted: #6b7a99;
+    --accent-main: #58a6ff;
+    --accent-sel: #3fb950;
+    --accent2: #f472b6;
+    --accent3: #34d399;
+    --accent4: #fbbf24;
+    --accent-orange: #f0883e;
+    --rejected: #ef4444;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+  body { min-height:100vh; background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+  .top-bar { position:sticky; top:0; z-index:100; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 20px; background:rgba(10,14,26,0.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+  .top-title { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; }
+  .top-title span { color:var(--accent4); }
+  .divider { width:1px; height:28px; background:var(--border2); flex-shrink:0; }
+  .pen-toolbar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tool-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .tool-btn:hover { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.06); }
+  .tool-btn.active { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.12); }
+  .pen-toolbar input[type="color"] { width:34px; height:34px; padding:0; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); cursor:pointer; }
+  .pen-toolbar input[type="range"] { width:110px; }
+  .pen-toolbar > *:not(#pen-toggle) { display:none; }
+  .pen-toolbar.active > *:not(#pen-toggle) { display:inline-flex; }
+  .page { position:relative; z-index:1; }
+  header { padding:36px 40px 28px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+  .tag-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+  .tag { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:4px 12px; border-radius:20px; }
+  .tag-blue { color:var(--accent-main); border:1px solid rgba(88,166,255,0.25); background:rgba(88,166,255,0.06); }
+  .tag-sel { color:var(--accent-sel); border:1px solid rgba(63,185,80,0.25); background:rgba(63,185,80,0.06); }
+  .tag-orange { color:var(--accent-orange); border:1px solid rgba(240,136,62,0.25); background:rgba(240,136,62,0.06); }
+  h1 { font-size:clamp(22px,4vw,38px); line-height:1.1; margin-bottom:8px; letter-spacing:-0.5px; }
+  .subtitle { font-size:13px; color:var(--muted); max-width:640px; line-height:1.75; }
+  .progress-bar { height:2px; background:var(--border); margin-top:16px; }
+  .progress-fill { height:100%; width:100%; background:linear-gradient(90deg, var(--accent-sel), var(--accent3), var(--accent-main)); transition:width .4s ease; }
+  .container { max-width:1100px; margin:0 auto; padding:28px 24px 48px; position:relative; }
+  .problem-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent-main); }
+  .problem-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent3); }
+  .theory-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-points { list-style:none; padding:0; }
+  .theory-points li { margin-bottom:12px; line-height:1.6; }
+  .theory-points li strong { color:var(--accent4); }
+  .theory-points li ul { margin-top:8px; margin-left:20px; }
+  .theory-points li ul li { margin-bottom:6px; color:var(--muted); }
+  .problem-body { color:var(--muted); font-size:13px; line-height:1.8; }
+  .problem-body strong { color:var(--text); }
+  .main-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface2); }
+  .dot { width:8px; height:8px; border-radius:50%; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:18px 20px; background:var(--surface2); border-top:1px solid var(--border); }
+  .btn { font-family:'IBM Plex Mono',monospace; font-size:12px; padding:10px 16px; border-radius:10px; border:1px solid var(--border2); background:var(--surface); color:var(--muted); cursor:pointer; }
+  .btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .btn-primary { border-color:var(--accent-main); color:var(--text); background:linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+  .step-label { color:var(--muted); font-size:12px; }
+  .small-input { width:120px; padding:10px 12px; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); color:var(--text); }
+  .list-container { position:relative; display:block; line-height:0; background:#0f172a; min-height:250px; overflow-x:auto; overflow-y:visible; }
+  #list-svg { width:100%; min-width:600px; display:block; }
+  #draw-canvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; }
+  #draw-canvas.pen-active { pointer-events:all; cursor:crosshair; }
+  .section-hdr { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text); margin:24px 0 16px 0; display:flex; align-items:center; gap:12px; font-weight:600; }
+  .section-hdr::after { content:''; flex:1; height:2px; background:linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .code-block { padding:20px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .code-line { display:flex; gap:10px; }
+  .ln { color:var(--muted); min-width:18px; user-select:none; font-size:11px; }
+  .kw { color:var(--accent2); }
+  .fn { color:var(--accent-main); }
+  .cm { color:var(--muted); font-style:italic; }
+  .vr { color:var(--accent-sel); }
+  .op { color:var(--accent4); }
+  .pp { color:var(--accent2); }
+  .str { color:var(--accent3); }
+  .dt { color:var(--accent-orange); }
+  .i1 { display:inline-block; margin-left:20px; }
+  .i2 { display:inline-block; margin-left:40px; }
+  .i3 { display:inline-block; margin-left:60px; }
+  .node-structure { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; margin-bottom:24px; }
+  .node-diagram { display:flex; gap:20px; align-items:center; justify-content:center; flex-wrap:wrap; }
+  .node-box { display:flex; border:2px solid var(--accent-main); border-radius:8px; overflow:hidden; }
+  .node-data { background:var(--surface2); padding:15px 20px; min-width:80px; text-align:center; border-right:2px solid var(--accent-main); }
+  .node-next { background:var(--surface2); padding:15px 20px; min-width:80px; text-align:center; color:var(--accent-sel); }
+  .node-label { font-size:10px; color:var(--muted); margin-top:8px; text-align:center; }
+  .arrow { color:var(--accent4); font-size:24px; }
+  @media(max-width:860px) { .grid-2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <span class="top-title">Linked List Foundation <span>Visualizer</span></span>
+  <div class="divider"></div>
+  <div class="pen-toolbar">
+    <button class="tool-btn" id="pen-toggle" onclick="togglePen()">✏️ Pen</button>
+    <button class="tool-btn" id="btn-undo" onclick="undoDraw()" disabled title="Undo">↶ Undo</button>
+    <button class="tool-btn" id="btn-redo" onclick="redoDraw()" disabled title="Redo">↷ Redo</button>
+    <input type="color" id="pen-color" value="#fbbf24" onchange="setColor(this.value)" title="Pen Color" />
+    <input type="range" id="pen-size" min="1" max="12" value="3" onchange="setSize(this.value)" title="Thickness" />
+    <button class="tool-btn" id="btn-clear" onclick="clearDraw()" title="Clear Drawing">🧹 Clear</button>
+  </div>
+</div>
+<div class="page">
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Data Structures</span>
+      <span class="tag tag-sel">Linked List</span>
+      <span class="tag tag-orange">Foundation</span>
+    </div>
+    <h1>Linked List <span style="color:var(--accent4)">Foundation</span></h1>
+    <p class="subtitle">Master singly linked lists with dynamic node structures, insertion, deletion, and traversal operations with complete C implementation.</p>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  </header>
+  <div class="container">
+    <div class="node-structure">
+      <h2 style="margin-bottom:20px; font-size:16px;">Node Structure</h2>
+      <p style="color:var(--muted); margin-bottom:20px; font-size:13px; line-height:1.7;">A linked list node contains two parts: <strong style="color:var(--text);">data</strong> (the value) and <strong style="color:var(--text);">next</strong> (pointer to the next node). The last node's next pointer is NULL.</p>
+      <div class="node-diagram">
+        <div>
+          <div class="node-box">
+            <div class="node-data">Data<br><span style="color:var(--accent4); font-size:14px; font-weight:600;">10</span></div>
+            <div class="node-next">Next<br><span style="color:var(--accent3); font-size:14px; font-weight:600;">→</span></div>
+          </div>
+          <div class="node-label">Node 1</div>
+        </div>
+        <div class="arrow">→</div>
+        <div>
+          <div class="node-box">
+            <div class="node-data">Data<br><span style="color:var(--accent4); font-size:14px; font-weight:600;">20</span></div>
+            <div class="node-next">Next<br><span style="color:var(--accent3); font-size:14px; font-weight:600;">→</span></div>
+          </div>
+          <div class="node-label">Node 2</div>
+        </div>
+        <div class="arrow">→</div>
+        <div>
+          <div class="node-box">
+            <div class="node-data">Data<br><span style="color:var(--accent4); font-size:14px; font-weight:600;">30</span></div>
+            <div class="node-next">Next<br><span style="color:var(--rejected); font-size:14px; font-weight:600;">NULL</span></div>
+          </div>
+          <div class="node-label">Node 3</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="theory-box">
+      <h2>Theory</h2>
+      <div class="theory-body">
+        <p style="color:var(--muted); margin-bottom:16px; line-height:1.7;">A linked list is a linear data structure where elements are stored in nodes, each pointing to the next node. Unlike arrays, linked lists don't require contiguous memory, allowing dynamic memory allocation and efficient insertions/deletions at any position.</p>
+        <ul class="theory-points">
+          <li><strong>Node Structure:</strong> Contains data and a pointer to the next node</li>
+          <li><strong>Head Pointer:</strong> Points to the first node in the list</li>
+          <li><strong>Dynamic Memory:</strong> Each node is allocated individually during runtime</li>
+          <li><strong>Key Operations:</strong>
+            <ul>
+              <li>Insert at beginning O(1)</li>
+              <li>Insert at end O(n) or O(1) with tail pointer</li>
+              <li>Delete O(n)</li>
+              <li>Search/Traverse O(n)</li>
+            </ul>
+          </li>
+          <li><strong>Real-world Applications:</strong>
+            <ul>
+              <li>Undo/Redo functionality</li>
+              <li>Navigation in multimedia players</li>
+              <li>Hash table collision handling</li>
+              <li>Polynomial representation</li>
+              <li>Implementation of queues and stacks</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="problem-box">
+      <h2>Problem Statement</h2>
+      <div class="problem-body">
+        A linked list dynamically stores elements as nodes connected via pointers. Use the visualizer to insert values at the beginning or end, delete nodes, and see how the list structure changes.
+      </div>
+    </div>
+
+    <div class="main-card">
+      <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>linkedlist.svg — Singly Linked List View</h3></div>
+      <div class="list-container" id="list-container">
+        <svg id="list-svg" viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg"></svg>
+        <canvas id="draw-canvas"></canvas>
+      </div>
+      <div class="controls">
+        <input class="small-input" id="insert-input" type="text" placeholder="Value" maxlength="5" />
+        <button class="btn btn-primary" onclick="insertBeginning()">Insert at Start</button>
+        <button class="btn" onclick="insertEnd()">Insert at End</button>
+        <button class="btn" onclick="deleteFirst()">Delete First</button>
+        <button class="btn" onclick="resetList()">Reset</button>
+        <span class="step-label" id="step-status"></span>
+      </div>
+    </div>
+
+    <p class="section-hdr">Pseudocode & Complexity</p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>pseudocode.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// Linked List Operations</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">class</span> <span class="fn">Node</span>:</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1">data</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1">next = NULL</span></div>
+          <div class="code-line"><span class="ln">5</span><span></span></div>
+          <div class="code-line"><span class="ln">6</span><span><span class="kw">function</span> <span class="fn">insertBeginning</span>(<span class="vr">head</span>, <span class="vr">value</span>):</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="vr">newNode</span> = <span class="kw">new</span> Node(value)</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="vr">newNode</span>.next = head</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i1"><span class="kw">return</span> <span class="vr">newNode</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span></span></div>
+          <div class="code-line"><span class="ln">11</span><span><span class="kw">function</span> <span class="fn">insertEnd</span>(<span class="vr">head</span>, <span class="vr">value</span>):</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i1"><span class="kw">if</span> head == NULL: <span class="kw">return</span> <span class="fn">insertBeginning</span>(<span class="vr">head</span>, <span class="vr">value</span>)</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i1"><span class="vr">current</span> = head</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i1"><span class="kw">while</span> <span class="vr">current</span>.next != NULL:</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i2"><span class="vr">current</span> = <span class="vr">current</span>.next</span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i1"><span class="vr">current</span>.next = <span class="kw">new</span> Node(value)</span></div>
+          <div class="code-line"><span class="ln">17</span><span><span class="kw">function</span> <span class="fn">deleteFirst</span>(<span class="vr">head</span>):</span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i1"><span class="kw">if</span> head == NULL: <span class="kw">return</span> NULL</span></div>
+          <div class="code-line"><span class="ln">19</span><span class="i1"><span class="vr">temp</span> = head</span></div>
+          <div class="code-line"><span class="ln">20</span><span class="i1">head = head.next</span></div>
+          <div class="code-line"><span class="ln">21</span><span class="i1"><span class="kw">free</span>(temp)</span></div>
+          <div class="code-line"><span class="ln">22</span><span class="i1"><span class="kw">return</span> head</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>complexity.md</h3></div>
+        <div style="padding:20px;">
+          <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+            <tr><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Operation</th><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Time</th></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Insert at Start</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(1)</td></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Insert at End</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(n)</td></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Delete First</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(1)</td></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Search/Traverse</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(n)</td></tr>
+            <tr><td style="padding:10px 14px;color:var(--text);font-weight:600;">Space</td><td style="padding:10px 14px;color:var(--accent-sel);font-weight:600;">O(n)</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-hdr">C Implementation</p>
+    <div class="card">
+      <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>linkedlist.c</h3></div>
+      <div class="code-block">
+        <div class="code-line"><span class="ln">1</span><span><span class="pp">#include</span> <span class="str">&lt;stdio.h&gt;</span></span></div>
+        <div class="code-line"><span class="ln">2</span><span><span class="pp">#include</span> <span class="str">&lt;stdlib.h&gt;</span></span></div>
+        <div class="code-line"><span class="ln">3</span><span></span></div>
+        <div class="code-line"><span class="ln">4</span><span><span class="kw">typedef struct</span> Node {</span></div>
+        <div class="code-line"><span class="ln">5</span><span class="i1"><span class="dt">int</span> data;</span></div>
+        <div class="code-line"><span class="ln">6</span><span class="i1"><span class="kw">struct</span> Node *next;</span></div>
+        <div class="code-line"><span class="ln">7</span><span>} Node;</span></div>
+        <div class="code-line"><span class="ln">8</span><span></span></div>
+        <div class="code-line"><span class="ln">9</span><span>Node* createNode(<span class="dt">int</span> data) {</span></div>
+        <div class="code-line"><span class="ln">10</span><span class="i1">Node* newNode = (<span class="dt">Node*</span>)malloc(<span class="kw">sizeof</span>(Node));</span></div>
+        <div class="code-line"><span class="ln">11</span><span class="i1">newNode-&gt;data = data;</span></div>
+        <div class="code-line"><span class="ln">12</span><span class="i1">newNode-&gt;next = NULL;</span></div>
+        <div class="code-line"><span class="ln">13</span><span class="i1"><span class="kw">return</span> newNode;</span></div>
+        <div class="code-line"><span class="ln">14</span><span>}</span></div>
+        <div class="code-line"><span class="ln">15</span><span></span></div>
+        <div class="code-line"><span class="ln">16</span><span>Node* insertBeginning(Node* head, <span class="dt">int</span> data) {</span></div>
+        <div class="code-line"><span class="ln">17</span><span class="i1">Node* newNode = createNode(data);</span></div>
+        <div class="code-line"><span class="ln">18</span><span class="i1">newNode-&gt;next = head;</span></div>
+        <div class="code-line"><span class="ln">19</span><span class="i1"><span class="kw">return</span> newNode;</span></div>
+        <div class="code-line"><span class="ln">20</span><span>}</span></div>
+        <div class="code-line"><span class="ln">21</span><span></span></div>
+        <div class="code-line"><span class="ln">22</span><span>Node* insertEnd(Node* head, <span class="dt">int</span> data) {</span></div>
+        <div class="code-line"><span class="ln">23</span><span class="i1"><span class="kw">Node*</span> newNode = createNode(data);</span></div>
+        <div class="code-line"><span class="ln">24</span><span class="i1"><span class="kw">if</span> (head == NULL) <span class="kw">return</span> newNode;</span></div>
+        <div class="code-line"><span class="ln">25</span><span class="i1">Node* current = head;</span></div>
+        <div class="code-line"><span class="ln">26</span><span class="i1"><span class="kw">while</span> (current-&gt;next != NULL)</span></div>
+        <div class="code-line"><span class="ln">27</span><span class="i2">current = current-&gt;next;</span></div>
+        <div class="code-line"><span class="ln">28</span><span class="i1">current-&gt;next = newNode;</span></div>
+        <div class="code-line"><span class="ln">29</span><span class="i1"><span class="kw">return</span> head;</span></div>
+        <div class="code-line"><span class="ln">30</span><span>}</span></div>
+        <div class="code-line"><span class="ln">31</span><span></span></div>
+        <div class="code-line"><span class="ln">32</span><span>Node* deleteFirst(Node* head) {</span></div>
+        <div class="code-line"><span class="ln">33</span><span class="i1"><span class="kw">if</span> (head == NULL) <span class="kw">return</span> NULL;</span></div>
+        <div class="code-line"><span class="ln">34</span><span class="i1">Node* temp = head;</span></div>
+        <div class="code-line"><span class="ln">35</span><span class="i1">head = head-&gt;next;</span></div>
+        <div class="code-line"><span class="ln">36</span><span class="i1">free(temp);</span></div>
+        <div class="code-line"><span class="ln">37</span><span class="i1"><span class="kw">return</span> head;</span></div>
+        <div class="code-line"><span class="ln">38</span><span>}</span></div>
+        <div class="code-line"><span class="ln">39</span><span></span></div>
+        <div class="code-line"><span class="ln">40</span><span><span class="dt">void</span> traverse(Node* head) {</span></div>
+        <div class="code-line"><span class="ln">41</span><span class="i1">Node* current = head;</span></div>
+        <div class="code-line"><span class="ln">42</span><span class="i1"><span class="kw">while</span> (current != NULL) {</span></div>
+        <div class="code-line"><span class="ln">43</span><span class="i2">printf(<span class="str">"%d → "</span>, current-&gt;data);</span></div>
+        <div class="code-line"><span class="ln">44</span><span class="i2">current = current-&gt;next;</span></div>
+        <div class="code-line"><span class="ln">45</span><span class="i1">}</span></div>
+        <div class="code-line"><span class="ln">46</span><span class="i1">printf(<span class="str">"NULL\n"</span>);</span></div>
+        <div class="code-line"><span class="ln">47</span><span>}</span></div>
+        <div class="code-line"><span class="ln">48</span><span></span></div>
+        <div class="code-line"><span class="ln">49</span><span><span class="dt">int</span> main() {</span></div>
+        <div class="code-line"><span class="ln">50</span><span class="i1">Node* head = NULL;</span></div>
+        <div class="code-line"><span class="ln">51</span><span class="i1">head = insertBeginning(head, 10);</span></div>
+        <div class="code-line"><span class="ln">52</span><span class="i1">head = insertBeginning(head, 5);</span></div>
+        <div class="code-line"><span class="ln">53</span><span class="i1">head = insertEnd(head, 20);</span></div>
+        <div class="code-line"><span class="ln">54</span><span class="i1">printf(<span class="str">"Original list: "</span>); traverse(head);</span></div>
+        <div class="code-line"><span class="ln">55</span><span class="i1">head = deleteFirst(head);</span></div>
+        <div class="code-line"><span class="ln">56</span><span class="i1">printf(<span class="str">"After delete: "</span>); traverse(head);</span></div>
+        <div class="code-line"><span class="ln">57</span><span class="i1"><span class="kw">return</span> 0;</span></div>
+        <div class="code-line"><span class="ln">58</span><span>}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('draw-canvas');
+const ctx = canvas.getContext('2d');
+let penActive = false, isDrawing = false;
+let penColor = '#fbbf24';
+let penSize = 3;
+let drawHistory = [];
+let redoStack = [];
+let lastX = 0, lastY = 0;
+let list = [10, 20, 30, 40];
+
+function resizeCanvas() {
+  let oldImage = null;
+  try { oldImage = ctx.getImageData(0,0,canvas.width,canvas.height); } catch(e) {}
+  const container = document.getElementById('list-container');
+  const rect = container.getBoundingClientRect();
+  canvas.width = Math.max(600, rect.width);
+  canvas.height = Math.max(250, rect.height);
+  if (oldImage) { try { ctx.putImageData(oldImage,0,0); } catch(e) {} }
+}
+
+function saveSnapshot() {
+  try { drawHistory.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e) {}
+  redoStack = [];
+  updateUndoRedo();
+}
+
+function updateUndoRedo() {
+  document.getElementById('btn-undo').disabled = drawHistory.length === 0;
+  document.getElementById('btn-redo').disabled = redoStack.length === 0;
+}
+
+function undoDraw() {
+  if (!drawHistory.length) return;
+  try { redoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e) {}
+  const prev = drawHistory.pop();
+  ctx.putImageData(prev,0,0);
+  updateUndoRedo();
+}
+
+function redoDraw() {
+  if (!redoStack.length) return;
+  try { drawHistory.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e) {}
+  const next = redoStack.pop();
+  ctx.putImageData(next,0,0);
+  updateUndoRedo();
+}
+
+function clearDraw() {
+  saveSnapshot();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+function togglePen() {
+  penActive = !penActive;
+  document.getElementById('pen-toggle').classList.toggle('active');
+  document.getElementById('draw-canvas').classList.toggle('pen-active');
+  document.querySelector('.pen-toolbar').classList.toggle('active');
+}
+
+function setColor(color) { penColor = color; }
+function setSize(size) { penSize = size; }
+
+function resetList() {
+  list = [10, 20, 30, 40];
+  document.getElementById('insert-input').value = '';
+  document.getElementById('step-status').textContent = '';
+  drawList();
+}
+
+function insertBeginning() {
+  const input = document.getElementById('insert-input');
+  const value = parseInt(input.value);
+  if (isNaN(value)) { alert('Enter a valid number'); return; }
+  list.unshift(value);
+  input.value = '';
+  document.getElementById('step-status').textContent = `Inserted ${value} at beginning`;
+  drawList();
+}
+
+function insertEnd() {
+  const input = document.getElementById('insert-input');
+  const value = parseInt(input.value);
+  if (isNaN(value)) { alert('Enter a valid number'); return; }
+  list.push(value);
+  input.value = '';
+  document.getElementById('step-status').textContent = `Inserted ${value} at end`;
+  drawList();
+}
+
+function deleteFirst() {
+  if (list.length === 0) { alert('List is empty'); return; }
+  const deleted = list.shift();
+  document.getElementById('step-status').textContent = `Deleted ${deleted}`;
+  drawList();
+}
+
+function drawList() {
+  const svg = document.getElementById('list-svg');
+  svg.innerHTML = '';
+  
+  if (list.length === 0) {
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', '450');
+    text.setAttribute('y', '125');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('fill', 'var(--muted)');
+    text.setAttribute('font-family', 'Plus Jakarta Sans');
+    text.setAttribute('font-size', '14');
+    text.textContent = 'Empty List';
+    svg.appendChild(text);
+    return;
+  }
+  
+  const nodeWidth = 70;
+  const nodeHeight = 60;
+  const spacing = 120;
+  const startX = 40;
+  const startY = 95;
+  
+  // Draw nodes and connections
+  for (let i = 0; i < list.length; i++) {
+    const x = startX + i * spacing;
+    const y = startY;
+    
+    // Node box
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', x);
+    rect.setAttribute('y', y);
+    rect.setAttribute('width', nodeWidth);
+    rect.setAttribute('height', nodeHeight);
+    rect.setAttribute('fill', '#1a2236');
+    rect.setAttribute('stroke', '#58a6ff');
+    rect.setAttribute('stroke-width', '2');
+    rect.setAttribute('rx', '6');
+    svg.appendChild(rect);
+    
+    // Divider line
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x + nodeWidth * 0.65);
+    line.setAttribute('y1', y);
+    line.setAttribute('x2', x + nodeWidth * 0.65);
+    line.setAttribute('y2', y + nodeHeight);
+    line.setAttribute('stroke', '#58a6ff');
+    line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+    
+    // Data label
+    const dataLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    dataLabel.setAttribute('x', x + nodeWidth * 0.32);
+    dataLabel.setAttribute('y', y + 18);
+    dataLabel.setAttribute('text-anchor', 'middle');
+    dataLabel.setAttribute('fill', '#6b7a99');
+    dataLabel.setAttribute('font-family', 'IBM Plex Mono');
+    dataLabel.setAttribute('font-size', '9');
+    dataLabel.textContent = 'data';
+    svg.appendChild(dataLabel);
+    
+    // Data value
+    const dataValue = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    dataValue.setAttribute('x', x + nodeWidth * 0.32);
+    dataValue.setAttribute('y', y + 38);
+    dataValue.setAttribute('text-anchor', 'middle');
+    dataValue.setAttribute('fill', '#fbbf24');
+    dataValue.setAttribute('font-family', 'IBM Plex Mono');
+    dataValue.setAttribute('font-size', '16');
+    dataValue.setAttribute('font-weight', '600');
+    dataValue.textContent = list[i];
+    svg.appendChild(dataValue);
+    
+    // Next label
+    const nextLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    nextLabel.setAttribute('x', x + nodeWidth * 0.82);
+    nextLabel.setAttribute('y', y + 18);
+    nextLabel.setAttribute('text-anchor', 'middle');
+    nextLabel.setAttribute('fill', '#6b7a99');
+    nextLabel.setAttribute('font-family', 'IBM Plex Mono');
+    nextLabel.setAttribute('font-size', '9');
+    nextLabel.textContent = 'next';
+    svg.appendChild(nextLabel);
+    
+    // Next pointer or NULL
+    const nextValue = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    nextValue.setAttribute('x', x + nodeWidth * 0.82);
+    nextValue.setAttribute('y', y + 38);
+    nextValue.setAttribute('text-anchor', 'middle');
+    nextValue.setAttribute('fill', i === list.length - 1 ? '#ef4444' : '#34d399');
+    nextValue.setAttribute('font-family', 'IBM Plex Mono');
+    nextValue.setAttribute('font-size', '14');
+    nextValue.setAttribute('font-weight', '600');
+    nextValue.textContent = i === list.length - 1 ? 'Ø' : '→';
+    svg.appendChild(nextValue);
+    
+    // Arrow to next node
+    if (i < list.length - 1) {
+      const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      arrow.setAttribute('d', `M ${x + nodeWidth + 5} ${y + nodeHeight / 2} L ${x + spacing - 5} ${y + nodeHeight / 2}`);
+      arrow.setAttribute('stroke', '#34d399');
+      arrow.setAttribute('stroke-width', '2');
+      arrow.setAttribute('fill', 'none');
+      arrow.setAttribute('marker-end', 'url(#arrowhead)');
+      svg.appendChild(arrow);
+    }
+  }
+  
+  // Arrow marker definition
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+  marker.setAttribute('id', 'arrowhead');
+  marker.setAttribute('markerWidth', '10');
+  marker.setAttribute('markerHeight', '10');
+  marker.setAttribute('refX', '9');
+  marker.setAttribute('refY', '3');
+  marker.setAttribute('orient', 'auto');
+  const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  polygon.setAttribute('points', '0 0, 10 3, 0 6');
+  polygon.setAttribute('fill', '#34d399');
+  marker.appendChild(polygon);
+  defs.appendChild(marker);
+  svg.insertBefore(defs, svg.firstChild);
+}
+
+// Mouse events for drawing
+canvas.addEventListener('mousedown', (e) => {
+  if (!penActive) return;
+  isDrawing = true;
+  saveSnapshot();
+  const rect = canvas.getBoundingClientRect();
+  lastX = e.clientX - rect.left;
+  lastY = e.clientY - rect.top;
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!isDrawing || !penActive) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  ctx.strokeStyle = penColor;
+  ctx.lineWidth = penSize;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  lastX = x;
+  lastY = y;
+});
+
+canvas.addEventListener('mouseup', () => { isDrawing = false; });
+canvas.addEventListener('mouseleave', () => { isDrawing = false; });
+
+window.addEventListener('resize', resizeCanvas);
+document.addEventListener('DOMContentLoaded', () => {
+  resizeCanvas();
+  drawList();
+});
+</script>
+</body>
+</html>

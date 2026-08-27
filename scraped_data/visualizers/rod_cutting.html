@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rod Cutting Problem — DP Visualizer</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1a2236;
+      --border: #1e2d45;
+      --border2: #263550;
+      --text: #e2e8f4;
+      --muted: #6b7a99;
+      --accent-main: #58a6ff;
+      --accent-sel: #3fb950;
+      --accent2: #f472b6;
+      --accent3: #34d399;
+      --accent4: #fbbf24;
+      --accent-orange: #f0883e;
+      --rejected: #ef4444;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
+    body::before { content: ""; position: fixed; inset: 0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+
+    .top-bar { position: sticky; top: 0; z-index: 100000; display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: rgba(10,14,26,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .top-title { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; }
+    .top-title span { color: var(--accent4); }
+    .badge { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-main); border: 1px solid rgba(88,166,255,0.3); background: rgba(88,166,255,0.08); border-radius: 999px; padding: 4px 10px; }
+    .pen-toolbar-top { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-left: auto; pointer-events: auto; }
+    #pen-canvas { position: fixed; top: 0; left: 0; z-index: 99999; cursor: crosshair; display: none; pointer-events: none; }
+    #pen-undo-btn:disabled, #pen-redo-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #pen-undo-btn:disabled:hover, #pen-redo-btn:disabled:hover { border-color: var(--border2); color: var(--muted); }
+
+    .page { position: relative; z-index: 1; }
+    header { padding: 32px 34px 24px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; }
+    .tag-blue { color: var(--accent-main); border: 1px solid rgba(88,166,255,0.25); background: rgba(88,166,255,0.06); }
+    .tag-sel { color: var(--accent-sel); border: 1px solid rgba(63,185,80,0.25); background: rgba(63,185,80,0.06); }
+    .tag-orange { color: var(--accent-orange); border: 1px solid rgba(240,136,62,0.25); background: rgba(240,136,62,0.06); }
+    .tag-pink { color: var(--accent2); border: 1px solid rgba(244,114,182,0.25); background: rgba(244,114,182,0.06); }
+    h1 { font-size: clamp(22px, 4vw, 38px); line-height: 1.1; margin-bottom: 8px; letter-spacing: -0.5px; }
+    .subtitle { font-size: 13px; color: var(--muted); max-width: 760px; line-height: 1.75; }
+
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 20px 42px; }
+    .section-hdr { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin: 24px 0 16px; display: flex; align-items: center; gap: 12px; font-weight: 600; }
+    .section-hdr::after { content: ""; flex: 1; height: 2px; background: linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 20px; align-items: start; }
+    .viz-stack { display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .card-header { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .content { padding: 14px 16px; }
+
+    .theory-box { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; padding: 18px 20px; border-left: 3px solid var(--accent3); }
+    .theory-box h2 { font-size: 16px; margin-bottom: 12px; }
+    .theory-box p { color: var(--muted); line-height: 1.75; margin-bottom: 14px; }
+    .theory-list { list-style: none; display: flex; flex-direction: column; gap: 10px; color: var(--text); }
+    .theory-list strong { color: var(--accent4); }
+    .theory-highlights { margin-top: 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .mini-point { border: 1px solid var(--border2); background: rgba(88,166,255,0.06); border-radius: 12px; padding: 12px; }
+    .mini-point h4 { font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--accent-main); margin-bottom: 6px; }
+    .mini-point p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+    .controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .small-input, .btn {
+      font-family: 'IBM Plex Mono', monospace;
+      border-radius: 10px;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+    .btn { cursor: pointer; transition: all .15s; }
+    .btn:hover { border-color: var(--accent-main); color: var(--accent-main); }
+    .btn-primary { border-color: var(--accent-main); background: linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .pill { font-family: 'IBM Plex Mono', monospace; font-size: 11px; border: 1px solid var(--border2); border-radius: 999px; background: var(--surface2); padding: 7px 10px; color: var(--muted); }
+    .pill b { color: var(--accent4); }
+    .pill.success b { color: var(--accent-sel); }
+    .pill.error b { color: var(--rejected); }
+    .walk-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+
+    .walk-layout { display: grid; grid-template-columns: 1.9fr 1fr; gap: 10px; align-items: start; }
+    .tree-wrap { min-height: 620px; max-height: 700px; overflow-x: auto; overflow-y: auto; padding: 14px; width: 100%; background: #0f172a; border: 1px solid var(--border2); border-radius: 12px; }
+    .tree-wrap { scrollbar-color: #2f4e7d #0b1324; scrollbar-width: thin; }
+    .tree-wrap::-webkit-scrollbar { height: 12px; width: 12px; }
+    .tree-wrap::-webkit-scrollbar-track { background: #0b1324; border-radius: 10px; }
+    .tree-wrap::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #2f4e7d, #3b82f6); border-radius: 10px; border: 2px solid #0b1324; }
+    .tree-wrap::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #3b82f6, #58a6ff); }
+    .svg-tree { display: block; width: max-content; min-width: 0; }
+    .edge { stroke: var(--border2); stroke-width: 1.2; fill: none; }
+    .edge-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; fill: var(--muted); }
+    .node-box { stroke-width: 1; rx: 8; ry: 8; }
+    .node-box.normal { fill: rgba(88,166,255,0.1); stroke: rgba(88,166,255,0.35); }
+    .node-box.leaf { fill: rgba(63,185,80,0.12); stroke: rgba(63,185,80,0.35); }
+    .node-box.cached { fill: rgba(244,114,182,0.12); stroke: rgba(244,114,182,0.35); }
+    .node-box.visited { stroke-width: 1.6; }
+    .node-box.active { stroke: var(--accent4); stroke-width: 2.2; filter: drop-shadow(0 0 6px rgba(251,191,36,0.35)); }
+    .node-text { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; }
+    .node-text.normal { fill: var(--accent-main); }
+    .node-text.leaf { fill: var(--accent-sel); }
+    .node-text.cached { fill: var(--accent2); }
+    .approach-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 20px; }
+    .plain-steps, .impl-notes { list-style: none; display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .plain-steps strong, .impl-notes strong { color: var(--accent4); }
+    .code-block { font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.7; color: var(--text); background: #0f172a; border: 1px solid var(--border2); border-radius: 10px; padding: 12px; overflow-x: auto; margin-bottom: 10px; }
+    .note { color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .code-line { font-family: 'IBM Plex Mono', monospace; color: var(--muted); font-size: 12px; line-height: 1.9; }
+    .code-line .kw { color: var(--accent2); }
+    .code-line .fn { color: var(--accent-main); }
+    .code-line .ok { color: var(--accent-sel); }
+    .code-line .bad { color: var(--rejected); }
+    .walk-panel { background: #0f172a; border: 1px solid var(--border2); border-radius: 12px; padding: 12px; }
+    .ps-line { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); padding: 6px 8px; border-radius: 6px; margin-bottom: 5px; border: 1px solid transparent; }
+    .ps-line.active { color: var(--accent4); background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.35); }
+    .call-box { margin-top: 10px; padding: 10px; border-radius: 8px; border: 1px solid var(--border2); background: rgba(88,166,255,0.06); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.6; }
+    .lang-switch { display: flex; gap: 8px; margin-bottom: 10px; }
+    .lang-btn.active { border-color: var(--accent-sel); color: var(--accent-sel); background: rgba(63,185,80,0.12); }
+    .hidden { display: none; }
+    .params-box { background: #0f172a; border: 1px solid var(--border2); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+    .params-box p { margin: 4px 0; color: var(--muted); }
+    .params-box b { color: var(--accent4); }
+
+    @media(max-width: 900px) {
+      .grid-2, .controls, .stats, .approach-grid, .walk-controls, .walk-layout { grid-template-columns: 1fr; }
+      .theory-highlights { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="pen-canvas"></canvas>
+  <div class="top-bar">
+    <span class="top-title">Rod Cutting <span>Problem</span></span>
+    <span class="badge">Dynamic Programming</span>
+    <div class="pen-toolbar-top" id="pen-toolbar-top">
+      <button class="btn btn-primary" id="pen-toggle-btn" title="Toggle Drawing Mode (P)" style="padding: 8px 14px; font-size: 12px;">✏️ Start Drawing</button>
+      <button id="pen-undo-btn" class="btn" style="padding: 8px 12px; font-size: 12px;">↶ Undo</button>
+      <button id="pen-redo-btn" class="btn" style="padding: 8px 12px; font-size: 12px;">↷ Redo</button>
+      <button id="pen-clear-btn" class="btn" style="padding: 8px 12px; font-size: 12px;">🗑️ Clear</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label for="pen-color" style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono', monospace;">Color:</label>
+        <input type="color" id="pen-color" value="#fbbf24" style="width:36px;height:28px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label for="pen-size" style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono', monospace; min-width:40px;">Size:</label>
+        <input type="range" id="pen-size" min="1" max="20" value="3" style="width:100px;">
+        <span id="pen-size-display" style="font-size:11px;color:var(--muted);min-width:30px;">3px</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <header>
+      <div class="tag-row">
+        <span class="tag tag-blue">Unbounded Knapsack</span>
+        <span class="tag tag-pink">Overlapping Subproblems</span>
+        <span class="tag tag-sel">Memoization</span>
+        <span class="tag tag-orange">Interactive</span>
+      </div>
+      <h1>Rod Cutting with <span style="color:var(--accent4);">DP Visualization</span></h1>
+      <p class="subtitle">Master the Rod Cutting problem: first see the full recursive tree with redundant calculations, then watch as DP memoization prunes the tree by reusing cached results. See how unbounded choices (cutting at any position) create exponential growth that DP tames.</p>
+    </header>
+
+    <div class="container">
+      <div class="theory-box">
+        <h2>Core Idea</h2>
+        <p>The Rod Cutting problem asks: given a rod of length n and a price table for each length, find the maximum profit by cutting the rod into pieces. Unlike 0/1 Knapsack, pieces can be reused (unbounded)—you can make multiple cuts at the same position.</p>
+        
+        <div style="background:rgba(88,166,255,0.08); border:1px solid rgba(88,166,255,0.2); border-radius:10px; padding:14px; margin-bottom:14px;">
+          <h3 style="color:var(--accent-main); font-size:13px; margin-bottom:8px; font-family:'IBM Plex Mono',monospace;">📋 Problem Statement With Example</h3>
+          <p style="color:var(--muted); font-size:12px; line-height:1.7; margin-bottom:10px;"><strong>You have:</strong></p>
+          <p style="color:var(--muted); font-size:12px; line-height:1.7; margin-left:10px; font-family:'IBM Plex Mono',monospace;">• Length 1: price = 1<br/>• Length 2: price = 5<br/>• Length 3: price = 8<br/>• Rod length: 3</p>
+          <p style="color:var(--muted); font-size:12px; line-height:1.7; margin-top:10px; margin-bottom:10px;"><strong>Question:</strong> How to cut the rod to maximize profit?</p>
+          <p style="color:var(--accent-sel); font-size:12px; line-height:1.7; margin-left:10px; font-family:'IBM Plex Mono',monospace;">✓ <strong>Option 1:</strong> No cut (one piece of length 3) = price 8.<br/>✓ <strong>Option 2:</strong> Cut into three pieces of length 1 = 1+1+1 = 3.<br/>✓ <strong>Option 3:</strong> Cut into one piece of length 1 + one of length 2 = 1+5 = 6.<br/>✓ <strong>OPTIMAL:</strong> No cut = 8 (maximum profit)</p>
+        </div>
+        
+        <ul class="theory-list">
+          <li><strong>Decision:</strong> for each length, try cutting at every position or not cutting at all.</li>
+          <li><strong>Unbounded:</strong> unlike 0/1 Knapsack, we can use pieces of same length multiple times.</li>
+          <li><strong>Overlapping Subproblems:</strong> decisions like "best profit for rod of length 2" appear multiple times in the tree.</li>
+          <li><strong>Optimal Substructure:</strong> best profit for length n = max(price[n] directly, or cut at position i and use optimal profits of remaining pieces).</li>
+          <li><strong>DP State:</strong> <code>dp[i]</code> = maximum profit from a rod of length i.</li>
+          <li><strong>Recurrence:</strong> <code>dp[i] = max(price[i], max(price[j] + dp[i-j]))</code> for all valid cut positions j.</li>
+          <li><strong>Result:</strong> Without DP, time is O(3^n); with DP, it drops to O(n²).</li>
+        </ul>
+        <div class="theory-highlights">
+          <div class="mini-point">
+            <h4>1) State Definition</h4>
+            <p><code>dp[i]</code> = best profit from rod of length i.</p>
+          </div>
+          <div class="mini-point">
+            <h4>2) All Cuts Matter</h4>
+            <p>Try every position to cut (unbounded). No restriction on reuse.</p>
+          </div>
+          <div class="mini-point">
+            <h4>3) Base Cases</h4>
+            <p><code>dp[0] = 0</code> (no rod = no profit). <code>dp[i] = price[i]</code> if no better cut.</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Approach In Plain English</p>
+      <div class="approach-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--rejected)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Recursive Approach (Without DP)</h3>
+          </div>
+          <div class="content">
+            <p style="color:var(--muted); font-size:12px; line-height:1.6; margin-bottom:10px;"><strong style="color:var(--accent4);">What Each Recursive Call Means:</strong></p>
+            <p style="color:var(--muted); font-size:12px; line-height:1.6; margin-bottom:10px; font-family:'IBM Plex Mono',monospace;"><strong style="color:var(--accent-main);">maxProfit(n)</strong> = "<strong>What is the maximum profit from a rod of length n?</strong>"</p>
+            <p style="color:var(--muted); font-size:12px; line-height:1.6; margin-bottom:12px;">• <strong>n:</strong> Current rod length (1 to original length). We decide where to cut or not cut.</p>
+            <p style="color:var(--text); font-size:12px; line-height:1.6; margin-bottom:10px;"><strong style="color:var(--accent4);">How the Approach Works:</strong></p>
+            <ul class="plain-steps">
+              <li><strong>For rod of length n:</strong> we can cut at position i (1 ≤ i ≤ n) or not cut at all.</li>
+              <li><strong>If cut at i:</strong> get price[i] + recursively solve for rod of length (n-i).</li>
+              <li><strong>If no cut:</strong> keep entire rod and get price[n].</li>
+              <li><strong>Try all:</strong> explore all possible first cuts and return maximum profit.</li>
+              <li><strong>Base case:</strong> if n = 0 (no rod left), profit = 0.</li>
+              <li><strong>Problem:</strong> <code>maxProfit(2)</code> may be computed 50+ times—massive redundant work!</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-sel)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">DP Memoization Approach</h3>
+          </div>
+          <div class="content">
+            <p style="color:var(--muted); font-size:12px; line-height:1.6; margin-bottom:10px;"><strong style="color:var(--accent4);">Same Logic, But With Memory:</strong></p>
+            <p style="color:var(--muted); font-size:12px; line-height:1.6; margin-bottom:12px;">We make the same recursive calls, but <strong>we never compute the same length n twice</strong>.</p>
+            <ul class="plain-steps">
+              <li><strong>Before recursing:</strong> check memo: "Have I solved <code>maxProfit(n)</code> before?"</li>
+              <li><strong>Cache hit:</strong> yes! Return stored answer instantly (no recursion needed).</li>
+              <li><strong>Cache miss:</strong> no, solve it like before (try all cut positions).</li>
+              <li><strong>Store result:</strong> save <code>memo[n] = answer</code> before returning.</li>
+              <li><strong>Unique states:</strong> only n unique lengths (0 to n) exist.</li>
+              <li><strong>Advantage:</strong> O(3^n) recursion becomes O(n²) with huge speedup!</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Recursive Walkthrough</p>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+          <div class="dot" style="background:var(--accent4)"></div>
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Choose Preset Example</h3>
+        </div>
+        <div class="content">
+          <div class="params-box" id="preset-info" style="background:rgba(52,211,153,0.08); border:1px solid rgba(52,211,153,0.2);">
+            <p><b>📌 Preset 1 (Simple):</b> Prices = [1,5,8] | Rod Length: 3</p>
+          </div>
+          <div class="controls">
+            <button class="btn btn-primary" onclick="renderAll()">Generate Trees</button>
+            <button class="btn" onclick="loadPreset1()">📊 Preset 1</button>
+            <button class="btn" onclick="loadPreset2()">📊 Preset 2</button>
+            <button class="btn" onclick="loadPreset3()">📊 Preset 3</button>
+          </div>
+          <p class="note"><strong style="color:var(--accent4);">💡 Tip:</strong> Preset 2 & 3 have many overlapping subproblems—watch DP prune the tree dramatically!</p>
+          <div class="stats">
+            <div class="pill">Max Profit: <b id="profit-value">0</b></div>
+            <div class="pill">Calls Saved: <b id="saved-calls">0</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="viz-stack">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--rejected)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Without Dynamic Programming (Repeated Work)</h3>
+          </div>
+          <div class="content">
+            <p class="note" style="margin-bottom:10px;">Each length is recomputed from scratch whenever encountered in the tree. <strong>Full tree shown below—click "Start Fresh" to begin step-by-step walkthrough.</strong></p>
+            <div class="walk-layout">
+              <div class="tree-wrap" id="plain-tree"></div>
+              <div class="walk-panel">
+                <div class="ps-line" id="plain-l1">def maxProfit(n):</div>
+                <div class="ps-line" id="plain-l2">if n == 0: return 0</div>
+                <div class="ps-line" id="plain-l3">max_p = 0</div>
+                <div class="ps-line" id="plain-l4">for i in 1 to n:</div>
+                <div class="ps-line" id="plain-l5">max_p = max(max_p, price[i] + maxProfit(n-i))</div>
+                <div class="ps-line" id="plain-l6">return max_p</div>
+                <div class="call-box" id="plain-current-call">Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.</div>
+              </div>
+            </div>
+            <div class="walk-controls">
+              <button class="btn" onclick="clearPlainWalkthrough()">🔄 Start Fresh (Without DP)</button>
+              <button class="btn" onclick="nextPlainStep()">▶ Next Step</button>
+            </div>
+            <div class="stats" style="margin-top:10px;">
+              <div class="pill error">Without DP Calls: <b id="plain-calls">0</b></div>
+              <div class="pill error">Without DP Step: <b id="plain-step">0</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-sel)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">With DP Memoization (Pruned Tree)</h3>
+          </div>
+          <div class="content">
+            <p class="note" style="margin-bottom:10px;">First visit to length n computes it; repeat visits immediately return the cached value. <strong>Full tree shown below—click "Start Fresh" to begin step-by-step walkthrough.</strong></p>
+            <div class="walk-layout">
+              <div class="tree-wrap" id="dp-tree"></div>
+              <div class="walk-panel">
+                <div class="ps-line" id="dp-l1">def maxProfit_dp(n, memo):</div>
+                <div class="ps-line" id="dp-l2">if n in memo: return memo[n]</div>
+                <div class="ps-line" id="dp-l3">if n == 0: return 0</div>
+                <div class="ps-line" id="dp-l4">max_p = 0</div>
+                <div class="ps-line" id="dp-l5">for i in 1 to n:</div>
+                <div class="ps-line" id="dp-l6">max_p = max(max_p, price[i] + maxProfit_dp(n-i, memo))</div>
+                <div class="ps-line" id="dp-l7">memo[n] = max_p</div>
+                <div class="ps-line" id="dp-l8">return memo[n]</div>
+                <div class="call-box" id="dp-current-call">Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.</div>
+              </div>
+            </div>
+            <div class="walk-controls">
+              <button class="btn" onclick="clearDpWalkthrough()">🔄 Start Fresh (With DP)</button>
+              <button class="btn" onclick="nextDpStep()">▶ Next Step</button>
+            </div>
+            <div class="stats" style="margin-top:10px;">
+              <div class="pill success">With DP Calls: <b id="dp-calls">0</b></div>
+              <div class="pill success">With DP Step: <b id="dp-step">0</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Pseudocode And Complexity</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent4)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Pseudocode (DP Memoization)</h3>
+          </div>
+          <div class="content">
+            <pre class="code-block">function maxProfit_dp(n, memo, prices):
+    if n in memo:
+        return memo[n]
+    if n == 0:
+        return 0
+    max_profit = 0
+    for i from 1 to n:
+        profit = prices[i] + maxProfit_dp(n - i, memo, prices)
+        max_profit = max(max_profit, profit)
+    memo[n] = max_profit
+    return memo[n]
+
+main:
+    memo = empty map
+    answer = maxProfit_dp(rod_length, memo, prices)</pre>
+            <ul class="impl-notes">
+              <li><strong>Memo lookup:</strong> avoids recomputing same length multiple times.</li>
+              <li><strong>Loop all cuts:</strong> try cutting at every position from 1 to n.</li>
+              <li><strong>Recurrence:</strong> combine cut price with optimal profit of remaining rod.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-sel)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Time / Space Complexity</h3>
+          </div>
+          <div class="content">
+            <pre class="code-block">Without DP recursion:
+Time  : O(3^n)   (branching factor ≈ 3 per level)
+Space : O(n)     (recursion depth)
+
+With DP memoization:
+Time  : O(n²)    (each length: n iterations)
+Space : O(n)     (memo for n+1 states)
+
+With tabulation:
+Time  : O(n²)
+Space : O(n)</pre>
+            <ul class="impl-notes">
+              <li><strong>Why n²:</strong> for each length i, we try n-i cuts, giving Σ(i) = O(n²).</li>
+              <li><strong>Huge speedup:</strong> O(3^n) → O(n²) is dramatic for larger n.</li>
+              <li><strong>Unbounded advantage:</strong> DP is perfect for unbounded problems where items repeat.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Implementation (Choose Language)</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-main)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Language Selector</h3>
+          </div>
+          <div class="content">
+            <div class="lang-switch">
+              <button id="btn-python" class="btn lang-btn active" onclick="setImplLanguage('python')">Python</button>
+              <button id="btn-c" class="btn lang-btn" onclick="setImplLanguage('c')">C</button>
+            </div>
+            <pre id="code-python" class="code-block">def maxProfit_rec(n, prices):
+    if n == 0:
+        return 0
+    max_p = 0
+    for i in range(1, n + 1):
+        profit = prices[i - 1] + maxProfit_rec(n - i, prices)
+        max_p = max(max_p, profit)
+    return max_p
+
+def maxProfit_dp(n, prices, memo=None):
+    if memo is None:
+        memo = {}
+    if n in memo:
+        return memo[n]
+    if n == 0:
+        return 0
+    max_p = 0
+    for i in range(1, n + 1):
+        profit = prices[i - 1] + maxProfit_dp(n - i, prices, memo)
+        max_p = max(max_p, profit)
+    memo[n] = max_p
+    return memo[n]</pre>
+            <pre id="code-c" class="code-block hidden">#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+int maxProfit_rec(int n, int prices[]) {
+    if (n == 0) return 0;
+    int max_p = 0;
+    for (int i = 1; i <= n; i++) {
+        int profit = prices[i - 1] + maxProfit_rec(n - i, prices);
+        max_p = (profit > max_p) ? profit : max_p;
+    }
+    return max_p;
+}
+
+#define MAX_N 20
+int memo[MAX_N];
+
+int maxProfit_dp(int n, int prices[]) {
+    if (memo[n] != -1) return memo[n];
+    if (n == 0) return 0;
+    int max_p = 0;
+    for (int i = 1; i <= n; i++) {
+        int profit = prices[i - 1] + maxProfit_dp(n - i, prices);
+        max_p = (profit > max_p) ? profit : max_p;
+    }
+    return memo[n] = max_p;
+}</pre>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-orange)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Line-by-Line Explanation</h3>
+          </div>
+          <div class="content">
+            <ul id="explain-python" class="impl-notes">
+              <li><strong><code>if n in memo</code>:</strong> cache hit—return immediately without recursion.</li>
+              <li><strong><code>if n == 0</code>:</strong> base case: no rod left means no profit.</li>
+              <li><strong><code>for i in range(1, n+1)</code>:</strong> try cutting at every position (unbounded choices).</li>
+              <li><strong><code>profit = prices[i-1] + maxProfit_dp(...)</code>:</strong> add cut value to optimal profit of remaining rod.</li>
+              <li><strong><code>memo[n] = max_p</code>:</strong> store best profit for this length before returning.</li>
+            </ul>
+            <ul id="explain-c" class="impl-notes hidden">
+              <li><strong><code>memo[n] != -1</code>:</strong> check if length n is already computed.</li>
+              <li><strong><code>if (n == 0)</code>:</strong> base case for rod length 0.</li>
+              <li><strong><code>for (int i = 1; i <= n; i++)</code>:</strong> loop through all possible first cuts.</li>
+              <li><strong><code>maxProfit_dp(n - i, prices)</code>:</strong> recursive call for remaining rod after cutting length i.</li>
+              <li><strong><code>memo[n] = max_p</code>:</strong> store result before returning to avoid recomputation.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Alternative Approach: Unbounded Knapsack Style (No For-Loop)</p>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+          <div class="dot" style="background:var(--accent-orange)"></div>
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Second Formulation: Position-Based Decision Tree</h3>
+        </div>
+        <div class="content">
+          <p style="color:var(--muted); font-size:12px; line-height:1.7; margin-bottom:10px;">Instead of looping through all positions, we can think of it as: <strong>at each recursion level, decide whether to cut at position i or skip it</strong>. This is the unbounded knapsack formulation where pieces can be reused.</p>
+          <p style="color:var(--text); font-size:12px; line-height:1.6; margin-bottom:10px; font-family:'IBM Plex Mono',monospace;"><strong style="color:var(--accent-main);">maxProfit(n, pos)</strong> = "What's the maximum profit from rod of length n, considering only cuts at position pos and beyond?"</p>
+          <ul class="plain-steps">
+            <li><strong>n:</strong> Remaining rod length</li>
+            <li><strong>pos:</strong> Current position we're deciding to cut or skip (1 to n)</li>
+            <li><strong>Choice 1 (Skip):</strong> Don't cut at pos, move to next position → <code>maxProfit(n, pos+1)</code></li>
+            <li><strong>Choice 2 (Cut):</strong> If pos ≤ n, cut at pos (unbounded—can reuse!) → <code>price[pos] + maxProfit(n-pos, pos)</code></li>
+            <li><strong>Base:</strong> if pos > n or n = 0, return 0</li>
+            <li><strong>Unbounded key:</strong> in the cut option, we stay at <code>pos</code> (don't increment), allowing reuse!</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="section-hdr">Alternative Approach Visualization</p>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+          <div class="dot" style="background:var(--accent4)"></div>
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Choose Preset Example (Approach 2)</h3>
+        </div>
+        <div class="content">
+          <div class="params-box" id="preset-info-alt" style="background:rgba(52,211,153,0.08); border:1px solid rgba(52,211,153,0.2);">
+            <p><b>📌 Preset 1 (Simple):</b> Prices = [1,5,8] | Rod Length: 3</p>
+          </div>
+          <div class="controls">
+            <button class="btn btn-primary" onclick="renderAllAlt()">Generate Trees (Approach 2)</button>
+            <button class="btn" onclick="loadPreset1Alt()">📊 Preset 1</button>
+            <button class="btn" onclick="loadPreset2Alt()">📊 Preset 2</button>
+            <button class="btn" onclick="loadPreset3Alt()">📊 Preset 3</button>
+          </div>
+          <p class="note"><strong style="color:var(--accent4);">💡 Tip:</strong> Notice the difference: this approach decides at each position whether to cut or skip (unbounded), creating different tree structures!</p>
+          <div class="stats">
+            <div class="pill">Max Profit: <b id="profit-value-alt">0</b></div>
+            <div class="pill">Calls Saved: <b id="saved-calls-alt">0</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="viz-stack">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--rejected)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Without DP - Position-Based (Repeated Work)</h3>
+          </div>
+          <div class="content">
+            <p class="note" style="margin-bottom:10px;">Each (n, pos) state recomputed. Note the binary branching (skip vs cut) instead of n-way branching. <strong>Full tree shown below—click "Start Fresh" to step through.</strong></p>
+            <div class="walk-layout">
+              <div class="tree-wrap" id="plain-tree-alt"></div>
+              <div class="walk-panel">
+                <div class="ps-line" id="plain-l1-alt">def maxProfit(n, pos, prices):</div>
+                <div class="ps-line" id="plain-l2-alt">if pos > n or n == 0:</div>
+                <div class="ps-line" id="plain-l3-alt">return 0</div>
+                <div class="ps-line" id="plain-l4-alt">skip = maxProfit(n, pos+1, prices)</div>
+                <div class="ps-line" id="plain-l5-alt">cut = prices[pos] + maxProfit(n-pos, pos, prices)</div>
+                <div class="ps-line" id="plain-l6-alt">return max(skip, cut)</div>
+                <div class="call-box" id="plain-current-call-alt">Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.</div>
+              </div>
+            </div>
+            <div class="walk-controls">
+              <button class="btn" onclick="clearPlainWalkthroughAlt()">🔄 Start Fresh (Without DP)</button>
+              <button class="btn" onclick="nextPlainStepAlt()">▶ Next Step</button>
+            </div>
+            <div class="stats" style="margin-top:10px;">
+              <div class="pill error">Without DP Calls: <b id="plain-calls-alt">0</b></div>
+              <div class="pill error">Without DP Step: <b id="plain-step-alt">0</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-sel)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">With DP Memoization (Pruned Tree)</h3>
+          </div>
+          <div class="content">
+            <p class="note" style="margin-bottom:10px;">First visit to (n, pos) computes it; repeat visits use cache. <strong>Full tree shown below—click "Start Fresh" to step through.</strong></p>
+            <div class="walk-layout">
+              <div class="tree-wrap" id="dp-tree-alt"></div>
+              <div class="walk-panel">
+                <div class="ps-line" id="dp-l1-alt">def maxProfit_dp(n, pos, memo, prices):</div>
+                <div class="ps-line" id="dp-l2-alt">if (n, pos) in memo:</div>
+                <div class="ps-line" id="dp-l3-alt">return memo[(n, pos)]</div>
+                <div class="ps-line" id="dp-l4-alt">if pos > n or n == 0:</div>
+                <div class="ps-line" id="dp-l5-alt">return 0</div>
+                <div class="ps-line" id="dp-l6-alt">skip = maxProfit_dp(n, pos+1, memo, prices)</div>
+                <div class="ps-line" id="dp-l7-alt">cut = prices[pos] + maxProfit_dp(n-pos, pos, memo, prices)</div>
+                <div class="ps-line" id="dp-l8-alt">memo[(n, pos)] = max(skip, cut)</div>
+                <div class="ps-line" id="dp-l9-alt">return memo[(n, pos)]</div>
+                <div class="call-box" id="dp-current-call-alt">Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.</div>
+              </div>
+            </div>
+            <div class="walk-controls">
+              <button class="btn" onclick="clearDpWalkthroughAlt()">🔄 Start Fresh (With DP)</button>
+              <button class="btn" onclick="nextDpStepAlt()">▶ Next Step</button>
+            </div>
+            <div class="stats" style="margin-top:10px;">
+              <div class="pill success">With DP Calls: <b id="dp-calls-alt">0</b></div>
+              <div class="pill success">With DP Step: <b id="dp-step-alt">0</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Approach 2: Pseudocode And Complexity</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent4)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Pseudocode (Position-Based DP)</h3>
+          </div>
+          <div class="content">
+            <pre class="code-block">function maxProfit_dp(n, pos, memo, prices):
+    if (n, pos) in memo:
+        return memo[(n, pos)]
+    if pos > n or n == 0:
+        return 0
+    
+    skip = maxProfit_dp(n, pos + 1, memo, prices)
+    cut = prices[pos] + maxProfit_dp(n - pos, pos, memo, prices)
+    
+    memo[(n, pos)] = max(skip, cut)
+    return memo[(n, pos)]
+
+main:
+    memo = empty map
+    answer = maxProfit_dp(rod_length, 1, memo, prices)</pre>
+            <ul class="impl-notes">
+              <li><strong>State: (n, pos)</strong> two dimensions now (length × position).</li>
+              <li><strong>Skip branch:</strong> move to next position without cutting.</li>
+              <li><strong>Cut branch:</strong> unbounded—stay at pos for potential reuse.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-sel)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Time / Space Complexity (Approach 2)</h3>
+          </div>
+          <div class="content">
+            <pre class="code-block">Without DP recursion:
+Time  : O(2^n)   (binary branching per state)
+Space : O(n)     (recursion depth)
+
+With DP memoization:
+Time  : O(n²)    (unique states: n × (n+1)/2 ≈ n²)
+Space : O(n²)    (memo for (n, pos) pairs)
+
+Comparison to Approach 1:
+Approach 1: O(n²) time, O(n) space
+Approach 2: O(n²) time, O(n²) space
+(Both asymptotically similar, but different structure)</pre>
+            <ul class="impl-notes">
+              <li><strong>States:</strong> sum over all (n,pos) pairs where 1 ≤ pos ≤ n.</li>
+              <li><strong>Trade-off:</strong> position-based needs extra space but clarifies unbounded nature.</li>
+              <li><strong>Practical:</strong> both are fine; choose based on problem intuition.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Approach 2: Implementation (Choose Language)</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-main)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Language Selector (Approach 2)</h3>
+          </div>
+          <div class="content">
+            <div class="lang-switch">
+              <button id="btn-python-alt" class="btn lang-btn active" onclick="setImplLanguageAlt('python')">Python</button>
+              <button id="btn-c-alt" class="btn lang-btn" onclick="setImplLanguageAlt('c')">C</button>
+            </div>
+            <pre id="code-python-alt" class="code-block">def maxProfit_rec_pos(n, pos, prices):
+    if pos > n or n == 0:
+        return 0
+    skip = maxProfit_rec_pos(n, pos + 1, prices)
+    cut = prices[pos - 1] + maxProfit_rec_pos(n - pos, pos, prices)
+    return max(skip, cut)
+
+def maxProfit_dp_pos(n, pos, prices, memo=None):
+    if memo is None:
+        memo = {}
+    if (n, pos) in memo:
+        return memo[(n, pos)]
+    if pos > n or n == 0:
+        return 0
+    skip = maxProfit_dp_pos(n, pos + 1, prices, memo)
+    cut = prices[pos - 1] + maxProfit_dp_pos(n - pos, pos, prices, memo)
+    memo[(n, pos)] = max(skip, cut)
+    return memo[(n, pos)]</pre>
+            <pre id="code-c-alt" class="code-block hidden">#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+int maxProfit_rec_pos(int n, int pos, int prices[]) {
+    if (pos > n || n == 0) return 0;
+    int skip = maxProfit_rec_pos(n, pos + 1, prices);
+    int cut = prices[pos - 1] + maxProfit_rec_pos(n - pos, pos, prices);
+    return (skip > cut) ? skip : cut;
+}
+
+#define MAX_N 20
+int memo_alt[MAX_N][MAX_N];
+
+int maxProfit_dp_pos(int n, int pos, int prices[]) {
+    if (memo_alt[n][pos] != -1) return memo_alt[n][pos];
+    if (pos > n || n == 0) return 0;
+    int skip = maxProfit_dp_pos(n, pos + 1, prices);
+    int cut = prices[pos - 1] + maxProfit_dp_pos(n - pos, pos, prices);
+    return memo_alt[n][pos] = (skip > cut) ? skip : cut;
+}</pre>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-orange)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Line-by-Line Explanation (Approach 2)</h3>
+          </div>
+          <div class="content">
+            <ul id="explain-python-alt" class="impl-notes">
+              <li><strong><code>if (n, pos) in memo</code>:</strong> cache hit—return immediately.</li>
+              <li><strong><code>if pos > n or n == 0</code>:</strong> base case—all positions considered or no rod left.</li>
+              <li><strong><code>skip = maxProfit_dp_pos(n, pos + 1, ...)</code>:</strong> don't cut at pos, move forward.</li>
+              <li><strong><code>cut = prices[pos-1] + maxProfit_dp_pos(n - pos, pos, ...)</code>:</strong> unbounded—reuse pos!</li>
+              <li><strong><code>memo[(n, pos)] = max(...)</code>:</strong> store 2D state for future lookups.</li>
+            </ul>
+            <ul id="explain-c-alt" class="impl-notes hidden">
+              <li><strong><code>memo_alt[n][pos] != -1</code>:</strong> check if (n,pos) already computed.</li>
+              <li><strong><code>if (pos > n || n == 0)</code>:</strong> base case exits recursion.</li>
+              <li><strong><code>skip = maxProfit_dp_pos(n, pos+1, ...)</code>:</strong> increment pos when skipping.</li>
+              <li><strong><code>cut = prices[pos-1] + maxProfit_dp_pos(n-pos, pos, ...)</code>:</strong> keep pos same for reuse!</li>
+              <li><strong><code>memo_alt[n][pos] = ...</code>:</strong> store 2D result in array.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Key Insights</p>
+      <div class="card">
+        <div class="card-header">
+          <div class="dot" style="background:var(--accent3)"></div>
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Why Rod Cutting is an DP Classic</h3>
+        </div>
+        <div class="content">
+          <ul class="plain-steps">
+            <li><strong>Unbounded choices:</strong> unlike 0/1 Knapsack, we can cut at ANY position, creating many more states and overlaps.</li>
+            <li><strong>Optimal substructure:</strong> best profit for length n depends on best profits of smaller lengths (n-1, n-2, ... 1).</li>
+            <li><strong>Exponential to polynomial:</strong> without DP, O(3^n) recursion; with DP, O(n²) is manageable even for n=100.</li>
+            <li><strong>Real-world applications:</strong> cutting steel rods, lumber optimization, paper cutting—all use this principle.</li>
+            <li><strong>Interview teaching tool:</strong> demonstrates unbounded knapsack concept and introduces DP recurrence design.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const NODE_W = 160;
+    const NODE_H = 48;
+    const H_GAP = 36;
+    const V_GAP = 90;
+    const PAD = 20;
+
+    let prices = [1, 5, 8];
+    let rodLength = 3;
+    let model = null;
+    let plainStep = 0;
+    let dpStep = 0;
+    let nodeCounter = 0;
+
+    function nextId() {
+      nodeCounter += 1;
+      return `node-${nodeCounter}`;
+    }
+
+    function plainTreeData(n, stats, trace, edge = "") {
+      stats.calls++;
+      const isBase = n === 0;
+      const node = {
+        id: nextId(),
+        label: isBase ? `(${n})=0` : `(${n})`,
+        type: isBase ? "leaf" : "normal",
+        edge,
+        children: []
+      };
+      trace.push(node.id);
+      if (!isBase) {
+        for (let i = 1; i <= n; i++) {
+          node.children.push(plainTreeData(n - i, stats, trace, `cut ${i}`));
+        }
+      }
+      return node;
+    }
+
+    function dpTreeData(n, memo, seen, stats, trace, edge = "") {
+      stats.calls++;
+      if (seen.has(n)) {
+        const cached = { 
+          id: nextId(), 
+          label: `(${n})[✓]`, 
+          type: "cached", 
+          edge, 
+          children: [] 
+        };
+        trace.push(cached.id);
+        return cached;
+      }
+      seen.add(n);
+      if (n === 0) {
+        memo[n] = 0;
+        const leaf = { 
+          id: nextId(), 
+          label: `(${n})=0`, 
+          type: "leaf", 
+          edge, 
+          children: [] 
+        };
+        trace.push(leaf.id);
+        return leaf;
+      }
+      const node = { id: nextId(), label: `(${n})`, type: "normal", edge, children: [] };
+      trace.push(node.id);
+      let maxVal = 0;
+      for (let i = 1; i <= n; i++) {
+        const child = dpTreeData(n - i, memo, seen, stats, trace, `cut ${i}`);
+        node.children.push(child);
+        const remaining = memo[n - i] ?? 0;
+        maxVal = Math.max(maxVal, prices[i - 1] + remaining);
+      }
+      memo[n] = maxVal;
+      return node;
+    }
+
+    function computeLayout(node, depth, nextXRef, placed) {
+      const children = node.children || [];
+      let x;
+      if (children.length === 0) {
+        x = nextXRef.value;
+        nextXRef.value += NODE_W + H_GAP;
+      } else {
+        children.forEach((child) => computeLayout(child, depth + 1, nextXRef, placed));
+        const childPositions = children.map(c => c._x);
+        x = (Math.min(...childPositions) + Math.max(...childPositions)) / 2;
+      }
+      node._x = x;
+      node._y = PAD + depth * V_GAP;
+      placed.push(node);
+    }
+
+    function maxDepth(node) {
+      if (!node.children || node.children.length === 0) return 0;
+      return 1 + Math.max(...node.children.map(maxDepth));
+    }
+
+    function renderSvgTree(containerId, root, trace, step) {
+      const host = document.getElementById(containerId);
+      host.innerHTML = "";
+      const placed = [];
+      computeLayout(root, 0, { value: PAD }, placed);
+      const width = Math.max(...placed.map((n) => n._x)) + NODE_W + PAD;
+      const height = PAD * 2 + (maxDepth(root) * V_GAP) + NODE_H;
+
+      const activeId = step > 0 ? trace[Math.min(step - 1, trace.length - 1)] : null;
+      const visited = new Set(trace.slice(0, Math.max(step - 1, 0)));
+      const revealed = new Set(trace.slice(0, Math.max(step, 0)));
+
+      const svg = document.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("class", "svg-tree");
+      svg.setAttribute("width", `${width}`);
+      svg.setAttribute("height", height);
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      svg.setAttribute("preserveAspectRatio", "xMinYMin meet");
+
+      function drawEdges(node) {
+        (node.children || []).forEach((child) => {
+          if (!(revealed.has(node.id) && revealed.has(child.id))) {
+            drawEdges(child);
+            return;
+          }
+          const x1 = node._x + NODE_W / 2;
+          const y1 = node._y + NODE_H;
+          const x2 = child._x + NODE_W / 2;
+          const y2 = child._y;
+          const path = document.createElementNS(SVG_NS, "path");
+          const midY = y1 + (y2 - y1) / 2;
+          path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
+          path.setAttribute("class", "edge");
+          svg.appendChild(path);
+
+          if (child.edge) {
+            const label = document.createElementNS(SVG_NS, "text");
+            label.setAttribute("x", (x1 + x2) / 2);
+            label.setAttribute("y", midY - 6);
+            label.setAttribute("text-anchor", "middle");
+            label.setAttribute("class", "edge-label");
+            label.textContent = child.edge;
+            svg.appendChild(label);
+          }
+          drawEdges(child);
+        });
+      }
+
+      function drawNodes(node) {
+        if (!revealed.has(node.id)) {
+          return;
+        }
+        const rect = document.createElementNS(SVG_NS, "rect");
+        rect.setAttribute("x", node._x);
+        rect.setAttribute("y", node._y);
+        rect.setAttribute("width", NODE_W);
+        rect.setAttribute("height", NODE_H);
+        let rectClass = `node-box ${node.type}`;
+        if (visited.has(node.id)) rectClass += " visited";
+        if (activeId === node.id) rectClass += " active";
+        rect.setAttribute("class", rectClass);
+        svg.appendChild(rect);
+
+        const text = document.createElementNS(SVG_NS, "text");
+        text.setAttribute("x", node._x + NODE_W / 2);
+        text.setAttribute("y", node._y + NODE_H / 2 + 0.5);
+        text.setAttribute("class", `node-text ${node.type}`);
+        text.textContent = node.label;
+        svg.appendChild(text);
+
+        (node.children || []).forEach(drawNodes);
+      }
+
+      drawEdges(root);
+      drawNodes(root);
+      host.appendChild(svg);
+    }
+
+    function buildIdMap(root, map) {
+      map[root.id] = root;
+      (root.children || []).forEach((child) => buildIdMap(child, map));
+    }
+
+    function clearPseudo(prefix, count) {
+      for (let i = 1; i <= count; i++) {
+        const el = document.getElementById(`${prefix}-l${i}`);
+        if (el) el.classList.remove("active");
+      }
+    }
+
+    function updatePseudoPanels() {
+      if (!model) return;
+      clearPseudo("plain", 6);
+      clearPseudo("dp", 8);
+
+      if (plainStep === 0) {
+        document.getElementById("plain-current-call").textContent = "Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.";
+      } else {
+        const plainId = model.plainTrace[Math.min(plainStep - 1, model.plainTrace.length - 1)];
+        const plainNode = model.plainNodeMap[plainId];
+        const plainLine = plainNode.type === "leaf" ? 2 : 5;
+        document.getElementById(`plain-l${plainLine}`).classList.add("active");
+        document.getElementById("plain-current-call").textContent = `${plainNode.label}`;
+      }
+
+      if (dpStep === 0) {
+        document.getElementById("dp-current-call").textContent = "Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.";
+      } else {
+        const dpId = model.dpTrace[Math.min(dpStep - 1, model.dpTrace.length - 1)];
+        const dpNode = model.dpNodeMap[dpId];
+        let dpLine = 5;
+        if (dpNode.type === "cached") dpLine = 2;
+        else if (dpNode.type === "leaf") dpLine = 3;
+        document.getElementById(`dp-l${dpLine}`).classList.add("active");
+        document.getElementById("dp-current-call").textContent = `${dpNode.label}`;
+      }
+    }
+
+    function updateTreeViews() {
+      if (!model) return;
+      renderSvgTree("plain-tree", model.plainRoot, model.plainTrace, plainStep);
+      renderSvgTree("dp-tree", model.dpRoot, model.dpTrace, dpStep);
+      document.getElementById("plain-step").textContent = `${plainStep}/${model.plainTrace.length}`;
+      document.getElementById("dp-step").textContent = `${dpStep}/${model.dpTrace.length}`;
+      updatePseudoPanels();
+    }
+
+    function clearPlainWalkthrough() {
+      plainStep = 0;
+      updateTreeViews();
+    }
+
+    function clearDpWalkthrough() {
+      dpStep = 0;
+      updateTreeViews();
+    }
+
+    function preloadWalkthrough() {
+      if (!model) return;
+      plainStep = model.plainTrace.length;
+      dpStep = model.dpTrace.length;
+      updateTreeViews();
+    }
+
+    function nextPlainStep() {
+      if (!model) return;
+      plainStep = Math.min(plainStep + 1, model.plainTrace.length);
+      updateTreeViews();
+    }
+
+    function nextDpStep() {
+      if (!model) return;
+      dpStep = Math.min(dpStep + 1, model.dpTrace.length);
+      updateTreeViews();
+    }
+
+    function renderAll() {
+      nodeCounter = 0;
+      const plainStats = { calls: 0 };
+      const dpStats = { calls: 0 };
+      const memo = {};
+      const plainTrace = [];
+      const dpTrace = [];
+      const plainRoot = plainTreeData(rodLength, plainStats, plainTrace);
+      const dpRoot = dpTreeData(rodLength, memo, new Set(), dpStats, dpTrace);
+      const plainNodeMap = {};
+      const dpNodeMap = {};
+      buildIdMap(plainRoot, plainNodeMap);
+      buildIdMap(dpRoot, dpNodeMap);
+      model = { plainRoot, dpRoot, plainTrace, dpTrace, plainNodeMap, dpNodeMap };
+
+      const maxVal = memo[rodLength] ?? 0;
+      const saved = Math.max(plainStats.calls - dpStats.calls, 0);
+      document.getElementById("plain-calls").textContent = plainStats.calls;
+      document.getElementById("dp-calls").textContent = dpStats.calls;
+      document.getElementById("profit-value").textContent = maxVal;
+      document.getElementById("saved-calls").textContent = saved;
+
+      preloadWalkthrough();
+    }
+
+    function updatePresetInfo() {
+      const presetBox = document.getElementById("preset-info");
+      let info = "";
+      if (rodLength === 3) {
+        info = "<p><b>📌 Preset 1 (Simple):</b> Prices = [1,5,8] | Rod Length: 3</p>";
+      } else if (rodLength === 4) {
+        info = "<p><b>⭐ Preset 2 (Optimal for Cache):</b> Prices = [3,5,6,7] | Rod Length: 4</p><p style='color:var(--accent-sel); font-size:11px; margin-top:6px;'>✓ Many overlapping subproblems! Watch (2) and (1) appear multiple times.</p>";
+      } else if (rodLength === 5) {
+        info = "<p><b>⭐ Preset 3 (Good Example):</b> Prices = [2,4,6,8,10] | Rod Length: 5</p><p style='color:var(--accent-sel); font-size:11px; margin-top:6px;'>✓ Clear cache hits visible! (3) and (2) computed once, reused multiple times.</p>";
+      }
+      presetBox.innerHTML = info;
+    }
+
+    function loadPreset1() {
+      prices = [1, 5, 8];
+      rodLength = 3;
+      updatePresetInfo();
+      renderAll();
+    }
+
+    function loadPreset2() {
+      prices = [3, 5, 6, 7];
+      rodLength = 4;
+      updatePresetInfo();
+      renderAll();
+    }
+
+    function loadPreset3() {
+      prices = [2, 4, 6, 8, 10];
+      rodLength = 5;
+      updatePresetInfo();
+      renderAll();
+    }
+
+    function setImplLanguage(lang) {
+      const isPython = lang === "python";
+      document.getElementById("code-python").classList.toggle("hidden", !isPython);
+      document.getElementById("code-c").classList.toggle("hidden", isPython);
+      document.getElementById("explain-python").classList.toggle("hidden", !isPython);
+      document.getElementById("explain-c").classList.toggle("hidden", isPython);
+      document.getElementById("btn-python").classList.toggle("active", isPython);
+      document.getElementById("btn-c").classList.toggle("active", !isPython);
+    }
+
+    // ============= ALTERNATIVE APPROACH (POSITION-BASED) =============
+
+    let modelAlt = null;
+    let plainStepAlt = 0;
+    let dpStepAlt = 0;
+
+    function plainTreeDataAlt(n, pos, stats, trace, edge = "") {
+      stats.calls++;
+      const id = `${trace.length}`;
+      trace.push(id);
+
+      const isBase = pos > n || n === 0;
+      let label = `(${n}, ${pos})`;
+      let type = "normal";
+
+      if (isBase) {
+        type = "leaf";
+        label = "0";
+      }
+
+      const node = { id, label, type, edge, children: [] };
+
+      if (!isBase) {
+        // Skip: don't cut at pos, move to pos+1
+        node.children.push(plainTreeDataAlt(n, pos + 1, stats, trace, "skip"));
+        // Cut: unbounded, stay at pos
+        node.children.push(plainTreeDataAlt(n - pos, pos, stats, trace, `cut ${pos}`));
+      }
+
+      return node;
+    }
+
+    function dpTreeDataAlt(n, pos, memo, seen, stats, trace, edge = "") {
+      stats.calls++;
+      const key = `${n},${pos}`;
+
+      if (seen.has(key)) {
+        const id = `${trace.length}`;
+        trace.push(id);
+        return { id, label: `(${n}, ${pos})[✓]`, type: "cached", edge };
+      }
+
+      seen.add(key);
+      const id = `${trace.length}`;
+      trace.push(id);
+
+      const isBase = pos > n || n === 0;
+      let label = `(${n}, ${pos})`;
+      let type = "normal";
+
+      if (isBase) {
+        type = "leaf";
+        label = "0";
+      }
+
+      const node = { id, label, type, edge, children: [] };
+      memo[key] = 0;
+
+      if (!isBase) {
+        node.children.push(dpTreeDataAlt(n, pos + 1, memo, seen, stats, trace, "skip"));
+        node.children.push(dpTreeDataAlt(n - pos, pos, memo, seen, stats, trace, `cut ${pos}`));
+      }
+
+      return node;
+    }
+
+    function renderAllAlt() {
+      const plainStats = { calls: 0 };
+      const dpStats = { calls: 0 };
+      const plainTrace = [];
+      const dpTrace = [];
+
+      const plainRoot = plainTreeDataAlt(rodLength, 1, plainStats, plainTrace);
+      const dpRoot = dpTreeDataAlt(rodLength, 1, {}, new Set(), dpStats, dpTrace);
+
+      const plainNodeMap = {};
+      const dpNodeMap = {};
+      buildIdMap(plainRoot, plainNodeMap);
+      buildIdMap(dpRoot, dpNodeMap);
+
+      plainStepAlt = 0;
+      dpStepAlt = 0;
+
+      renderSvgTree("plain-tree-alt", plainRoot, plainTrace, 0);
+      renderSvgTree("dp-tree-alt", dpRoot, dpTrace, 0);
+
+      modelAlt = { plainRoot, dpRoot, plainTrace, dpTrace, plainNodeMap, dpNodeMap };
+
+      const saved = Math.max(plainStats.calls - dpStats.calls, 0);
+      document.getElementById("plain-calls-alt").textContent = plainStats.calls;
+      document.getElementById("dp-calls-alt").textContent = dpStats.calls;
+      document.getElementById("profit-value-alt").textContent = rodLength; // placeholder
+      document.getElementById("saved-calls-alt").textContent = saved;
+
+      preloadWalkthroughAlt();
+    }
+
+    function updatePresetInfoAlt() {
+      const presetBox = document.getElementById("preset-info-alt");
+      let info = "";
+      if (rodLength === 3) {
+        info = "<p><b>📌 Preset 1 (Simple):</b> Prices = [1,5,8] | Rod Length: 3</p>";
+      } else if (rodLength === 4) {
+        info = "<p><b>⭐ Preset 2 (Optimal):</b> Prices = [3,5,6,7] | Rod Length: 4</p><p style='color:var(--accent-sel); font-size:11px; margin-top:6px;'>✓ Many (n,pos) states—great for seeing cache hits!</p>";
+      } else if (rodLength === 5) {
+        info = "<p><b>⭐ Preset 3 (Good Example):</b> Prices = [2,4,6,8,10] | Rod Length: 5</p><p style='color:var(--accent-sel); font-size:11px; margin-top:6px;'>✓ Binary decisions visible—skip vs cut at each position.</p>";
+      }
+      presetBox.innerHTML = info;
+    }
+
+    function loadPreset1Alt() {
+      prices = [1, 5, 8];
+      rodLength = 3;
+      updatePresetInfoAlt();
+      renderAllAlt();
+    }
+
+    function loadPreset2Alt() {
+      prices = [3, 5, 6, 7];
+      rodLength = 4;
+      updatePresetInfoAlt();
+      renderAllAlt();
+    }
+
+    function loadPreset3Alt() {
+      prices = [2, 4, 6, 8, 10];
+      rodLength = 5;
+      updatePresetInfoAlt();
+      renderAllAlt();
+    }
+
+    function preloadWalkthroughAlt() {
+      if (!modelAlt) return;
+      renderSvgTree("plain-tree-alt", modelAlt.plainRoot, modelAlt.plainTrace, modelAlt.plainTrace.length);
+      renderSvgTree("dp-tree-alt", modelAlt.dpRoot, modelAlt.dpTrace, modelAlt.dpTrace.length);
+      document.getElementById("plain-current-call-alt").textContent = "Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.";
+      document.getElementById("dp-current-call-alt").textContent = "Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.";
+    }
+
+    function updatePseudoPanelsAlt() {
+      if (!modelAlt) return;
+      clearPseudo("plain", 6);
+      clearPseudo("dp", 9);
+
+      if (plainStepAlt === 0) {
+        document.getElementById("plain-current-call-alt").textContent = "Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.";
+      } else {
+        const plainId = modelAlt.plainTrace[Math.min(plainStepAlt - 1, modelAlt.plainTrace.length - 1)];
+        const plainNode = modelAlt.plainNodeMap[plainId];
+        const plainLine = plainNode.type === "leaf" ? 3 : 5;
+        const lineEl = document.getElementById(`plain-l${plainLine}-alt`);
+        if (lineEl) lineEl.classList.add("active");
+        document.getElementById("plain-current-call-alt").textContent = `${plainNode.label}`;
+      }
+
+      if (dpStepAlt === 0) {
+        document.getElementById("dp-current-call-alt").textContent = "Trees fully loaded above. Click 'Start Fresh' to begin step-by-step walkthrough.";
+      } else {
+        const dpId = modelAlt.dpTrace[Math.min(dpStepAlt - 1, modelAlt.dpTrace.length - 1)];
+        const dpNode = modelAlt.dpNodeMap[dpId];
+        const dpLine = dpNode.type === "cached" ? 3 : (dpNode.type === "leaf" ? 5 : 7);
+        const lineEl = document.getElementById(`dp-l${dpLine}-alt`);
+        if (lineEl) lineEl.classList.add("active");
+        document.getElementById("dp-current-call-alt").textContent = `${dpNode.label}`;
+      }
+
+      renderSvgTree("plain-tree-alt", modelAlt.plainRoot, modelAlt.plainTrace, plainStepAlt);
+      renderSvgTree("dp-tree-alt", modelAlt.dpRoot, modelAlt.dpTrace, dpStepAlt);
+      document.getElementById("plain-step-alt").textContent = plainStepAlt;
+      document.getElementById("dp-step-alt").textContent = dpStepAlt;
+    }
+
+    function clearPlainWalkthroughAlt() {
+      plainStepAlt = 0;
+      updatePseudoPanelsAlt();
+    }
+
+    function nextPlainStepAlt() {
+      if (!modelAlt) return;
+      if (plainStepAlt < modelAlt.plainTrace.length) {
+        plainStepAlt++;
+        updatePseudoPanelsAlt();
+      }
+    }
+
+    function clearDpWalkthroughAlt() {
+      dpStepAlt = 0;
+      updatePseudoPanelsAlt();
+    }
+
+    function nextDpStepAlt() {
+      if (!modelAlt) return;
+      if (dpStepAlt < modelAlt.dpTrace.length) {
+        dpStepAlt++;
+        updatePseudoPanelsAlt();
+      }
+    }
+
+    function setImplLanguageAlt(lang) {
+      const isPython = lang === "python";
+      document.getElementById("code-python-alt").classList.toggle("hidden", !isPython);
+      document.getElementById("code-c-alt").classList.toggle("hidden", isPython);
+      document.getElementById("explain-python-alt").classList.toggle("hidden", !isPython);
+      document.getElementById("explain-c-alt").classList.toggle("hidden", isPython);
+      document.getElementById("btn-python-alt").classList.toggle("active", isPython);
+      document.getElementById("btn-c-alt").classList.toggle("active", !isPython);
+    }
+
+    let penActive = false, isDrawing = false, drawingHistory = [], historyStep = -1;
+    function initPenTool() {
+      const canvas = document.getElementById('pen-canvas');
+      const ctx = canvas.getContext('2d');
+      const toggleBtn = document.getElementById('pen-toggle-btn');
+      const undoBtn = document.getElementById('pen-undo-btn');
+      const redoBtn = document.getElementById('pen-redo-btn');
+      const colorInput = document.getElementById('pen-color');
+      const sizeInput = document.getElementById('pen-size');
+      const sizeDisplay = document.getElementById('pen-size-display');
+      const clearBtn = document.getElementById('pen-clear-btn');
+      const toolbar = document.getElementById('pen-toolbar-top');
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px';
+        if (penActive && drawingHistory.length > 0 && historyStep >= 0) {
+          const img = new Image();
+          img.src = drawingHistory[historyStep];
+          img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
+        }
+      }
+      function saveToHistory() {
+        historyStep++;
+        if (historyStep < drawingHistory.length) drawingHistory.length = historyStep;
+        drawingHistory.push(canvas.toDataURL());
+        undoBtn.disabled = historyStep <= 0;
+        redoBtn.disabled = historyStep >= drawingHistory.length - 1;
+      }
+      function undo() {
+        if (historyStep <= 0) return;
+        historyStep--;
+        const img = new Image(); img.src = drawingHistory[historyStep];
+        img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); undoBtn.disabled = historyStep <= 0; redoBtn.disabled = historyStep >= drawingHistory.length - 1; };
+      }
+      function redo() {
+        if (historyStep >= drawingHistory.length - 1) return;
+        historyStep++;
+        const img = new Image(); img.src = drawingHistory[historyStep];
+        img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); undoBtn.disabled = historyStep <= 0; redoBtn.disabled = historyStep >= drawingHistory.length - 1; };
+      }
+      function togglePenMode() {
+        penActive = !penActive;
+        canvas.style.display = penActive ? 'block' : 'none';
+        canvas.style.pointerEvents = penActive ? 'auto' : 'none';
+        toggleBtn.textContent = penActive ? '✏️ Stop Drawing' : '✏️ Start Drawing';
+        if (penActive && drawingHistory.length === 0) saveToHistory();
+      }
+      function setCanvasInteractivity(enabled) { if (penActive) canvas.style.pointerEvents = enabled ? 'auto' : 'none'; }
+
+      let lx = 0, ly = 0;
+      canvas.addEventListener('mousedown', e => { if (!penActive) return; e.preventDefault(); isDrawing = true; lx = e.clientX; ly = e.clientY; });
+      canvas.addEventListener('mousemove', e => {
+        if (!penActive || !isDrawing) return;
+        e.preventDefault();
+        ctx.strokeStyle = colorInput.value; ctx.lineWidth = sizeInput.value; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(e.clientX, e.clientY); ctx.stroke(); lx = e.clientX; ly = e.clientY;
+      });
+      canvas.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } });
+      canvas.addEventListener('mouseout', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } });
+      toggleBtn.addEventListener('click', e => { e.stopPropagation(); togglePenMode(); });
+      undoBtn.addEventListener('click', e => { e.stopPropagation(); undo(); });
+      redoBtn.addEventListener('click', e => { e.stopPropagation(); redo(); });
+      clearBtn.addEventListener('click', e => { e.stopPropagation(); ctx.clearRect(0,0,canvas.width,canvas.height); drawingHistory = []; historyStep = -1; undoBtn.disabled = true; redoBtn.disabled = true; });
+      sizeInput.addEventListener('input', e => { sizeDisplay.textContent = e.target.value + 'px'; });
+      toolbar.addEventListener('mouseenter', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } setCanvasInteractivity(false); });
+      toolbar.addEventListener('mouseleave', () => setCanvasInteractivity(true));
+      document.addEventListener('keydown', e => {
+        if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') togglePenMode();
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+      });
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      undoBtn.disabled = true; redoBtn.disabled = true;
+    }
+
+    window.addEventListener("load", function() {
+      loadPreset2();
+      initPenTool();
+    });
+  </script>
+</body>
+</html>

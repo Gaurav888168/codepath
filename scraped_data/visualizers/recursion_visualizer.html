@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recursion — Interactive Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d45;
+    --border2: #263550;
+    --text: #e2e8f4;
+    --muted: #6b7a99;
+    --accent-main: #58a6ff;
+    --accent-sel: #3fb950;
+    --accent2: #f472b6;
+    --accent3: #34d399;
+    --accent4: #fbbf24;
+    --accent-orange: #f0883e;
+    --rejected: #ef4444;
+  }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body { min-height:100vh; background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+
+  /* ── Top Bar ── */
+  .top-bar { position:sticky; top:0; z-index:100; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 20px; background:rgba(10,14,26,0.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+  .top-title { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; }
+  .top-title span { color:var(--accent4); }
+  .divider { width:1px; height:28px; background:var(--border2); flex-shrink:0; }
+
+  /* ── Page / Header ── */
+  .page { position:relative; z-index:1; }
+  header { padding:36px 40px 28px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+  .tag-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+  .tag { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:4px 12px; border-radius:20px; }
+  .tag-blue   { color:var(--accent-main);   border:1px solid rgba(88,166,255,0.25);  background:rgba(88,166,255,0.06); }
+  .tag-sel    { color:var(--accent-sel);    border:1px solid rgba(63,185,80,0.25);   background:rgba(63,185,80,0.06); }
+  .tag-orange { color:var(--accent-orange); border:1px solid rgba(240,136,62,0.25);  background:rgba(240,136,62,0.06); }
+  .tag-pink   { color:var(--accent2);       border:1px solid rgba(244,114,182,0.25); background:rgba(244,114,182,0.06); }
+  h1 { font-size:clamp(22px,4vw,38px); line-height:1.1; margin-bottom:8px; letter-spacing:-0.5px; }
+  .subtitle { font-size:13px; color:var(--muted); max-width:680px; line-height:1.75; }
+  .progress-bar { height:2px; background:var(--border); margin-top:16px; }
+  .progress-fill { height:100%; width:0%; background:linear-gradient(90deg, var(--accent-sel), var(--accent3), var(--accent-main)); transition:width .4s ease; }
+
+  /* ── Layout ── */
+  .container { max-width:1100px; margin:0 auto; padding:28px 24px 48px; position:relative; }
+
+  /* ── Theory / Problem boxes ── */
+  .theory-box  { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent3); }
+  .theory-box h2 { font-size:16px; margin-bottom:14px; }
+  .problem-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent-main); }
+  .problem-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-points { list-style:none; padding:0; }
+  .theory-points li { margin-bottom:12px; line-height:1.6; }
+  .theory-points li strong { color:var(--accent4); }
+  .theory-points li ul { margin-top:8px; margin-left:20px; }
+  .theory-points li ul li { margin-bottom:6px; color:var(--muted); }
+  .problem-body { color:var(--muted); font-size:13px; line-height:1.8; }
+  .problem-body strong { color:var(--text); }
+
+  /* ── Cards ── */
+  .main-card  { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+  .card       { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface2); }
+  .dot { width:8px; height:8px; border-radius:50%; }
+
+  /* ── Controls ── */
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:18px 20px; background:var(--surface2); border-top:1px solid var(--border); }
+  .btn { font-family:'IBM Plex Mono',monospace; font-size:12px; padding:10px 16px; border-radius:10px; border:1px solid var(--border2); background:var(--surface); color:var(--muted); cursor:pointer; transition:all .15s; }
+  .btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .btn-primary { border-color:var(--accent-main); color:var(--text); background:linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+  .step-label { color:var(--muted); font-size:12px; font-family:'IBM Plex Mono',monospace; }
+
+  /* ── Section headers ── */
+  .section-hdr { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text); margin:24px 0 16px 0; display:flex; align-items:center; gap:12px; font-weight:600; }
+  .section-hdr::after { content:''; flex:1; height:2px; background:linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+
+  /* ── Grid ── */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .grid-viz { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:0; align-items:start; }
+
+  /* ── Code blocks ── */
+  .code-block { padding:20px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .code-line { display:flex; gap:10px; }
+  .code-line.active-line { background:rgba(88,166,255,0.1); border-left:2px solid var(--accent-main); padding-left:6px; border-radius:2px; }
+  .ln  { color:var(--muted); min-width:18px; user-select:none; font-size:11px; }
+  .kw  { color:var(--accent2); }
+  .fn  { color:var(--accent-main); }
+  .cm  { color:var(--muted); font-style:italic; }
+  .vr  { color:var(--accent-sel); }
+  .op  { color:var(--accent4); }
+  .dt  { color:var(--accent3); }
+  .str { color:var(--accent-orange); }
+  .i1  { padding-left:16px; }
+  .i2  { padding-left:32px; }
+  .i3  { padding-left:48px; }
+
+  @media(max-width:860px) { .grid-2 { grid-template-columns:1fr; } .grid-viz { grid-template-columns:1fr; } }
+
+  /* ── Mode toggle ── */
+  .mode-toggle { display:flex; gap:6px; }
+  .mode-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:8px 16px; border-radius:8px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; }
+  .mode-btn.active { border-color:var(--accent-main); color:var(--accent-main); background:rgba(88,166,255,0.12); }
+  .mode-btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+
+  /* ── Call Stack Frames ── */
+  .call-stack-container { padding:16px; background:var(--surface2); min-height:280px; display:flex; flex-direction:column-reverse; gap:6px; overflow-y:auto; max-height:400px; }
+  .stack-frame { border-radius:8px; padding:10px 14px; font-family:'IBM Plex Mono',monospace; font-size:12px; border:1px solid; display:flex; align-items:center; justify-content:space-between; gap:10px; transition:all 0.3s ease; position:relative; overflow:hidden; }
+  .stack-frame::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; }
+  .stack-frame.active  { border-color:var(--accent4); background:rgba(251,191,36,0.08); color:var(--accent4); }
+  .stack-frame.active::before { background:var(--accent4); }
+  .stack-frame.waiting { border-color:var(--accent-main); background:rgba(88,166,255,0.06); color:var(--accent-main); }
+  .stack-frame.waiting::before { background:var(--accent-main); }
+  .stack-frame.returning { border-color:var(--accent-orange); background:rgba(240,136,62,0.08); color:var(--accent-orange); animation: pop-out 0.35s ease forwards; }
+  .stack-frame.returning::before { background:var(--accent-orange); }
+  @keyframes pop-out { from { opacity:1; transform:translateX(0); } to { opacity:0; transform:translateX(60px); } }
+  .frame-fn { font-weight:600; }
+  .frame-local { font-size:10px; color:var(--muted); margin-top:2px; }
+  .frame-badge { font-size:10px; padding:2px 8px; border-radius:20px; background:rgba(255,255,255,0.06); white-space:nowrap; }
+
+  /* ── Output / Print log ── */
+  .output-log { padding:14px 16px; font-family:'IBM Plex Mono',monospace; font-size:12px; min-height:80px; max-height:160px; overflow-y:auto; background:var(--surface2); line-height:1.8; }
+  .output-entry { display:inline-block; padding:1px 8px; border-radius:4px; margin:2px; }
+  .output-entry.call-out  { color:var(--accent-sel); }
+  .output-entry.return-out { color:var(--accent-orange); }
+
+  /* ── Backtrack log ── */
+  .backtrack-log { padding:12px 16px; font-family:'IBM Plex Mono',monospace; font-size:11px; max-height:120px; overflow-y:auto; background:var(--surface2); line-height:1.7; color:var(--accent-orange); white-space:pre-wrap; }
+
+  /* ── Anatomy diagram ── */
+  .anatomy-wrap { padding:20px; display:flex; justify-content:center; background:var(--surface); }
+
+  /* ── Legend ── */
+  .legend { display:flex; flex-wrap:wrap; gap:14px; padding:0 20px 16px; }
+  .legend-item { display:flex; align-items:center; gap:7px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+  .legend-dot { width:12px; height:12px; border-radius:3px; border:2px solid; }
+
+  /* ── Speed slider ── */
+  .speed-wrap { display:flex; align-items:center; gap:8px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+  .speed-wrap input { width:80px; }
+
+  /* ── Highlight utility ── */
+  .hi-green  { color:var(--accent-sel); }
+  .hi-yellow { color:var(--accent4); }
+  .hi-orange { color:var(--accent-orange); }
+  .hi-blue   { color:var(--accent-main); }
+  .hi-pink   { color:var(--accent2); }
+</style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ══ -->
+<div class="top-bar">
+  <span class="top-title">Recursion <span>Visualizer</span></span>
+  <div class="divider"></div>
+  <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);">Head · Tail · Function Calls · Backtracking</span>
+</div>
+
+<div class="page">
+  <!-- ══ HEADER ══ -->
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Programming Fundamentals</span>
+      <span class="tag tag-sel">Recursion</span>
+      <span class="tag tag-orange">Call Stack</span>
+      <span class="tag tag-pink">Backtracking</span>
+    </div>
+    <h1>Recursion <span style="color:var(--accent4)">Visualizer</span></h1>
+    <p class="subtitle">Understand recursion through function call frames and backtracking — no trees or graphs. Watch the call stack grow as functions call themselves, and shrink as they return. Compare Head vs Tail recursion to see how output order changes with where you print.</p>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  </header>
+
+  <div class="container">
+
+    <!-- ══ THEORY ══ -->
+    <div class="theory-box">
+      <h2>Theory</h2>
+      <p style="color:var(--muted);margin-bottom:16px;line-height:1.7;">Recursion is when a function calls itself with a smaller input, solving a problem by breaking it into identical sub-problems. Each call creates a new <strong style="color:var(--accent4)">stack frame</strong> that stores local variables. When the base case is reached, the stack unwinds — each frame returns its result to the caller. This unwinding is called <strong style="color:var(--accent-orange)">backtracking</strong>.</p>
+      <ul class="theory-points">
+        <li><strong>Base Case:</strong> The stopping condition — without it, the function recurses forever (stack overflow)</li>
+        <li><strong>Recursive Case:</strong> The function calls itself with a smaller/simpler input, moving toward the base case</li>
+        <li><strong>Call Stack:</strong> Each recursive call pushes a new frame; returning pops it — LIFO (Last In, First Out)</li>
+        <li><strong>Head Recursion:</strong> Work (print/compute) happens <em>before</em> the recursive call → output follows call order (1 → 10)</li>
+        <li><strong>Tail Recursion:</strong> Work happens <em>after</em> the recursive call → output follows return order (10 → 1) — compilers can optimize this</li>
+        <li><strong>Space Complexity:</strong> O(n) stack frames for depth n — each frame holds its own local variables</li>
+      </ul>
+    </div>
+
+    <!-- ══ PROBLEM ══ -->
+    <div class="problem-box">
+      <h2>How This Visualizer Works</h2>
+      <div class="problem-body">
+        We use <strong>print(1 to 10)</strong> as the example. Each recursive call either <strong>prints before calling</strong> (Head Recursion) or <strong>prints after returning</strong> (Tail Recursion). Watch the call stack grow frame by frame and see how the output order flips completely — all without any tree or graph, just pure function calls.
+      </div>
+    </div>
+
+    <!-- ══ GRID: Concepts ══ -->
+    <div class="grid-2">
+      <!-- Head Recursion Code -->
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>head_recursion.c &nbsp;<span style="font-size:10px;color:var(--accent-sel);font-family:'IBM Plex Mono',monospace;">PRINT BEFORE CALL</span></h3></div>
+        <div class="code-block" id="head-code">
+          <div class="code-line" data-line="1"><span class="ln">1</span><span><span class="kw">void</span> <span class="fn">print</span>(<span class="dt">int</span> <span class="vr">n</span>) {</span></div>
+          <div class="code-line" data-line="2"><span class="ln">2</span><span class="i1"><span class="kw">if</span> (<span class="vr">n</span> <span class="op">></span> <span class="dt">10</span>) <span class="kw">return</span>; <span class="cm">// base case</span></span></div>
+          <div class="code-line" data-line="3"><span class="ln">3</span><span class="i1"><span class="fn">printf</span>(<span class="str">"%d "</span>, <span class="vr">n</span>); <span class="cm">// ← print FIRST</span></span></div>
+          <div class="code-line" data-line="4"><span class="ln">4</span><span class="i1"><span class="fn">print</span>(<span class="vr">n</span> <span class="op">+</span> <span class="dt">1</span>);   <span class="cm">// then recurse</span></span></div>
+          <div class="code-line" data-line="5"><span class="ln">5</span><span>}</span></div>
+          <div class="code-line" data-line="6"><span class="ln">6</span><span></span></div>
+          <div class="code-line" data-line="7"><span class="ln">7</span><span><span class="cm">// Output: 1 2 3 4 5 6 7 8 9 10</span></span></div>
+          <div class="code-line" data-line="8"><span class="ln">8</span><span><span class="fn">print</span>(<span class="dt">1</span>); <span class="cm">// initial call</span></span></div>
+        </div>
+      </div>
+      <!-- Tail Recursion Code -->
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>tail_recursion.c &nbsp;<span style="font-size:10px;color:var(--accent-orange);font-family:'IBM Plex Mono',monospace;">PRINT AFTER CALL</span></h3></div>
+        <div class="code-block" id="tail-code">
+          <div class="code-line" data-line="1"><span class="ln">1</span><span><span class="kw">void</span> <span class="fn">print</span>(<span class="dt">int</span> <span class="vr">n</span>) {</span></div>
+          <div class="code-line" data-line="2"><span class="ln">2</span><span class="i1"><span class="kw">if</span> (<span class="vr">n</span> <span class="op">></span> <span class="dt">10</span>) <span class="kw">return</span>; <span class="cm">// base case</span></span></div>
+          <div class="code-line" data-line="3"><span class="ln">3</span><span class="i1"><span class="fn">print</span>(<span class="vr">n</span> <span class="op">+</span> <span class="dt">1</span>);   <span class="cm">// recurse FIRST</span></span></div>
+          <div class="code-line" data-line="4"><span class="ln">4</span><span class="i1"><span class="fn">printf</span>(<span class="str">"%d "</span>, <span class="vr">n</span>); <span class="cm">// ← print AFTER</span></span></div>
+          <div class="code-line" data-line="5"><span class="ln">5</span><span>}</span></div>
+          <div class="code-line" data-line="6"><span class="ln">6</span><span></span></div>
+          <div class="code-line" data-line="7"><span class="ln">7</span><span><span class="cm">// Output: 10 9 8 7 6 5 4 3 2 1</span></span></div>
+          <div class="code-line" data-line="8"><span class="ln">8</span><span><span class="fn">print</span>(<span class="dt">1</span>); <span class="cm">// initial call</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ HEAD RECURSION VISUALIZER ══ -->
+    <p class="section-hdr">Head Recursion — Print 1 to 10</p>
+
+    <div class="grid-viz">
+      <!-- LEFT: Call Stack Visual -->
+      <div class="main-card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>call_stack.frames &nbsp;<span style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">bottom → top</span></h3></div>
+        <div class="call-stack-container" id="head-stack-container">
+          <div style="text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:20px;">Stack empty — press Run or Step</div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.2);border-color:var(--accent4);"></div>Active (executing)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(88,166,255,0.1);border-color:var(--accent-main);"></div>Waiting (paused)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(240,136,62,0.1);border-color:var(--accent-orange);"></div>Returning</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Panels -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <!-- Current Action -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>current_action</h3></div>
+          <div style="padding:14px 16px;background:var(--surface2);min-height:54px;">
+            <div id="head-action" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent4);line-height:1.6;">Waiting to start…</div>
+          </div>
+        </div>
+        <!-- Code highlight -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>head_recursion.c — live trace</h3></div>
+          <div class="code-block" style="padding:14px 20px;" id="head-live-code">
+            <div class="code-line" id="hc1"><span class="ln">1</span><span><span class="kw">void</span> <span class="fn">print</span>(<span class="dt">int</span> <span class="vr">n</span>) {</span></div>
+            <div class="code-line" id="hc2"><span class="ln">2</span><span class="i1"><span class="kw">if</span> (<span class="vr">n</span> <span class="op">></span> <span class="dt">10</span>) <span class="kw">return</span>;</span></div>
+            <div class="code-line" id="hc3"><span class="ln">3</span><span class="i1"><span class="fn">printf</span>(<span class="str">"%d"</span>, <span class="vr">n</span>); <span class="cm">← prints here</span></span></div>
+            <div class="code-line" id="hc4"><span class="ln">4</span><span class="i1"><span class="fn">print</span>(<span class="vr">n+1</span>);</span></div>
+            <div class="code-line" id="hc5"><span class="ln">5</span><span>} <span class="cm">← return</span></span></div>
+          </div>
+        </div>
+        <!-- Output -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>stdout — output order</h3></div>
+          <div class="output-log" id="head-output"><span style="color:var(--muted);">// printed values appear here</span></div>
+        </div>
+        <!-- Backtrack Log -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>backtrack_log</h3></div>
+          <div class="backtrack-log" id="head-backtrack">// return trace appears here</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Head Controls -->
+    <div class="card" style="margin-bottom:32px;margin-top:16px;">
+      <div class="controls">
+        <button class="btn btn-primary" onclick="runMode('head')">▶ Run</button>
+        <button class="btn" onclick="stepMode('head')">Step →</button>
+        <button class="btn" onclick="resetMode('head')">↺ Reset</button>
+        <div class="speed-wrap">
+          <span>Speed:</span>
+          <input type="range" id="head-speed" min="200" max="1800" value="700" step="100">
+          <span id="head-speed-label">700ms</span>
+        </div>
+        <span class="step-label" id="head-status">Ready — head recursion prints before calling</span>
+      </div>
+    </div>
+
+    <!-- ══ TAIL RECURSION VISUALIZER ══ -->
+    <p class="section-hdr">Tail Recursion — Print 10 to 1</p>
+
+    <div class="grid-viz">
+      <!-- LEFT: Call Stack Visual -->
+      <div class="main-card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>call_stack.frames &nbsp;<span style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">bottom → top</span></h3></div>
+        <div class="call-stack-container" id="tail-stack-container">
+          <div style="text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:20px;">Stack empty — press Run or Step</div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.2);border-color:var(--accent4);"></div>Active (executing)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(88,166,255,0.1);border-color:var(--accent-main);"></div>Waiting (paused)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(240,136,62,0.1);border-color:var(--accent-orange);"></div>Returning + printing</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Panels -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <!-- Current Action -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>current_action</h3></div>
+          <div style="padding:14px 16px;background:var(--surface2);min-height:54px;">
+            <div id="tail-action" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent4);line-height:1.6;">Waiting to start…</div>
+          </div>
+        </div>
+        <!-- Code highlight -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>tail_recursion.c — live trace</h3></div>
+          <div class="code-block" style="padding:14px 20px;" id="tail-live-code">
+            <div class="code-line" id="tc1"><span class="ln">1</span><span><span class="kw">void</span> <span class="fn">print</span>(<span class="dt">int</span> <span class="vr">n</span>) {</span></div>
+            <div class="code-line" id="tc2"><span class="ln">2</span><span class="i1"><span class="kw">if</span> (<span class="vr">n</span> <span class="op">></span> <span class="dt">10</span>) <span class="kw">return</span>;</span></div>
+            <div class="code-line" id="tc3"><span class="ln">3</span><span class="i1"><span class="fn">print</span>(<span class="vr">n+1</span>); <span class="cm">← recurse first</span></span></div>
+            <div class="code-line" id="tc4"><span class="ln">4</span><span class="i1"><span class="fn">printf</span>(<span class="str">"%d"</span>, <span class="vr">n</span>); <span class="cm">← prints on return</span></span></div>
+            <div class="code-line" id="tc5"><span class="ln">5</span><span>} <span class="cm">← return</span></span></div>
+          </div>
+        </div>
+        <!-- Output -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>stdout — output order</h3></div>
+          <div class="output-log" id="tail-output"><span style="color:var(--muted);">// printed values appear here</span></div>
+        </div>
+        <!-- Backtrack Log -->
+        <div class="card">
+          <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>backtrack_log</h3></div>
+          <div class="backtrack-log" id="tail-backtrack">// return trace appears here</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tail Controls -->
+    <div class="card" style="margin-bottom:32px;margin-top:16px;">
+      <div class="controls">
+        <button class="btn btn-primary" onclick="runMode('tail')">▶ Run</button>
+        <button class="btn" onclick="stepMode('tail')">Step →</button>
+        <button class="btn" onclick="resetMode('tail')">↺ Reset</button>
+        <div class="speed-wrap">
+          <span>Speed:</span>
+          <input type="range" id="tail-speed" min="200" max="1800" value="700" step="100">
+          <span id="tail-speed-label">700ms</span>
+        </div>
+        <span class="step-label" id="tail-status">Ready — tail recursion prints after returning</span>
+      </div>
+    </div>
+
+    <!-- ══ COMPARISON ══ -->
+    <p class="section-hdr">Head vs Tail — Side-by-Side Comparison</p>
+
+    <div class="grid-2" style="margin-bottom:32px;">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>Head Recursion</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--accent-sel);">printf BEFORE recursive call</span></div>
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--muted);">Output during call phase (going deeper)</span></div>
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--muted);">Output order: <span style="color:var(--accent-sel);">1 2 3 4 5 6 7 8 9 10</span></span></div>
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--muted);">Stack grows → prints → stack shrinks</span></div>
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--muted);">Natural count-up order</span></div>
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--muted);">Not tail-call optimizable (print before)</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>Tail Recursion</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--accent-orange);">printf AFTER recursive call</span></div>
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--muted);">Output during return phase (unwinding)</span></div>
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--muted);">Output order: <span style="color:var(--accent-orange);">10 9 8 7 6 5 4 3 2 1</span></span></div>
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--muted);">Stack grows fully → shrinks → prints</span></div>
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--muted);">Reversed order — unwinding effect</span></div>
+          <div class="code-line"><span class="ln">·</span><span style="color:var(--muted);">Can be optimized to iteration by compiler</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ KEY INSIGHT BOX ══ -->
+    <div style="background:var(--surface);border:1px solid rgba(88,166,255,0.2);border-radius:14px;padding:24px 28px;margin-bottom:32px;border-left:3px solid var(--accent-main);">
+      <h2 style="font-size:15px;margin-bottom:12px;color:var(--accent-main);">💡 The Key Insight — Why Order Flips</h2>
+      <p style="color:var(--muted);font-size:13px;line-height:1.8;margin-bottom:12px;">
+        Imagine stacking 10 plates. In <span style="color:var(--accent-sel);">head recursion</span>, you <strong style="color:var(--text);">label each plate as you stack it</strong> — so the labels read 1, 2, 3… in stacking order. In <span style="color:var(--accent-orange);">tail recursion</span>, you <strong style="color:var(--text);">label each plate as you unstack it</strong> — so the labels read 10, 9, 8… in reverse.
+      </p>
+      <p style="color:var(--muted);font-size:13px;line-height:1.8;">
+        The call stack is the same in both cases — 10 frames deep. What changes is <strong style="color:var(--text);">when the work (printf) executes</strong>: before or after the recursive call returns.
+      </p>
+    </div>
+
+  </div><!-- /container -->
+</div><!-- /page -->
+
+<script>
+/* ═══════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════ */
+
+// Each mode has a sequence of "events" pre-generated
+// Phase types: PUSH_CALL, BASE_CASE, RETURN
+
+const N_MAX = 10;
+
+function generateHeadEvents() {
+  // HEAD: print BEFORE recursive call
+  // Call phase: enter frame → check base case → print → recurse
+  // Return phase: just return (nothing to print)
+  const events = [];
+  // Calls from n=1 upward
+  for (let n = 1; n <= N_MAX; n++) {
+    events.push({ type: 'ENTER',  n, phase: 'call', msg: `→ Entering print(${n})`, codeLine: 1 });
+    events.push({ type: 'CHECK',  n, phase: 'call', msg: `  if (${n} > 10)? No — continue`, codeLine: 2 });
+    events.push({ type: 'PRINT',  n, phase: 'call', msg: `  printf(${n}) ← output: ${n}`, codeLine: 3, printVal: n });
+    events.push({ type: 'CALL',   n, phase: 'call', msg: `  print(${n+1}) — calling next…`, codeLine: 4 });
+  }
+  // Base case
+  events.push({ type: 'ENTER',     n: N_MAX+1, phase: 'base', msg: `→ Entering print(${N_MAX+1})`, codeLine: 1 });
+  events.push({ type: 'BASE_CASE', n: N_MAX+1, phase: 'base', msg: `  if (${N_MAX+1} > 10)? YES → return`, codeLine: 2 });
+  // Returns from n=N_MAX down to 1
+  for (let n = N_MAX; n >= 1; n--) {
+    events.push({ type: 'RETURN', n, phase: 'return', msg: `← Returning from print(${n})`, codeLine: 5 });
+  }
+  return events;
+}
+
+function generateTailEvents() {
+  // TAIL: print AFTER recursive call
+  const events = [];
+  for (let n = 1; n <= N_MAX; n++) {
+    events.push({ type: 'ENTER', n, phase: 'call', msg: `→ Entering print(${n})`, codeLine: 1 });
+    events.push({ type: 'CHECK', n, phase: 'call', msg: `  if (${n} > 10)? No — continue`, codeLine: 2 });
+    events.push({ type: 'CALL',  n, phase: 'call', msg: `  print(${n+1}) — calling next…`, codeLine: 3 });
+  }
+  // Base case
+  events.push({ type: 'ENTER',     n: N_MAX+1, phase: 'base', msg: `→ Entering print(${N_MAX+1})`, codeLine: 1 });
+  events.push({ type: 'BASE_CASE', n: N_MAX+1, phase: 'base', msg: `  if (${N_MAX+1} > 10)? YES → return`, codeLine: 2 });
+  // Returns with prints
+  for (let n = N_MAX; n >= 1; n--) {
+    events.push({ type: 'PRINT',  n, phase: 'return', msg: `  printf(${n}) ← output: ${n}`, codeLine: 4, printVal: n });
+    events.push({ type: 'RETURN', n, phase: 'return', msg: `← Returning from print(${n})`, codeLine: 5 });
+  }
+  return events;
+}
+
+const STATE = {
+  head: {
+    events: generateHeadEvents(),
+    idx: 0,
+    stack: [],       // [{n, state:'active'|'waiting'|'returning'}]
+    output: [],
+    backtrack: [],
+    timer: null,
+    running: false,
+    done: false,
+  },
+  tail: {
+    events: generateTailEvents(),
+    idx: 0,
+    stack: [],
+    output: [],
+    backtrack: [],
+    timer: null,
+    running: false,
+    done: false,
+  }
+};
+
+/* ═══════════════════════════════════════════════
+   RENDERING
+   ═══════════════════════════════════════════════ */
+
+function renderStack(mode) {
+  const s = STATE[mode];
+  const el = document.getElementById(`${mode}-stack-container`);
+  if (s.stack.length === 0) {
+    el.innerHTML = `<div style="text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:20px;">Stack empty — press Run or Step</div>`;
+    return;
+  }
+  // Render bottom to top (index 0 is bottom)
+  el.innerHTML = s.stack.map((frame, i) => {
+    const isTop = i === s.stack.length - 1;
+    const stateClass = frame.state; // 'active', 'waiting', 'returning'
+    const badge = isTop ? '← TOP' : `depth ${i}`;
+    const localVar = `n = ${frame.n}`;
+    return `<div class="stack-frame ${stateClass}">
+      <div>
+        <div class="frame-fn">print(${frame.n})</div>
+        <div class="frame-local">${localVar}</div>
+      </div>
+      <span class="frame-badge">${badge}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderOutput(mode) {
+  const s = STATE[mode];
+  const el = document.getElementById(`${mode}-output`);
+  if (s.output.length === 0) {
+    el.innerHTML = `<span style="color:var(--muted);">// printed values appear here</span>`;
+    return;
+  }
+  el.innerHTML = s.output.map(({val, phase}) => {
+    const cls = phase === 'call' ? 'call-out' : 'return-out';
+    return `<span class="output-entry ${cls}">${val}</span>`;
+  }).join('');
+}
+
+function renderBacktrack(mode) {
+  const el = document.getElementById(`${mode}-backtrack`);
+  const s = STATE[mode];
+  if (s.backtrack.length === 0) {
+    el.textContent = '// return trace appears here';
+    return;
+  }
+  el.textContent = s.backtrack.join('\n');
+  el.scrollTop = el.scrollHeight;
+}
+
+function setAction(mode, msg) {
+  document.getElementById(`${mode}-action`).textContent = msg;
+}
+
+function setStatus(mode, msg) {
+  document.getElementById(`${mode}-status`).textContent = msg;
+}
+
+function highlightLine(mode, lineNum) {
+  const prefix = mode === 'head' ? 'hc' : 'tc';
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById(`${prefix}${i}`);
+    if (el) el.classList.remove('active-line');
+  }
+  if (lineNum) {
+    const el = document.getElementById(`${prefix}${lineNum}`);
+    if (el) el.classList.add('active-line');
+  }
+}
+
+function updateProgress(mode) {
+  const s = STATE[mode];
+  const pct = Math.round((s.idx / s.events.length) * 100);
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+/* ═══════════════════════════════════════════════
+   STEP LOGIC
+   ═══════════════════════════════════════════════ */
+
+function applyEvent(mode, ev) {
+  const s = STATE[mode];
+
+  switch (ev.type) {
+    case 'ENTER':
+      // Mark all existing frames as waiting
+      s.stack.forEach(f => f.state = 'waiting');
+      // Push new frame
+      if (ev.phase !== 'base') {
+        s.stack.push({ n: ev.n, state: 'active' });
+      } else {
+        // Base case: push briefly then we'll remove on BASE_CASE event
+        s.stack.push({ n: ev.n, state: 'active' });
+      }
+      setAction(mode, ev.msg);
+      highlightLine(mode, ev.codeLine);
+      break;
+
+    case 'CHECK':
+      setAction(mode, ev.msg);
+      highlightLine(mode, ev.codeLine);
+      break;
+
+    case 'BASE_CASE':
+      setAction(mode, ev.msg);
+      highlightLine(mode, ev.codeLine);
+      // Pop base case frame immediately
+      if (s.stack.length > 0) {
+        s.stack[s.stack.length - 1].state = 'returning';
+      }
+      s.backtrack.push(`↩ Base case: print(${ev.n}) returns (${ev.n} > 10)`);
+      break;
+
+    case 'PRINT':
+      setAction(mode, ev.msg);
+      highlightLine(mode, ev.codeLine);
+      s.output.push({ val: ev.printVal, phase: ev.phase });
+      // Mark top frame active
+      if (s.stack.length > 0) {
+        s.stack[s.stack.length - 1].state = 'active';
+      }
+      break;
+
+    case 'CALL':
+      setAction(mode, ev.msg);
+      highlightLine(mode, ev.codeLine);
+      // Frame is still on stack but about to call next
+      if (s.stack.length > 0) {
+        s.stack[s.stack.length - 1].state = 'waiting';
+      }
+      break;
+
+    case 'RETURN':
+      setAction(mode, ev.msg);
+      highlightLine(mode, ev.codeLine);
+      // Pop top frame
+      const popped = s.stack.pop();
+      s.backtrack.push(`↩ print(${ev.n}) returned → back to ${s.stack.length > 0 ? 'print('+s.stack[s.stack.length-1].n+')' : 'caller'}`);
+      // Make new top active
+      if (s.stack.length > 0) {
+        s.stack[s.stack.length - 1].state = 'active';
+      }
+      break;
+  }
+
+  renderStack(mode);
+  renderOutput(mode);
+  renderBacktrack(mode);
+  updateProgress(mode);
+
+  s.idx++;
+  if (s.idx >= s.events.length) {
+    s.done = true;
+    setStatus(mode, `✓ Done! Output: ${s.output.map(o=>o.val).join(' ')}`);
+    stopMode(mode);
+    highlightLine(mode, null);
+  }
+}
+
+function stepMode(mode) {
+  const s = STATE[mode];
+  if (s.done) return;
+  if (s.idx >= s.events.length) return;
+  applyEvent(mode, s.events[s.idx]);
+  if (!s.done) setStatus(mode, `Step ${s.idx} of ${s.events.length}`);
+}
+
+function runMode(mode) {
+  const s = STATE[mode];
+  if (s.done) resetMode(mode);
+  if (s.running) { stopMode(mode); return; }
+  s.running = true;
+  const speedEl = document.getElementById(`${mode}-speed`);
+  const delay = parseInt(speedEl.value);
+  s.timer = setInterval(() => {
+    if (s.done || s.idx >= s.events.length) {
+      stopMode(mode);
+      return;
+    }
+    applyEvent(mode, s.events[s.idx]);
+  }, delay);
+}
+
+function stopMode(mode) {
+  const s = STATE[mode];
+  clearInterval(s.timer);
+  s.timer = null;
+  s.running = false;
+}
+
+function resetMode(mode) {
+  stopMode(mode);
+  const s = STATE[mode];
+  s.idx = 0;
+  s.stack = [];
+  s.output = [];
+  s.backtrack = [];
+  s.done = false;
+  renderStack(mode);
+  renderOutput(mode);
+  renderBacktrack(mode);
+  setAction(mode, 'Waiting to start…');
+  highlightLine(mode, null);
+  updateProgress(mode);
+  const msgs = {
+    head: 'Ready — head recursion prints before calling',
+    tail: 'Ready — tail recursion prints after returning',
+  };
+  setStatus(mode, msgs[mode]);
+}
+
+/* ═══════════════════════════════════════════════
+   SPEED SLIDERS
+   ═══════════════════════════════════════════════ */
+['head','tail'].forEach(mode => {
+  const sl = document.getElementById(`${mode}-speed`);
+  const lbl = document.getElementById(`${mode}-speed-label`);
+  sl.addEventListener('input', () => {
+    lbl.textContent = sl.value + 'ms';
+    if (STATE[mode].running) {
+      stopMode(mode);
+      runMode(mode);
+    }
+  });
+});
+
+/* ═══════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════ */
+window.addEventListener('load', () => {
+  renderStack('head');
+  renderStack('tail');
+  renderOutput('head');
+  renderOutput('tail');
+});
+</script>
+</body>
+</html>

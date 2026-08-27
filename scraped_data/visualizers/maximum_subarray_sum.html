@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maximum Subarray Sum - Interactive Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0a0e1a; --surface:#111827; --surface2:#1a2236; --border:#1e2d45; --border2:#263550; --text:#e2e8f4; --muted:#6b7a99; --accent-main:#58a6ff; --accent-sel:#3fb950; --accent2:#f472b6; --accent3:#34d399; --accent4:#fbbf24; --accent-orange:#f0883e; --rejected:#ef4444; }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(88,166,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(88,166,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+  #pen-canvas{position:fixed;top:0;left:0;z-index:99999;display:none;pointer-events:none}
+  .top-bar{position:sticky;top:0;z-index:100000;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 20px;background:rgba(10,14,26,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .top-title{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;white-space:nowrap}
+  .top-title span{color:var(--accent4)}
+  .divider{width:1px;height:28px;background:var(--border2);flex-shrink:0}
+  .pen-toolbar-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-left:auto;pointer-events:auto}
+  .btn{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer}
+  .btn:hover{border-color:var(--accent-main);color:var(--accent-main)}
+  .btn-primary{border-color:var(--accent-main);color:var(--text);background:linear-gradient(90deg,rgba(88,166,255,.2),rgba(52,211,153,.12))}
+  .page{position:relative;z-index:1}
+  header{padding:36px 40px 28px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(88,166,255,.04) 0%,transparent 100%)}
+  .tag-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+  .tag{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:20px}
+  .tag-blue{color:var(--accent-main);border:1px solid rgba(88,166,255,.25);background:rgba(88,166,255,.06)}
+  .tag-sel{color:var(--accent-sel);border:1px solid rgba(63,185,80,.25);background:rgba(63,185,80,.06)}
+  .tag-orange{color:var(--accent-orange);border:1px solid rgba(240,136,62,.25);background:rgba(240,136,62,.06)}
+  h1{font-size:clamp(22px,4vw,38px);line-height:1.1;margin-bottom:8px}
+  .subtitle{font-size:13px;color:var(--muted);max-width:740px;line-height:1.75}
+  .container{max-width:1100px;margin:0 auto;padding:28px 24px 48px}
+  .theory-box,.problem-box,.card{background:var(--surface);border:1px solid var(--border2);border-radius:14px}
+  .theory-box,.problem-box{padding:24px 28px;margin-bottom:24px}
+  .theory-box{border-left:3px solid var(--accent3)}
+  .problem-box{border-left:3px solid var(--accent-main)}
+  .theory-box h2,.problem-box h2{font-size:16px;margin-bottom:14px}
+  .problem-body,.theory-box p{color:var(--muted);font-size:13px;line-height:1.8}
+  .theory-points{list-style:none;padding:0;margin-top:12px}
+  .theory-points li{margin-bottom:10px;color:var(--muted)}
+  .theory-points li strong{color:var(--accent4)}
+  .section-hdr{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin:24px 0 16px;display:flex;align-items:center;gap:12px;font-weight:600}
+  .card{overflow:hidden;margin-bottom:24px;border-color:var(--border)}
+  .card-header{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface2)}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:16px 20px;background:var(--surface2);border-top:1px solid var(--border)}
+  .small-input{width:180px;padding:10px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-family:'IBM Plex Mono',monospace}
+  .step-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+  .vis-area{padding:18px;background:#0f172a}
+  .arr-row{display:flex;flex-wrap:wrap;gap:6px}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .cell-box{width:62px;height:62px;border:2px solid var(--border2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;background:var(--surface2);transition:all .2s}
+  .cell-box.active{border-color:var(--accent4);background:rgba(251,191,36,.2);transform:translateY(-4px)}
+  .cell-box.in-range{border-color:var(--accent-main);background:rgba(88,166,255,.18)}
+  .cell-box.best{border-color:var(--accent-sel);background:rgba(63,185,80,.2)}
+  .cell-idx{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)}
+  .status-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 20px}
+  .status-box{background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px}
+  .status-box h3{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase}
+  .status-box pre{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent3);white-space:pre-wrap}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .code-block{padding:18px 20px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8;overflow:auto;max-height:500px}
+  .code-line{display:flex;gap:10px;padding:4px 8px;border-radius:4px;transition:all .15s}.ln{color:var(--muted);min-width:18px;font-size:11px}.kw{color:var(--accent2)}.fn{color:var(--accent-main)}.cm{color:var(--muted);font-style:italic}.vr{color:var(--accent-sel)}.op{color:var(--accent4)}.i1{padding-left:16px}.i2{padding-left:32px}
+  .code-line.active{background:rgba(88,166,255,.15);border-left:2px solid var(--accent4);padding-left:6px}
+  .code-line.executed{background:rgba(63,185,80,.1)}
+  .sync-container{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+  .pseudocode-panel,.viz-panel{background:var(--surface);border:1px solid var(--border2);border-radius:14px;overflow:hidden}
+  .pseudocode-panel{display:flex;flex-direction:column}
+  .pseudocode-header,.viz-header{padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:13px;font-weight:600;display:flex;gap:10px;align-items:center}
+  .pseudocode-header .dot{background:var(--accent2)}
+  .viz-header .dot{background:var(--accent-main)}
+  .pseudocode-content{flex:1;overflow-y:auto}
+  .viz-content{padding:18px}
+  .algo-step-log{margin-top:16px;padding:12px 20px;background:var(--surface2);border-top:1px solid var(--border);font-size:12px;color:var(--accent3);font-family:'IBM Plex Mono',monospace;line-height:1.6;max-height:120px;overflow-y:auto}
+  .lang-selector{display:flex;gap:8px;margin-bottom:16px}.lang-btn{padding:8px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;transition:all .2s}
+  .lang-btn:hover{border-color:var(--accent-main);color:var(--accent-main)}
+  .lang-btn.active{border-color:var(--accent-sel);background:rgba(63,185,80,.15);color:var(--accent-sel)}
+  .impl-grid{display:grid;grid-template-columns:1fr;gap:24px}.impl-card{display:none;background:var(--surface);border:1px solid var(--border2);border-radius:14px;overflow:hidden}.impl-card.show{display:block}
+  .highlight-box{background:rgba(251,191,36,.1);border-left:2px solid var(--accent4);padding:12px 14px;margin:12px 0;border-radius:6px;font-size:13px;line-height:1.7}
+  .highlight-text{color:var(--accent4);font-weight:600}
+  @media(max-width:860px){.grid-2,.status-grid{grid-template-columns:1fr}.cell-box{width:50px;height:50px;font-size:14px}.sync-container{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<canvas id="pen-canvas"></canvas>
+<div class="top-bar">
+  <span class="top-title">Maximum Subarray Sum <span>Visualizer</span></span>
+  <div class="divider"></div>
+  <div class="pen-toolbar-top" id="pen-toolbar-top">
+    <button class="btn btn-primary" id="pen-toggle-btn">✏️ Start Drawing</button>
+    <button class="btn" id="pen-undo-btn">↶ Undo</button>
+    <button class="btn" id="pen-redo-btn">↷ Redo</button>
+    <button class="btn" id="pen-clear-btn">🗑️ Clear</button>
+  </div>
+</div>
+
+<div class="page">
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Array</span>
+      <span class="tag tag-sel">Kadane</span>
+      <span class="tag tag-orange">Dynamic Programming</span>
+    </div>
+    <h1>Maximum Subarray Sum <span style="color:var(--accent4)">Visualizer</span></h1>
+    <p class="subtitle">Understand Kadane's algorithm step by step: at each index, decide whether to extend the current subarray or start fresh from current element.</p>
+  </header>
+
+  <div class="container">
+    <div class="theory-box">
+      <h2>Theory</h2>
+      <p>Kadane's algorithm solves maximum subarray in O(n). Keep running sum <strong style="color:var(--text)">currentSum</strong> and best answer <strong style="color:var(--text)">maxSum</strong>. If extending hurts, restart from current element.</p>
+      <ul class="theory-points">
+        <li><strong>Transition:</strong> currentSum = max(arr[i], currentSum + arr[i])</li>
+        <li><strong>Best update:</strong> maxSum = max(maxSum, currentSum)</li>
+        <li><strong>Complexity:</strong> Time O(n), Space O(1)</li>
+      </ul>
+    </div>
+
+    <div class="problem-box">
+      <h2>Problem Statement</h2>
+      <div class="problem-body">Given integer array <strong>nums</strong>, find contiguous subarray with largest sum and return the sum.
+        <br><br><strong>Example:</strong> nums = [-2,1,-3,4,-1,2,1,-5,4] => <strong>6</strong> from subarray [4,-1,2,1].
+      </div>
+    </div>
+
+    <p class="section-hdr">Approach</p>
+    <div class="card">
+      <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>How It Works</h3></div>
+      <div style="padding:18px 20px;color:var(--muted);font-size:13px;line-height:1.8;">
+        <div class="highlight-box">
+          Start from left to right and keep <span class="highlight-text">two key variables</span> in mind:
+          <br><span class="highlight-text">1) Current running subarray</span> (best subarray ending at current index).
+          <br><span class="highlight-text">2) Best answer so far</span> (largest sum seen anywhere).
+        </div>
+        <strong style="color:var(--text)">At each number, ask:</strong>
+        <br>• <span style="color:var(--accent-sel)">Should I continue extending?</span>
+        <br>• <span style="color:var(--accent-sel)">Or should I restart fresh from here?</span>
+        <br><br>
+        <div class="highlight-box">
+          If the <span class="highlight-text">previous running sum is negative/hurting</span> the total, drop it completely and restart from the current number. Then check if this new sum is the best we've seen globally.
+        </div>
+        <strong style="color:var(--accent3)">Why it works:</strong> Single pass through array, O(n) time, O(1) space. Greedy approach finds optimal answer without backtracking.
+      </div>
+    </div>
+
+    <p class="section-hdr">Visualization & Algorithm Execution</p>
+    <div class="card">
+      <div class="controls">
+        <input class="small-input" id="arr-input" value="-2,1,-3,4,-1,2,1,-5,4" />
+        <button class="btn btn-primary" onclick="initKadane()">▶ Initialize</button>
+        <button class="btn" onclick="stepKadane()">Step →</button>
+        <button class="btn" onclick="autoKadane()">⏩ Auto</button>
+        <button class="btn" onclick="resetKadane()">Reset</button>
+        <span class="step-label" id="step-status">Ready</span>
+      </div>
+      
+      <div class="sync-container">
+        <!-- Pseudocode Panel -->
+        <div class="pseudocode-panel">
+          <div class="pseudocode-header"><div class="dot"></div><h3>Pseudocode (Kadane's Algorithm)</h3></div>
+          <div class="pseudocode-content">
+            <div class="code-block">
+              <div class="code-line" data-line="1"><span class="ln">1</span><span><span class="kw">function</span> <span class="fn">maxSubArray</span>(<span class="vr">nums</span>):</span></div>
+              <div class="code-line" data-line="2"><span class="ln">2</span><span class="i1"><span class="vr">current</span> = <span class="vr">nums</span>[0]</span></div>
+              <div class="code-line" data-line="3"><span class="ln">3</span><span class="i1"><span class="vr">best</span> = <span class="vr">nums</span>[0]</span></div>
+              <div class="code-line" data-line="4"><span class="ln">4</span><span class="i1"><span class="kw">for</span> i from 1 to n-1:</span></div>
+              <div class="code-line" data-line="5"><span class="ln">5</span><span class="i2"><span class="vr">current</span> = max(<span class="vr">nums</span>[i], <span class="vr">current</span> + <span class="vr">nums</span>[i])</span></div>
+              <div class="code-line" data-line="6"><span class="ln">6</span><span class="i2"><span class="vr">best</span> = max(<span class="vr">best</span>, <span class="vr">current</span>)</span></div>
+              <div class="code-line" data-line="7"><span class="ln">7</span><span class="i1"><span class="kw">return</span> <span class="vr">best</span></span></div>
+            </div>
+          </div>
+          <div class="algo-step-log" id="step-log">Trace Log:<br>Ready to execute...</div>
+        </div>
+
+        <!-- Visualization Panel -->
+        <div class="viz-panel">
+          <div class="viz-header"><div class="dot"></div><h3>Array State & Visualization</h3></div>
+          <div class="viz-content">
+            <div class="arr-row" id="arr-row"></div>
+            <div class="status-grid" style="margin-top:18px;gap:12px">
+              <div class="status-box"><h3>Current Sum</h3><pre id="state-current" style="font-size:14px;color:var(--accent4)">-</pre></div>
+              <div class="status-box"><h3>Max Sum Found</h3><pre id="state-max" style="font-size:14px;color:var(--accent-sel)">-</pre></div>
+              <div class="status-box"><h3>Index (i)</h3><pre id="state-idx" style="font-size:14px;color:var(--accent-main)">-</pre></div>
+              <div class="status-box"><h3>Best Range</h3><pre id="state-range" style="font-size:14px;color:var(--accent3)">[-, -]</pre></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-hdr">Understanding the Algorithm</p>
+    <div class="card">
+      <div style="padding:20px;color:var(--muted);font-size:13px;line-height:1.8">
+        <strong style="color:var(--text)">Line 2-3:</strong> Initialize both current and best with the first element<br><br>
+        <strong style="color:var(--text)">Line 5:</strong> <span style="color:var(--accent4)">KEY DECISION</span> — At each element, ask: "Should I extend the current subarray or restart fresh?" If <code style="background:rgba(251,191,36,.1);padding:2px 6px;border-radius:4px">nums[i]</code> is better than <code style="background:rgba(251,191,36,.1);padding:2px 6px;border-radius:4px">current+nums[i]</code>, restart from here.<br><br>
+        <strong style="color:var(--text)">Line 6:</strong> After deciding on current, check if it's the best we've seen globally.<br><br>
+        <strong style="color:var(--text)">Result:</strong> One pass through the array, tracking best subarray ending at each position and overall best.
+      </div>
+    </div>
+
+    <p class="section-hdr">Implementation</p>
+    <div style="display:flex;gap:12px;margin-bottom:20px" id="lang-selector">
+      <button class="lang-btn active" onclick="switchLang('python')">Python</button>
+      <button class="lang-btn" onclick="switchLang('js')">JavaScript</button>
+      <button class="lang-btn" onclick="switchLang('c')">C</button>
+    </div>
+    <div class="impl-grid">
+      <div class="impl-card show" id="lang-python">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>Python</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="kw">def</span> <span class="fn">max_subarray</span>(<span class="vr">nums</span>):</span></div>
+          <div class="code-line"><span class="ln">2</span><span class="i1"><span class="vr">current</span> = <span class="vr">best</span> = <span class="vr">nums</span>[0]</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="kw">for</span> <span class="vr">x</span> <span class="kw">in</span> <span class="vr">nums</span>[1:]:</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i2"><span class="vr">current</span> = max(<span class="vr">x</span>, <span class="vr">current</span> + <span class="vr">x</span>)</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i2"><span class="vr">best</span> = max(<span class="vr">best</span>, <span class="vr">current</span>)</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i1"><span class="kw">return</span> <span class="vr">best</span></span></div>
+        </div>
+      </div>
+      <div class="impl-card" id="lang-js">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>JavaScript</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="kw">function</span> <span class="fn">maxSubArray</span>(<span class="vr">nums</span>) {</span></div>
+          <div class="code-line"><span class="ln">2</span><span class="i1"><span class="kw">let</span> [<span class="vr">current</span>, <span class="vr">best</span>] = [<span class="vr">nums</span>[0], <span class="vr">nums</span>[0]];</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="kw">for</span> (<span class="kw">let</span> <span class="vr">i</span> = 1; <span class="vr">i</span> &lt; <span class="vr">nums</span>.length; <span class="vr">i</span>++)</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i2"><span class="vr">current</span> = Math.max(<span class="vr">nums</span>[<span class="vr">i</span>], <span class="vr">current</span> + <span class="vr">nums</span>[<span class="vr">i</span>]);</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i2"><span class="vr">best</span> = Math.max(<span class="vr">best</span>, <span class="vr">current</span>);</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i1"><span class="kw">return</span> <span class="vr">best</span>;</span></div>
+          <div class="code-line"><span class="ln">7</span><span>}</span></div>
+        </div>
+      </div>
+      <div class="impl-card" id="lang-c">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>C</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="kw">#include</span> &lt;limits.h&gt;</span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">int</span> <span class="fn">maxSubArray</span>(<span class="kw">int</span>* <span class="vr">nums</span>, <span class="kw">int</span> <span class="vr">numsSize</span>) {</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="kw">int</span> <span class="vr">current</span> = <span class="vr">nums</span>[0], <span class="vr">best</span> = <span class="vr">nums</span>[0];</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="kw">for</span> (<span class="kw">int</span> <span class="vr">i</span> = 1; <span class="vr">i</span> &lt; <span class="vr">numsSize</span>; <span class="vr">i</span>++) {</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i2"><span class="vr">current</span> = <span class="vr">nums</span>[<span class="vr">i</span>] &gt; <span class="vr">current</span> + <span class="vr">nums</span>[<span class="vr">i</span>] ? <span class="vr">nums</span>[<span class="vr">i</span>] : <span class="vr">current</span> + <span class="vr">nums</span>[<span class="vr">i</span>];</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i2"><span class="vr">best</span> = <span class="vr">current</span> &gt; <span class="vr">best</span> ? <span class="vr">current</span> : <span class="vr">best</span>;</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="kw">return</span> <span class="vr">best</span>;</span></div>
+          <div class="code-line"><span class="ln">9</span><span>}</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let arr = [], i = 0, currentSum = 0, maxSum = 0, currentStart = 0, bestL = 0, bestR = 0, timer = null;
+
+// Highlight pseudocode line
+function highlightLine(lineNum, isExecuted = false) {
+  document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active', 'executed'));
+  if (lineNum > 0) {
+    const line = document.querySelector(`.code-line[data-line="${lineNum}"]`);
+    if (line) {
+      line.classList.add('active');
+      if (isExecuted) line.classList.add('executed');
+      line.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+}
+
+// Add step to trace log
+function logStep(msg) {
+  const log = document.getElementById('step-log');
+  const lines = log.innerHTML.split('<br>');
+  lines.push(msg);
+  if (lines.length > 10) lines.shift();
+  log.innerHTML = lines.join('<br>');
+  log.scrollTop = log.scrollHeight;
+}
+
+function renderArr() {
+  const row = document.getElementById('arr-row');
+  row.innerHTML = '';
+  arr.forEach((v, idx) => {
+    let cls = '';
+    if (idx === i && i < arr.length) cls = 'active';
+    if (idx >= currentStart && idx <= i) cls += ' in-range';
+    if (idx >= bestL && idx <= bestR) cls += ' best';
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = `<span class="cell-idx">[${idx}]</span><div class="cell-box${cls}" title="${v}">${v}</div>`;
+    row.appendChild(cell);
+  });
+}
+
+function updateViews() {
+  document.getElementById('state-idx').textContent = i < arr.length ? i : '✓ Done';
+  document.getElementById('state-current').textContent = currentSum;
+  document.getElementById('state-max').textContent = maxSum;
+  document.getElementById('state-range').textContent = `[${bestL}, ${bestR}]`;
+  document.getElementById('step-status').textContent = i >= arr.length ? 'Completed' : `Step ${i}`;
+}
+
+function initKadane() {
+  const raw = document.getElementById('arr-input').value;
+  const nums = raw.split(',').map(s => Number(s.trim())).filter(n => !Number.isNaN(n));
+  if (!nums.length) { logStep('❌ Enter valid numbers'); return; }
+  
+  arr = nums; i = 0;
+  currentSum = arr[0]; maxSum = arr[0];
+  currentStart = 0; bestL = 0; bestR = 0;
+  
+  renderArr(); updateViews();
+  document.getElementById('step-log').innerHTML = 
+    `Trace Log:<br>✓ Initialized<br>• current = nums[0] = ${arr[0]}<br>• best = nums[0] = ${arr[0]}`;
+  highlightLine(2);
+}
+
+function stepKadane() {
+  if (!arr.length) initKadane();
+  if (i >= arr.length - 1) { 
+    logStep('✓ Algorithm complete!');
+    highlightLine(7);
+    document.getElementById('step-status').textContent = 'Completed';
+    if (timer) clearInterval(timer); 
+    return; 
+  }
+  
+  i++;
+  highlightLine(4);
+  logStep(`→ Iteration i=${i}, element: ${arr[i]}`);
+  
+  // Line 5: Decide extend or restart
+  const oldSum = currentSum;
+  if (arr[i] > currentSum + arr[i]) { 
+    currentSum = arr[i]; 
+    currentStart = i; 
+    logStep(`  Line 5: ${arr[i]} > ${oldSum}+${arr[i]}, restart fresh`);
+  } else {
+    currentSum += arr[i]; 
+    logStep(`  Line 5: extend ${oldSum}+${arr[i]}=${currentSum}`);
+  }
+  highlightLine(5);
+  renderArr(); updateViews();
+  
+  setTimeout(() => {
+    // Line 6: Update best
+    if (currentSum > maxSum) { 
+      maxSum = currentSum; 
+      bestL = currentStart; 
+      bestR = i;
+      logStep(`  Line 6: new max! ${maxSum} @ [${bestL},${bestR}]`);
+    } else {
+      logStep(`  Line 6: max unchanged: ${maxSum}`);
+    }
+    highlightLine(6);
+    renderArr(); updateViews();
+  }, 300);
+}
+
+function autoKadane() {
+  if (timer) { clearInterval(timer); timer = null; document.getElementById('step-status').textContent = 'Paused'; return; }
+  document.getElementById('step-status').textContent = 'Running...';
+  timer = setInterval(() => { 
+    if (i >= arr.length - 1) { 
+      clearInterval(timer); 
+      timer = null; 
+      return; 
+    } 
+    stepKadane(); 
+  }, 1200);
+}
+
+function resetKadane() { 
+  if (timer) clearInterval(timer); 
+  timer = null; 
+  initKadane(); 
+}
+
+let penActive = false, drawing = false, drawingHistory = [], historyStep = -1;
+function initPen() {
+  const canvas = document.getElementById('pen-canvas');
+  const ctx = canvas.getContext('2d');
+  const toggleBtn = document.getElementById('pen-toggle-btn');
+  const undoBtn = document.getElementById('pen-undo-btn');
+  const redoBtn = document.getElementById('pen-redo-btn');
+  const clearBtn = document.getElementById('pen-clear-btn');
+  function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  function syncButtons() { undoBtn.disabled = historyStep <= 0; redoBtn.disabled = historyStep >= drawingHistory.length - 1; }
+  function save() { historyStep++; if (historyStep < drawingHistory.length) drawingHistory.length = historyStep; drawingHistory.push(canvas.toDataURL()); syncButtons(); }
+  function load(step) { const img = new Image(); img.src = drawingHistory[step]; img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); }; }
+  toggleBtn.onclick = () => { penActive = !penActive; canvas.style.display = penActive ? 'block' : 'none'; canvas.style.pointerEvents = penActive ? 'auto' : 'none'; toggleBtn.textContent = penActive ? '✏️ Stop Drawing' : '✏️ Start Drawing'; if (penActive && !drawingHistory.length) save(); };
+  undoBtn.onclick = () => { if (historyStep > 0) { historyStep--; load(historyStep); syncButtons(); } };
+  redoBtn.onclick = () => { if (historyStep < drawingHistory.length - 1) { historyStep++; load(historyStep); syncButtons(); } };
+  clearBtn.onclick = () => { ctx.clearRect(0,0,canvas.width,canvas.height); drawingHistory = []; historyStep = -1; syncButtons(); };
+  canvas.addEventListener('mousedown', e => { if (!penActive) return; drawing = true; ctx.beginPath(); ctx.moveTo(e.clientX, e.clientY); });
+  canvas.addEventListener('mousemove', e => { if (!drawing || !penActive) return; ctx.lineWidth = 3; ctx.strokeStyle = '#fbbf24'; ctx.lineCap = 'round'; ctx.lineTo(e.clientX, e.clientY); ctx.stroke(); });
+  canvas.addEventListener('mouseup', () => { if (drawing) { drawing = false; save(); } });
+  canvas.addEventListener('mouseleave', () => { drawing = false; });
+  window.addEventListener('resize', resize);
+  resize(); syncButtons();
+}
+
+// Language selector for implementations
+function switchLang(lang) {
+  document.querySelectorAll('.impl-card').forEach(el => el.classList.remove('show'));
+  document.querySelectorAll('.lang-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(`lang-${lang}`).classList.add('show');
+  document.querySelector(`button[onclick="switchLang('${lang}')"]`).classList.add('active');
+}
+
+initKadane();
+initPen();
+</script>
+</body>
+</html>

@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Selection Problem — Interactive Visual</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d45;
+    --border2: #263550;
+    --text: #e2e8f4;
+    --muted: #6b7a99;
+    --accent-main: #58a6ff;
+    --accent-sel: #3fb950;
+    --accent2: #f472b6;
+    --accent3: #34d399;
+    --accent4: #fbbf24;
+    --accent-orange: #f0883e;
+    --rejected: #ef4444;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===================== TOP BAR ===================== */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    background: rgba(10,14,26,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .top-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+  .top-title span { color: var(--accent4); }
+
+  .divider { width: 1px; height: 28px; background: var(--border2); flex-shrink: 0; }
+
+  /* ===================== PEN TOOLBAR ===================== */
+  .pen-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .tool-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .tool-btn:hover { border-color: var(--accent4); color: var(--accent4); background: rgba(251,191,36,0.06); }
+  .tool-btn.active { border-color: var(--accent4); color: var(--accent4); background: rgba(251,191,36,0.12); }
+  .pen-toolbar input[type="color"] { width: 34px; height: 34px; padding: 0; border-radius: 10px; border: 1px solid var(--border2); background: var(--surface2); cursor: pointer; }
+  .pen-toolbar input[type="range"] { width: 110px; }
+
+  /* ===================== MAIN LAYOUT ===================== */
+  .page { position: relative; z-index: 1; }
+
+  header {
+    padding: 36px 40px 28px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%);
+  }
+  .tag-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; padding: 4px 12px; border-radius: 20px;
+  }
+  .tag-blue { color: var(--accent-main); border: 1px solid rgba(88,166,255,0.25); background: rgba(88,166,255,0.06); }
+  .tag-green { color: var(--accent-sel); border: 1px solid rgba(63,185,80,0.25); background: rgba(63,185,80,0.06); }
+  .tag-orange { color: var(--accent-orange); border: 1px solid rgba(240,136,62,0.25); background: rgba(240,136,62,0.06); }
+  .tag-accent { color: var(--accent3); border: 1px solid rgba(52,211,153,0.25); background: rgba(52,211,153,0.06); }
+  h1 { font-size: clamp(22px, 4vw, 38px); font-weight: 700; line-height: 1.1; margin-bottom: 8px; letter-spacing: -0.5px; }
+  .subtitle { font-size: 13px; color: var(--muted); max-width: 640px; line-height: 1.75; }
+
+  .progress-bar { height: 2px; background: var(--border); position: relative; z-index: 1; }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-sel), var(--accent3), var(--accent-main));
+    transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    width: 0%;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 28px 24px 48px; position: relative; z-index: 1; }
+
+  /* ===================== PROBLEM STATEMENT ===================== */
+  .problem-box {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    border-left: 3px solid var(--accent-main);
+  }
+  .problem-box h2 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px; font-weight: 600;
+    color: var(--accent-main);
+    letter-spacing: 1px; text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .problem-body { font-size: 13.5px; line-height: 1.85; color: var(--muted); }
+  .problem-body strong { color: var(--text); }
+  .problem-body .hl { color: var(--accent4); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; }
+  .problem-body .hl-green { color: var(--accent-sel); font-weight: 600; }
+  .problem-body .hl-blue { color: var(--accent-main); font-weight: 600; }
+
+  .example-table {
+    margin-top: 16px;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start;
+  }
+  .act-chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; padding: 5px 12px;
+    border-radius: 7px; border: 1px solid var(--border2);
+    background: var(--surface2); color: var(--muted);
+    display: inline-flex; flex-direction: column; align-items: center; gap: 2px;
+    min-width: 56px;
+  }
+  .act-chip .act-name { color: var(--text); font-weight: 600; font-size: 12px; }
+  .act-chip .act-time { font-size: 10px; color: var(--accent-main); }
+
+  /* ===================== TIMELINE CARD ===================== */
+  .main-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 24px; }
+  .card-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .card-header h3 { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+
+  /* ===================== TIMELINE SVG WRAPPER ===================== */
+  .timeline-wrap {
+    position: relative; display: block; line-height: 0;
+    background: #0d1525;
+  }
+  #timeline-svg { width: 100%; display: block; }
+  #draw-canvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 9999;
+  }
+  #draw-canvas.pen-active {
+    pointer-events: all; cursor: crosshair;
+  }
+
+  .pen-toolbar > *:not(#pen-toggle) {
+    display: none;
+  }
+  .pen-toolbar.active > *:not(#pen-toggle) {
+    display: inline-flex;
+  }
+
+  /* ===================== STEP INFO ===================== */
+  .step-info { padding: 14px 20px; border-top: 1px solid var(--border); min-height: 58px; font-size: 13px; line-height: 1.75; color: var(--muted); }
+  .step-info strong { color: var(--accent4); font-weight: 600; }
+  .step-info em { color: var(--accent-main); font-style: normal; font-weight: 600; }
+  .step-info .ok { color: var(--accent-sel); font-weight: 600; }
+  .step-info .no { color: var(--rejected); font-weight: 600; }
+  .step-info .hi { color: var(--accent-orange); font-weight: 600; }
+
+  /* ===================== ACTIVITY PILLS ===================== */
+  .pills-panel { padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface2); }
+  .pills-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .act-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .act-pill {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    padding: 5px 11px; border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: var(--surface); color: var(--muted);
+    transition: all 0.25s;
+  }
+  .act-pill.current { border-color: var(--accent4); background: rgba(251,191,36,0.1); color: var(--accent4); }
+  .act-pill.selected { border-color: var(--accent-sel); background: rgba(63,185,80,0.08); color: var(--accent-sel); }
+  .act-pill.rejected { border-color: var(--rejected); background: rgba(239,68,68,0.08); color: var(--rejected); text-decoration: line-through; }
+
+  /* ===================== SELECTED PANEL ===================== */
+  .selected-panel { padding: 14px 20px; border-top: 1px solid var(--border); }
+  .sel-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .sel-items { display: flex; gap: 6px; flex-wrap: wrap; min-height: 34px; }
+  .sel-item {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    padding: 4px 10px; border-radius: 5px;
+    border: 1px solid var(--accent-sel);
+    background: rgba(63,185,80,0.1); color: var(--accent-sel);
+    transition: all 0.2s;
+  }
+
+  /* ===================== CONTROLS ===================== */
+  .controls { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface2); flex-wrap: wrap; }
+  .btn { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; padding: 8px 18px; border-radius: 7px; border: 1px solid var(--border2); background: transparent; color: var(--text); cursor: pointer; transition: all 0.15s; }
+  .btn:hover:not(:disabled) { border-color: var(--accent-main); color: var(--accent-main); background: rgba(88,166,255,0.06); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-primary { background: rgba(63,185,80,0.08); border-color: var(--accent-sel); color: var(--accent-sel); }
+  .btn-primary:hover:not(:disabled) { background: rgba(63,185,80,0.16); }
+  .step-label { margin-left: auto; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+
+  /* ===================== LEGEND ===================== */
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; padding: 12px 20px; border-top: 1px solid var(--border); }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+  .legend-rect { width: 22px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ===================== GRID ===================== */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+  @media(max-width:740px){ .grid-2 { grid-template-columns: 1fr; } }
+
+  /* ===================== CODE BLOCK ===================== */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .code-block { background: #070b14; padding: 20px; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 2; overflow-x: auto; }
+  .code-line { display: flex; gap: 14px; }
+  .ln { color: #2a3a55; min-width: 18px; user-select: none; font-size: 11px; padding-top: 1px; }
+  .kw { color: #f472b6; } .fn { color: #c084fc; } .cm { color: #374b6e; font-style: italic; }
+  .vr { color: #7dd3fc; } .op { color: #fbbf24; } .nm { color: #f0883e; }
+  .i1 { padding-left: 18px; } .i2 { padding-left: 36px; } .i3 { padding-left: 54px; }
+
+  /* ===================== TABLE ===================== */
+  table { width: 100%; border-collapse: collapse; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  th { text-align: left; padding: 8px 14px; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+  td { padding: 10px 14px; border-bottom: 1px solid rgba(30,45,69,0.6); font-size: 12px; }
+  .td-green { color: var(--accent-sel); }
+  .td-blue { color: var(--accent-main); }
+  tr:last-child td { border-bottom: none; }
+
+  /* ===================== CONCEPT CARDS ===================== */
+  .concept-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+  .concept-card h4 { font-size: 12px; font-weight: 600; color: var(--accent2); margin-bottom: 10px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.5px; }
+  .concept-card p { font-size: 13px; line-height: 1.75; color: var(--muted); }
+  .concept-card p strong { color: var(--text); }
+  .concept-card code { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--accent-main); background: rgba(88,166,255,0.08); padding: 1px 6px; border-radius: 4px; }
+
+  /* ===================== SECTION HEADER ===================== */
+  .section-hdr {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 12px 0;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-hdr::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  footer { border-top: 1px solid var(--border); padding: 24px 40px; text-align: center; font-size: 11px; color: #2a3a55; font-family: 'IBM Plex Mono', monospace; position: relative; z-index: 1; }
+</style>
+</head>
+<body>
+
+<!-- =================== TOP BAR =================== -->
+<div class="top-bar">
+  <span class="top-title">Activity Selection <span>Visualizer</span></span>
+  <div class="divider"></div>
+  <div class="pen-toolbar">
+    <button class="tool-btn" id="pen-toggle" onclick="togglePen()">✏️ Pen</button>    <button class="tool-btn" id="btn-undo" onclick="undoDraw()" disabled title="Undo">↶ Undo</button>
+    <button class="tool-btn" id="btn-redo" onclick="redoDraw()" disabled title="Redo">↷ Redo</button>
+    <input type="color" id="pen-color" value="#fbbf24" onchange="setColor(this.value)" title="Pen Color" />
+    <input type="range" id="pen-size" min="1" max="12" value="3" onchange="setSize(this.value)" title="Thickness" />
+    <button class="tool-btn" id="btn-clear" onclick="clearDraw()" title="Clear Drawing">🧹 Clear</button>  </div>
+</div>
+
+<!-- =================== PAGE =================== -->
+<div class="page">
+
+  <!-- HEADER -->
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Greedy Algorithms</span>
+      <span class="tag tag-green">Interval Scheduling</span>
+      <span class="tag tag-accent">Optimal Substructure</span>
+    </div>
+    <h1>Activity Selection <span style="color:var(--accent-sel)">Problem</span></h1>
+    <p class="subtitle">Select the maximum number of non-overlapping activities from a set of candidates, each with a start and finish time — solved optimally with a greedy approach.</p>
+  </header>
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+  <div class="container">
+
+    <!-- PROBLEM STATEMENT -->
+    <div class="problem-box">
+      <h2>// Problem Statement</h2>
+      <div class="problem-body">
+        <strong>Given:</strong> A set of <span class="hl-blue">n activities</span> where each activity <span class="hl">i</span> has a <span class="hl-blue">start time</span> <span class="hl">s[i]</span> and a <span class="hl-blue">finish time</span> <span class="hl">f[i]</span>. A single machine (or resource) can only execute one activity at a time.
+        <br><br>
+        <strong>Goal:</strong> Select the <span class="hl-green">maximum number of activities</span> that can be performed by a single machine, such that no two selected activities <strong>overlap</strong>.
+        <br><br>
+        <strong>Overlap Rule:</strong> Two activities <span class="hl">i</span> and <span class="hl">j</span> are compatible (non-overlapping) if <span class="hl">f[i] ≤ s[j]</span> or <span class="hl">f[j] ≤ s[i]</span> — one finishes before or exactly when the other starts.
+        <br><br>
+        <strong>Greedy Key Insight:</strong> Always pick the activity with the <span class="hl-green">earliest finish time</span> among all compatible remaining activities. This locally optimal choice leads to a globally optimal solution.
+      </div>
+      <div class="example-table">
+        <div id="problem-chips"></div>
+      </div>
+    </div>
+
+    <!-- TIMELINE CARD -->
+    <div class="main-card">
+      <div class="card-header">
+        <div class="dot" style="background:var(--accent-sel)"></div>
+        <div class="dot" style="background:var(--rejected)"></div>
+        <div class="dot" style="background:var(--accent4)"></div>
+        <h3>timeline.svg — Greedy Step-through</h3>
+      </div>
+
+      <!-- Timeline SVG -->
+      <div class="timeline-wrap" id="timeline-wrap">
+        <svg id="timeline-svg" viewBox="0 0 760 310" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="glow-sel">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="glow-cur">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <!-- Background grid lines (time axis) rendered by JS -->
+          <g id="axis-layer"></g>
+          <!-- Activity bars -->
+          <g id="bar-layer"></g>
+          <!-- Labels -->
+          <g id="label-layer"></g>
+          <!-- Finish time marker -->
+          <g id="marker-layer"></g>
+        </svg>
+        <canvas id="draw-canvas"></canvas>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend">
+        <div class="legend-item"><div class="legend-rect" style="background:rgba(63,185,80,0.7)"></div> Selected</div>
+        <div class="legend-item"><div class="legend-rect" style="background:rgba(239,68,68,0.5)"></div> Rejected (overlap)</div>
+        <div class="legend-item"><div class="legend-rect" style="background:rgba(251,191,36,0.6)"></div> Currently Evaluating</div>
+        <div class="legend-item"><div class="legend-rect" style="background:rgba(88,166,255,0.2); border:1px solid rgba(88,166,255,0.4)"></div> Pending</div>
+        <div class="legend-item"><div style="width:2px;height:14px;background:var(--accent-orange);border-radius:1px;flex-shrink:0"></div> Last finish time</div>
+      </div>
+
+      <!-- Activity pills (sorted order) -->
+      <div class="pills-panel">
+        <div class="pills-label">Activities sorted by finish time →</div>
+        <div class="act-pills" id="act-pills"></div>
+      </div>
+
+      <!-- Currently selected -->
+      <div class="selected-panel">
+        <div class="sel-label">Selected set →</div>
+        <div class="sel-items" id="sel-items"></div>
+      </div>
+
+      <!-- Step message -->
+      <div class="step-info" id="step-info">Press <strong>Next Step</strong> to begin the greedy algorithm — activities are pre-sorted by finish time.</div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <button class="btn" id="btn-prev" onclick="prevStep()" disabled>← Prev</button>
+        <button class="btn btn-primary" id="btn-next" onclick="nextStep()">Next Step →</button>
+        <button class="btn" onclick="resetAlgo()">↺ Reset</button>
+        <span class="step-label" id="step-lbl">Step 0 / 10</span>
+      </div>
+    </div>
+
+    <!-- ALGORITHM + COMPLEXITY GRID -->
+    <p class="section-hdr">Algorithm & Complexity</p>
+    <div class="grid-2" style="margin-bottom:24px">
+      <!-- Pseudocode -->
+      <div class="card">
+        <div class="card-header">
+          <div class="dot" style="background:var(--accent2)"></div>
+          <h3>pseudocode.txt</h3>
+        </div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// Activity Selection — Greedy</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">function</span> <span class="fn">activitySelection</span>(<span class="vr">activities</span>):</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="cm">// Step 1: Sort by finish time</span></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="fn">sort</span>(<span class="vr">activities</span>, key=<span class="vr">finish_time</span>)</span></div>
+          <div class="code-line"><span class="ln">5</span><span></span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i1"><span class="cm">// Step 2: Select first activity</span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="vr">selected</span> <span class="op">←</span> [<span class="vr">activities</span>[<span class="nm">0</span>]]</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="vr">last_finish</span> <span class="op">←</span> <span class="vr">activities</span>[<span class="nm">0</span>].finish</span></div>
+          <div class="code-line"><span class="ln">9</span><span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i1"><span class="cm">// Step 3: Greedily pick compatible</span></span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i1"><span class="kw">for</span> <span class="vr">i</span> <span class="kw">from</span> <span class="nm">1</span> <span class="kw">to</span> <span class="nm">n-1</span>:</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i2"><span class="kw">if</span> <span class="vr">activities</span>[<span class="vr">i</span>].start <span class="op">≥</span> <span class="vr">last_finish</span>:</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i3"><span class="fn">select</span>(<span class="vr">activities</span>[<span class="vr">i</span>])</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i3"><span class="vr">last_finish</span> <span class="op">←</span> <span class="vr">activities</span>[<span class="vr">i</span>].finish</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i2"><span class="kw">else</span>:</span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i3"><span class="fn">reject</span>(<span class="vr">activities</span>[<span class="vr">i</span>])</span></div>
+          <div class="code-line"><span class="ln">17</span><span></span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i1"><span class="kw">return</span> <span class="vr">selected</span></span></div>
+        </div>
+      </div>
+
+      <!-- Complexity Table -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent3)"></div>
+            <h3>complexity.md</h3>
+          </div>
+          <div style="padding:0">
+            <table>
+              <tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+              <tr><td>Sort by finish</td><td class="td-blue">O(n log n)</td><td class="td-green">O(1) / O(n)*</td></tr>
+              <tr><td>Greedy scan</td><td class="td-blue">O(n)</td><td class="td-green">O(1)</td></tr>
+              <tr><td style="font-weight:600;color:var(--text)">Total</td><td class="td-blue" style="font-weight:600">O(n log n)</td><td class="td-green" style="font-weight:600">O(n)</td></tr>
+              <tr><td colspan="3" style="color:var(--muted);font-size:10px">* If pre-sorted input is given, the full algorithm runs in O(n).</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="concept-card">
+          <h4>// why greedy works here</h4>
+          <p>The greedy choice property holds: selecting the activity with the earliest finish time <strong>never rules out more activities</strong> than any other choice. Formally, if an optimal solution skips the earliest-finishing activity <strong>A</strong>, we can always swap whatever activity <strong>B</strong> it chose for <strong>A</strong> without reducing the solution size — since A finishes no later than B, it's at least as compatible with future activities.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Concept Cards -->
+    <p class="section-hdr">Key Concepts</p>
+    <div class="grid-2">
+      <div class="concept-card">
+        <h4>// greedy vs dynamic programming</h4>
+        <p>Activity Selection has <strong>both</strong> an optimal substructure and the greedy choice property. DP would work but is overkill — it runs in <code>O(n²)</code>. The greedy approach is simpler, faster (<code>O(n log n)</code> due to sort), and provably optimal. DP is preferred for <strong>Weighted</strong> activity selection where each activity has a profit and we maximize total profit.</p>
+      </div>
+      <div class="concept-card">
+        <h4>// exchange argument proof</h4>
+        <p>Correctness is proven via the <strong>exchange argument</strong>: suppose an optimal solution OPT doesn't include activity <em>a₁</em> (earliest finish). Let <em>b</em> be OPT's first activity. Replace <em>b</em> with <em>a₁</em> — since <code>f(a₁) ≤ f(b)</code>, this new solution is also valid and has the same size. Repeating shows greedy = optimal.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>Activity Selection Problem — Interactive Educational Visual &nbsp;·&nbsp; Greedy Algorithms Series</footer>
+</div>
+
+<script>
+// ===================================================
+// ACTIVITIES DATA (sorted by finish time)
+// ===================================================
+// Each: { name, start, finish }
+const activitiesRaw = [
+  { name: 'A1', start: 1,  finish: 3  },
+  { name: 'A2', start: 2,  finish: 5  },
+  { name: 'A3', start: 0,  finish: 6  },
+  { name: 'A4', start: 3,  finish: 5  },
+  { name: 'A5', start: 3,  finish: 8  },
+  { name: 'A6', start: 5,  finish: 7  },
+  { name: 'A7', start: 5,  finish: 9  },
+  { name: 'A8', start: 6,  finish: 10 },
+  { name: 'A9', start: 8,  finish: 11 },
+  { name: 'A10',start: 8,  finish: 12 },
+];
+
+// Sort by finish time
+const activities = [...activitiesRaw].sort((a, b) => a.finish - b.finish);
+
+const TIME_MIN = 0;
+const TIME_MAX = 13;
+
+// Build steps
+function buildSteps() {
+  const steps = [];
+  const selected = [];
+  let lastFinish = -Infinity;
+
+  for (let i = 0; i < activities.length; i++) {
+    const act = activities[i];
+    const compatible = act.start >= lastFinish;
+
+    steps.push({
+      evaluating: i,
+      selected: [...selected],
+      lastFinish,
+      accepted: compatible,
+      msg: compatible
+        ? `<strong>Evaluate ${act.name}</strong> [${act.start}, ${act.finish}): start <em>${act.start}</em> ≥ last finish <em>${lastFinish === -Infinity ? '–∞' : lastFinish}</em>. <span class="ok">✓ Compatible — select it!</span> Update last finish to <strong>${act.finish}</strong>.`
+        : `<strong>Evaluate ${act.name}</strong> [${act.start}, ${act.finish}): start <em>${act.start}</em> < last finish <em>${lastFinish}</em>. <span class="no">✗ Overlaps — skip.</span>`,
+    });
+
+    if (compatible) {
+      selected.push(act);
+      lastFinish = act.finish;
+    }
+  }
+
+  // Final step
+  steps.push({
+    evaluating: -1,
+    selected: [...selected],
+    lastFinish,
+    accepted: null,
+    msg: `<span class="ok">✓ Done!</span> Greedy complete. Selected <strong>${selected.length}</strong> activities: ${selected.map(a=>`<em>${a.name}</em>`).join(', ')}. Total activities evaluated: <strong>${activities.length}</strong>.`,
+  });
+
+  return steps;
+}
+
+const steps = buildSteps();
+let cur = -1;
+
+// ===================================================
+// TIMELINE RENDER
+// ===================================================
+const SVG_W = 760, SVG_H = 310;
+const MARGIN_L = 52, MARGIN_R = 30, MARGIN_TOP = 28, MARGIN_BOT = 40;
+const PLOT_W = SVG_W - MARGIN_L - MARGIN_R;
+const PLOT_H = SVG_H - MARGIN_TOP - MARGIN_BOT;
+
+function timeToX(t) {
+  return MARGIN_L + ((t - TIME_MIN) / (TIME_MAX - TIME_MIN)) * PLOT_W;
+}
+
+function rowToY(rowIdx, totalRows) {
+  const rowH = PLOT_H / totalRows;
+  return MARGIN_TOP + rowIdx * rowH;
+}
+
+function renderTimeline() {
+  const axisL = document.getElementById('axis-layer');
+  const barL  = document.getElementById('bar-layer');
+  const lblL  = document.getElementById('label-layer');
+  const mrkL  = document.getElementById('marker-layer');
+
+  axisL.innerHTML = '';
+  barL.innerHTML = '';
+  lblL.innerHTML = '';
+  mrkL.innerHTML = '';
+
+  const n = activities.length;
+  const state = cur >= 0 ? steps[cur] : { evaluating: -1, selected: [], lastFinish: -Infinity, accepted: null };
+  const selSet = new Set(state.selected.map(a => a.name));
+  const evalIdx = state.evaluating;
+
+  // Determine rejected: processed but not selected
+  const rejSet = new Set();
+  for (let i = 0; i <= evalIdx && i < n; i++) {
+    if (!selSet.has(activities[i].name) && i < evalIdx) rejSet.add(activities[i].name);
+    if (!selSet.has(activities[i].name) && i === evalIdx && state.accepted === false) rejSet.add(activities[i].name);
+  }
+
+  // X-axis ticks
+  for (let t = TIME_MIN; t <= TIME_MAX; t++) {
+    const x = timeToX(t);
+    // Gridline
+    const gl = document.createElementNS('http://www.w3.org/2000/svg','line');
+    gl.setAttribute('x1', x); gl.setAttribute('y1', MARGIN_TOP);
+    gl.setAttribute('x2', x); gl.setAttribute('y2', SVG_H - MARGIN_BOT);
+    gl.setAttribute('stroke', t % 2 === 0 ? '#1e2d45' : '#131d30');
+    gl.setAttribute('stroke-width', '1');
+    axisL.appendChild(gl);
+
+    // Tick label
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x', x);
+    lbl.setAttribute('y', SVG_H - MARGIN_BOT + 18);
+    lbl.setAttribute('text-anchor','middle');
+    lbl.setAttribute('font-family','IBM Plex Mono, monospace');
+    lbl.setAttribute('font-size','10');
+    lbl.setAttribute('fill','#374b6e');
+    lbl.textContent = t;
+    axisL.appendChild(lbl);
+  }
+
+  // X-axis baseline
+  const baseline = document.createElementNS('http://www.w3.org/2000/svg','line');
+  baseline.setAttribute('x1', MARGIN_L); baseline.setAttribute('y1', SVG_H - MARGIN_BOT);
+  baseline.setAttribute('x2', SVG_W - MARGIN_R); baseline.setAttribute('y2', SVG_H - MARGIN_BOT);
+  baseline.setAttribute('stroke', '#263550'); baseline.setAttribute('stroke-width','1.5');
+  axisL.appendChild(baseline);
+
+  // Last finish marker line
+  if (state.lastFinish > 0 && isFinite(state.lastFinish)) {
+    const mx = timeToX(state.lastFinish);
+    const ml = document.createElementNS('http://www.w3.org/2000/svg','line');
+    ml.setAttribute('x1', mx); ml.setAttribute('y1', MARGIN_TOP - 8);
+    ml.setAttribute('x2', mx); ml.setAttribute('y2', SVG_H - MARGIN_BOT);
+    ml.setAttribute('stroke', '#f0883e');
+    ml.setAttribute('stroke-width', '2');
+    ml.setAttribute('stroke-dasharray', '5,3');
+    mrkL.appendChild(ml);
+
+    const mt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    mt.setAttribute('x', mx + 4); mt.setAttribute('y', MARGIN_TOP - 1);
+    mt.setAttribute('font-family','IBM Plex Mono, monospace');
+    mt.setAttribute('font-size','9'); mt.setAttribute('fill','#f0883e');
+    mt.textContent = `f=${state.lastFinish}`;
+    mrkL.appendChild(mt);
+  }
+
+  // Activity bars
+  const ROW_H = PLOT_H / n;
+  const BAR_H = Math.min(ROW_H * 0.68, 26);
+  const BAR_PAD = (ROW_H - BAR_H) / 2;
+
+  activities.forEach((act, i) => {
+    const x1 = timeToX(act.start);
+    const x2 = timeToX(act.finish);
+    const bw = Math.max(x2 - x1, 4);
+    const by = MARGIN_TOP + i * ROW_H + BAR_PAD;
+
+    let fill, stroke, opacity = 1, filterVal = 'none';
+
+    if (selSet.has(act.name)) {
+      fill = 'rgba(63,185,80,0.65)'; stroke = '#3fb950'; filterVal = 'url(#glow-sel)';
+    } else if (i === evalIdx && cur >= 0) {
+      fill = 'rgba(251,191,36,0.55)'; stroke = '#fbbf24'; filterVal = 'url(#glow-cur)';
+    } else if (rejSet.has(act.name)) {
+      fill = 'rgba(239,68,68,0.4)'; stroke = '#ef4444'; opacity = 0.75;
+    } else {
+      fill = 'rgba(88,166,255,0.12)'; stroke = '#263550';
+    }
+
+    // Bar
+    const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x', x1); rect.setAttribute('y', by);
+    rect.setAttribute('width', bw); rect.setAttribute('height', BAR_H);
+    rect.setAttribute('rx', '4');
+    rect.setAttribute('fill', fill);
+    rect.setAttribute('stroke', stroke);
+    rect.setAttribute('stroke-width', selSet.has(act.name) || i === evalIdx ? '1.5' : '1');
+    rect.setAttribute('opacity', opacity);
+    if (filterVal !== 'none') rect.setAttribute('filter', filterVal);
+    barL.appendChild(rect);
+
+    // Activity name label
+    const tx = x1 + 6;
+    const ty = by + BAR_H / 2 + 1;
+    const nameT = document.createElementNS('http://www.w3.org/2000/svg','text');
+    nameT.setAttribute('x', tx); nameT.setAttribute('y', ty);
+    nameT.setAttribute('dominant-baseline','middle');
+    nameT.setAttribute('font-family','IBM Plex Mono, monospace');
+    nameT.setAttribute('font-size','10.5');
+    nameT.setAttribute('font-weight','600');
+    nameT.setAttribute('fill', selSet.has(act.name) ? '#3fb950' : i === evalIdx ? '#fbbf24' : rejSet.has(act.name) ? '#ef4444' : '#6b7a99');
+    nameT.textContent = act.name;
+    lblL.appendChild(nameT);
+
+    // [s,f) label inside bar if wide enough
+    if (bw > 42) {
+      const timeT = document.createElementNS('http://www.w3.org/2000/svg','text');
+      timeT.setAttribute('x', x1 + bw / 2);
+      timeT.setAttribute('y', ty);
+      timeT.setAttribute('text-anchor','middle');
+      timeT.setAttribute('dominant-baseline','middle');
+      timeT.setAttribute('font-family','IBM Plex Mono, monospace');
+      timeT.setAttribute('font-size','9');
+      timeT.setAttribute('fill', 'rgba(255,255,255,0.55)');
+      timeT.textContent = `[${act.start}, ${act.finish})`;
+      lblL.appendChild(timeT);
+    }
+
+    // Left margin label: [s,f)
+    const marginT = document.createElementNS('http://www.w3.org/2000/svg','text');
+    marginT.setAttribute('x', MARGIN_L - 4);
+    marginT.setAttribute('y', by + BAR_H / 2 + 1);
+    marginT.setAttribute('text-anchor','end');
+    marginT.setAttribute('dominant-baseline','middle');
+    marginT.setAttribute('font-family','IBM Plex Mono, monospace');
+    marginT.setAttribute('font-size','9');
+    marginT.setAttribute('fill','#374b6e');
+    marginT.textContent = `[${act.start},${act.finish})`;
+    lblL.appendChild(marginT);
+  });
+}
+
+// ===================================================
+// RENDER PILLS
+// ===================================================
+function renderPills(state) {
+  const selSet = state ? new Set(state.selected.map(a => a.name)) : new Set();
+  const evalIdx = state ? state.evaluating : -1;
+  const rejSet = new Set();
+  if (state) {
+    for (let i = 0; i < evalIdx; i++) {
+      if (!selSet.has(activities[i].name)) rejSet.add(activities[i].name);
+    }
+    if (state.accepted === false && evalIdx >= 0) rejSet.add(activities[evalIdx].name);
+  }
+
+  const pillsEl = document.getElementById('act-pills');
+  pillsEl.innerHTML = '';
+  activities.forEach((act, i) => {
+    const p = document.createElement('span');
+    p.className = 'act-pill';
+    if (i === evalIdx && cur >= 0) p.classList.add('current');
+    else if (selSet.has(act.name)) p.classList.add('selected');
+    else if (rejSet.has(act.name)) p.classList.add('rejected');
+    p.textContent = `${act.name}[${act.start},${act.finish})`;
+    pillsEl.appendChild(p);
+  });
+
+  const selEl = document.getElementById('sel-items');
+  selEl.innerHTML = '';
+  if (state) {
+    state.selected.forEach(act => {
+      const s = document.createElement('span');
+      s.className = 'sel-item';
+      s.textContent = `${act.name}[${act.start},${act.finish})`;
+      selEl.appendChild(s);
+    });
+  }
+}
+
+// ===================================================
+// RENDER PROBLEM CHIPS
+// ===================================================
+function renderChips() {
+  const el = document.getElementById('problem-chips');
+  el.style.display = 'flex';
+  el.style.gap = '6px';
+  el.style.flexWrap = 'wrap';
+  el.style.marginTop = '12px';
+  activities.forEach(act => {
+    const chip = document.createElement('div');
+    chip.className = 'act-chip';
+    chip.innerHTML = `<span class="act-name">${act.name}</span><span class="act-time">[${act.start}, ${act.finish})</span>`;
+    el.appendChild(chip);
+  });
+}
+
+// ===================================================
+// STEP LOGIC
+// ===================================================
+function updateUI() {
+  const state = cur >= 0 ? steps[cur] : null;
+  renderTimeline();
+  renderPills(state);
+
+  const msgEl = document.getElementById('step-info');
+  if (cur === -1) {
+    msgEl.innerHTML = 'Press <strong>Next Step</strong> to begin. Activities are sorted by finish time: ' +
+      activities.map(a=>`<em>${a.name}</em>[${a.start},${a.finish})`).join(' → ');
+  } else {
+    msgEl.innerHTML = steps[cur].msg;
+  }
+
+  document.getElementById('btn-prev').disabled = cur <= -1;
+  document.getElementById('btn-next').disabled = cur >= steps.length - 1;
+  document.getElementById('step-lbl').textContent = `Step ${cur + 1} / ${steps.length}`;
+  document.getElementById('progress').style.width = `${((cur + 1) / steps.length) * 100}%`;
+}
+
+function nextStep() {
+  if (cur < steps.length - 1) { cur++; updateUI(); }
+}
+function prevStep() {
+  if (cur > -1) { cur--; updateUI(); }
+}
+function resetAlgo() {
+  cur = -1; updateUI();
+}
+
+// ===================================================
+// DRAWING / PEN TOOL
+// ===================================================
+const canvas = document.getElementById('draw-canvas');
+const ctx = canvas.getContext('2d');
+let penActive = false, isDrawing = false;
+let penColor = '#fbbf24';
+let penSize = 3;
+let drawHistory = [];
+let redoStack = [];
+let lastX = 0, lastY = 0;
+
+function resizeCanvas() {
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const wrap = document.getElementById('timeline-wrap');
+  const rect = wrap.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+  try { ctx.putImageData(imgData, 0, 0); } catch (e) {}
+}
+
+function saveSnapshot() {
+  drawHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  redoStack = [];
+  updateUndoRedo();
+}
+
+function updateUndoRedo() {
+  document.getElementById('btn-undo').disabled = drawHistory.length === 0;
+  document.getElementById('btn-redo').disabled = redoStack.length === 0;
+}
+
+function undoDraw() {
+  if (drawHistory.length === 0) return;
+  redoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  const prev = drawHistory.pop();
+  ctx.putImageData(prev, 0, 0);
+  updateUndoRedo();
+}
+
+function redoDraw() {
+  if (redoStack.length === 0) return;
+  drawHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  const next = redoStack.pop();
+  ctx.putImageData(next, 0, 0);
+  updateUndoRedo();
+}
+
+function clearDraw() {
+  saveSnapshot();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function getCanvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: (clientX - rect.left) * (canvas.width / rect.width),
+    y: (clientY - rect.top) * (canvas.height / rect.height)
+  };
+}
+
+canvas.addEventListener('mousedown', e => {
+  if (!penActive) return;
+  const pos = getCanvasPos(e);
+  saveSnapshot();
+  isDrawing = true; lastX = pos.x; lastY = pos.y;
+  ctx.beginPath(); ctx.moveTo(lastX, lastY);
+});
+canvas.addEventListener('mousemove', e => {
+  if (!isDrawing || !penActive) return;
+  const pos = getCanvasPos(e);
+  ctx.lineWidth = penSize;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = penColor;
+  ctx.lineTo(pos.x, pos.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
+  lastX = pos.x; lastY = pos.y;
+});
+canvas.addEventListener('mouseup', () => { isDrawing = false; });
+canvas.addEventListener('mouseleave', () => { isDrawing = false; });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); if (!penActive) return; const pos = getCanvasPos(e); saveSnapshot(); isDrawing = true; lastX = pos.x; lastY = pos.y; ctx.beginPath(); ctx.moveTo(lastX, lastY); }, {passive:false});
+canvas.addEventListener('touchmove', e => { e.preventDefault(); if (!isDrawing || !penActive) return; const pos = getCanvasPos(e); ctx.lineWidth = penSize; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = penColor; ctx.lineTo(pos.x, pos.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); lastX = pos.x; lastY = pos.y; }, {passive:false});
+canvas.addEventListener('touchend', () => { isDrawing = false; });
+
+function togglePen() {
+  penActive = !penActive;
+  const penBtn = document.getElementById('pen-toggle');
+  const toolbar = document.querySelector('.pen-toolbar');
+  toolbar.classList.toggle('active', penActive);
+  if (penActive) {
+    canvas.classList.add('pen-active');
+    penBtn.classList.add('active');
+    penBtn.innerHTML = '✏️ Pen ON';
+    resizeCanvas();
+  } else {
+    canvas.classList.remove('pen-active');
+    penBtn.classList.remove('active');
+    penBtn.innerHTML = '✏️ Pen';
+  }
+}
+
+function setColor(color) {
+  penColor = color;
+}
+
+function setSize(value) {
+  penSize = parseInt(value, 10);
+}
+
+window.addEventListener('resize', () => { resizeCanvas(); updateUndoRedo(); });
+window.addEventListener('load', () => { resizeCanvas(); updateUndoRedo(); });
+
+updateUndoRedo();
+
+// ===================================================
+// INIT
+// ===================================================
+renderChips();
+updateUI();
+</script>
+</body>
+</html>

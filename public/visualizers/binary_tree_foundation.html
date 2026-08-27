@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Binary Tree Foundation — Interactive Visual</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d45;
+    --border2: #263550;
+    --text: #e2e8f4;
+    --muted: #6b7a99;
+    --accent-main: #58a6ff;
+    --accent-sel: #3fb950;
+    --accent2: #f472b6;
+    --accent3: #34d399;
+    --accent4: #fbbf24;
+    --accent-orange: #f0883e;
+    --rejected: #ef4444;
+  }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body { min-height:100vh; background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+  .top-bar { position:sticky; top:0; z-index:100; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 20px; background:rgba(10,14,26,0.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+  .top-title { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; }
+  .top-title span { color:var(--accent4); }
+  .divider { width:1px; height:28px; background:var(--border2); flex-shrink:0; }
+  .pen-toolbar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tool-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .tool-btn:hover { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.06); }
+  .tool-btn.active { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.12); }
+  .pen-toolbar input[type="color"] { width:34px; height:34px; padding:0; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); cursor:pointer; }
+  .pen-toolbar input[type="range"] { width:110px; }
+  .pen-toolbar > *:not(#pen-toggle) { display:none; }
+  .pen-toolbar.active > *:not(#pen-toggle) { display:inline-flex; }
+  .page { position:relative; z-index:1; }
+  header { padding:36px 40px 28px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+  .tag-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+  .tag { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:4px 12px; border-radius:20px; }
+  .tag-blue { color:var(--accent-main); border:1px solid rgba(88,166,255,0.25); background:rgba(88,166,255,0.06); }
+  .tag-sel { color:var(--accent-sel); border:1px solid rgba(63,185,80,0.25); background:rgba(63,185,80,0.06); }
+  .tag-orange { color:var(--accent-orange); border:1px solid rgba(240,136,62,0.25); background:rgba(240,136,62,0.06); }
+  h1 { font-size:clamp(22px,4vw,38px); line-height:1.1; margin-bottom:8px; letter-spacing:-0.5px; }
+  .subtitle { font-size:13px; color:var(--muted); max-width:640px; line-height:1.75; }
+  .progress-bar { height:2px; background:var(--border); margin-top:16px; }
+  .progress-fill { height:100%; width:100%; background:linear-gradient(90deg, var(--accent-sel), var(--accent3), var(--accent-main)); transition:width .4s ease; }
+  .container { max-width:1100px; margin:0 auto; padding:28px 24px 48px; position:relative; }
+  .problem-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent-main); }
+  .problem-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent3); }
+  .theory-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-points { list-style:none; padding:0; }
+  .theory-points li { margin-bottom:12px; line-height:1.6; }
+  .theory-points li strong { color:var(--accent4); }
+  .theory-points li ul { margin-top:8px; margin-left:20px; }
+  .theory-points li ul li { margin-bottom:6px; color:var(--muted); }
+  .problem-body { color:var(--muted); font-size:13px; line-height:1.8; }
+  .problem-body strong { color:var(--text); }
+  .main-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface2); }
+  .dot { width:8px; height:8px; border-radius:50%; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:18px 20px; background:var(--surface2); border-top:1px solid var(--border); }
+  .btn { font-family:'IBM Plex Mono',monospace; font-size:12px; padding:10px 16px; border-radius:10px; border:1px solid var(--border2); background:var(--surface); color:var(--muted); cursor:pointer; }
+  .btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .btn-primary { border-color:var(--accent-main); color:var(--text); background:linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+  .step-label { color:var(--muted); font-size:12px; }
+  .small-input { width:120px; padding:10px 12px; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); color:var(--text); }
+  .tree-wrap { position:relative; display:block; line-height:0; background:#0f172a; min-height:420px; }
+  #tree-svg { width:100%; display:block; }
+  #draw-canvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; }
+  #draw-canvas.pen-active { pointer-events:all; cursor:crosshair; }
+  .section-hdr { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text); margin:24px 0 16px 0; display:flex; align-items:center; gap:12px; font-weight:600; }
+  .section-hdr::after { content:''; flex:1; height:2px; background:linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .code-block { padding:20px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .code-line { display:flex; gap:10px; }
+  .ln { color:var(--muted); min-width:18px; user-select:none; font-size:11px; }
+  .kw { color:var(--accent2); }
+  .fn { color:var(--accent-main); }
+  .cm { color:var(--muted); font-style:italic; }
+  .vr { color:var(--accent-sel); }
+  .op { color:var(--accent4); }
+  .td-blue { color:var(--accent-main); }
+  .td-green { color:var(--accent-sel); }
+  @media(max-width:1024px) {
+    header { padding:28px 24px 22px; }
+    .container { padding:22px 18px 40px; }
+    .impl-grid { grid-template-columns:1fr; }
+  }
+  @media(max-width:860px) {
+    .top-bar { padding:10px 14px; gap:10px; }
+    .top-title { width:100%; }
+    .divider { display:none; }
+    .grid-2 { grid-template-columns:1fr; gap:18px; }
+    .controls { padding:14px; gap:8px; }
+    .controls .btn { padding:9px 12px; font-size:11px; }
+    .step-label { width:100%; }
+  }
+  @media(max-width:640px) {
+    header { padding:20px 14px 18px; }
+    .container { padding:16px 12px 28px; }
+    .problem-box, .theory-box { padding:16px; }
+    .card-header { padding:12px 14px; }
+    .card-header h3 { font-size:13px; }
+    .code-block { padding:14px; font-size:11px; line-height:1.65; }
+    .controls {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      align-items:stretch;
+    }
+    .controls label, .controls .small-input, .controls .step-label {
+      grid-column:1 / -1;
+    }
+    .small-input, #start-select { width:100% !important; }
+    .btn { width:100%; text-align:center; }
+    .impl-selector { flex-direction:column; align-items:flex-start; gap:10px; }
+    .impl-toggle { width:100%; }
+    .impl-btn { flex:1; text-align:center; }
+    .graph-wrap { min-height:210px; }
+    #graph-svg { min-height:210px; }
+    .legend { padding:0 14px 14px; gap:10px; }
+    .legend-item { font-size:10px; }
+    table { display:block; overflow-x:auto; white-space:nowrap; }
+  }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <span class="top-title">Binary Tree Foundation <span>Visualizer</span></span>
+  <div class="divider"></div>
+  <div class="pen-toolbar">
+    <button class="tool-btn" id="pen-toggle" onclick="togglePen()">✏️ Pen</button>
+    <button class="tool-btn" id="btn-undo" onclick="undoDraw()" disabled title="Undo">↶ Undo</button>
+    <button class="tool-btn" id="btn-redo" onclick="redoDraw()" disabled title="Redo">↷ Redo</button>
+    <input type="color" id="pen-color" value="#fbbf24" onchange="setColor(this.value)" title="Pen Color" />
+    <input type="range" id="pen-size" min="1" max="12" value="3" onchange="setSize(this.value)" title="Thickness" />
+    <button class="tool-btn" id="btn-clear" onclick="clearDraw()" title="Clear Drawing">🧹 Clear</button>
+  </div>
+</div>
+<div class="page">
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Data Structures</span>
+      <span class="tag tag-sel">Binary Tree</span>
+      <span class="tag tag-orange">Foundation</span>
+    </div>
+    <h1>Binary Tree <span style="color:var(--accent4)">Foundation</span></h1>
+    <p class="subtitle">Build and explore the structure of a binary tree with simple insertions and a visual node layout.</p>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  </header>
+  <div class="container">
+    <div class="theory-box">
+      <h2>Theory</h2>
+      <div class="theory-body">
+        <p style="color:var(--muted); margin-bottom:16px; line-height:1.7;">A binary tree is a hierarchical data structure where each node has at most two children, called the left and right child. This elegant structure enables efficient searching, sorting, and hierarchical representation of data. Binary trees form the foundation for more advanced structures like binary search trees and heaps. They model many real-world scenarios, from organizational hierarchies to decision-making processes, and are crucial for understanding advanced algorithms.</p>
+        <ul class="theory-points">
+          <li><strong>Structure:</strong> Each node has at most two children (left and right), forming a hierarchical tree</li>
+          <li><strong>Operations:</strong> Insert (add nodes), Traverse (inorder, preorder, postorder), Search (find values)</li>
+          <li><strong>Real-world Applications:</strong>
+            <ul>
+              <li>File system directory structures</li>
+              <li>Decision trees in machine learning</li>
+              <li>Expression parsing in compilers</li>
+              <li>Database indexing (B-trees)</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="problem-box">
+      <h2>Problem Statement</h2>
+      <div class="problem-body">
+        A binary tree organizes values in nodes with at most two children. Use the visualizer to insert new values into a tree and see how the structure grows level by level.
+        <div style="margin-top:14px;">
+          <a href="tree_traversal.html" style="display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent-main);text-decoration:none;border:1px solid var(--border2);padding:8px 12px;border-radius:8px;background:var(--surface2);">Next Topic: Tree Traversal →</a>
+        </div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>node_structure.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="kw">struct</span> TreeNode {</span></div>
+          <div class="code-line"><span class="ln">2</span><span class="i1"><span class="dt">int</span> value;</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1">TreeNode* left;</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1">TreeNode* right;</span></div>
+          <div class="code-line"><span class="ln">5</span><span>}</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>tree_anatomy.svg</h3></div>
+        <div style="padding:20px; text-align:center;">
+          <svg width="100%" height="200" viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg" style="max-width:200px; margin:0 auto;">
+            <circle cx="100" cy="30" r="18" fill="rgba(88,166,255,0.2)" stroke="rgba(88,166,255,0.6)" stroke-width="2"/>
+            <text x="100" y="36" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="12">5</text>
+            <line x1="90" y1="48" x2="60" y2="80" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+            <line x1="110" y1="48" x2="140" y2="80" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+            <circle cx="60" cy="98" r="16" fill="rgba(52,211,153,0.2)" stroke="rgba(52,211,153,0.6)" stroke-width="2"/>
+            <text x="60" y="103" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="11">3</text>
+            <circle cx="140" cy="98" r="16" fill="rgba(52,211,153,0.2)" stroke="rgba(52,211,153,0.6)" stroke-width="2"/>
+            <text x="140" y="103" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="11">7</text>
+            <text x="100" y="160" text-anchor="middle" fill="var(--muted)" font-family="monospace" font-size="10">Parent → Left, Right</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="main-card">
+      <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>tree.svg — Node Layout</h3></div>
+      <div class="tree-wrap" id="tree-wrap">
+        <svg id="tree-svg" viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg"></svg>
+        <canvas id="draw-canvas"></canvas>
+      </div>
+      <div class="controls">
+        <input class="small-input" id="insert-input" type="number" placeholder="Value" />
+        <button class="btn btn-primary" onclick="insertNode()">Insert</button>
+        <button class="btn" onclick="resetStructure()">Reset</button>
+        <span class="step-label" id="step-status"></span>
+      </div>
+    </div>
+    <p class="section-hdr">Pseudocode & Complexity</p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>pseudocode.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// Binary search tree insert</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">function</span> <span class="fn">insert</span>(<span class="vr">node</span>, <span class="vr">value</span>):</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="kw">if</span> <span class="vr">node</span> <span class="op">==</span> <span class="vr">null</span>:</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i2"><span class="kw">return</span> <span class="vr">newNode</span>(<span class="vr">value</span>)</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1"><span class="kw">else if</span> <span class="vr">value</span> <span class="op"><</span> <span class="vr">node</span>.value:</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i2"><span class="vr">node</span>.left <span class="op">=</span> <span class="fn">insert</span>(<span class="vr">node</span>.left, <span class="vr">value</span>)</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="kw">else</span>:</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i2"><span class="vr">node</span>.right <span class="op">=</span> <span class="fn">insert</span>(<span class="vr">node</span>.right, <span class="vr">value</span>)</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i1"><span class="kw">return</span> <span class="vr">node</span></span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>complexity.md</h3></div>
+        <div style="padding:20px;">
+          <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+            <tr><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Operation</th><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Time</th></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Insert</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(h)</td></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Search</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(h)</td></tr>
+            <tr><td style="padding:10px 14px;color:var(--text);font-weight:600;">Space</td><td style="padding:10px 14px;color:var(--accent-sel);font-weight:600;">O(n)</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p class="section-hdr">C Implementation</p>
+    <div class="card">
+      <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>binary_tree.c</h3></div>
+      <div class="code-block">
+        <div class="code-line"><span class="ln">1</span><span><span class="pp">#include</span> <span class="str">&lt;stdio.h&gt;</span></span></div>
+        <div class="code-line"><span class="ln">2</span><span><span class="pp">#include</span> <span class="str">&lt;stdlib.h&gt;</span></span></div>
+        <div class="code-line"><span class="ln">3</span><span></span></div>
+        <div class="code-line"><span class="ln">4</span><span><span class="kw">struct</span> node {</span></div>
+        <div class="code-line"><span class="ln">5</span><span class="i1"><span class="dt">int</span> data;</span></div>
+        <div class="code-line"><span class="ln">6</span><span class="i1"><span class="kw">struct</span> node* left;</span></div>
+        <div class="code-line"><span class="ln">7</span><span class="i1"><span class="kw">struct</span> node* right;</span></div>
+        <div class="code-line"><span class="ln">8</span><span>};</span></div>
+        <div class="code-line"><span class="ln">9</span><span></span></div>
+        <div class="code-line"><span class="ln">10</span><span><span class="kw">struct</span> node* newNode(<span class="dt">int</span> data) {</span></div>
+        <div class="code-line"><span class="ln">11</span><span class="i1"><span class="kw">struct</span> node* node = (<span class="kw">struct</span> node*)malloc(<span class="kw">sizeof</span>(<span class="kw">struct</span> node));</span></div>
+        <div class="code-line"><span class="ln">12</span><span class="i1">node-&gt;data = data;</span></div>
+        <div class="code-line"><span class="ln">13</span><span class="i1">node-&gt;left = NULL;</span></div>
+        <div class="code-line"><span class="ln">14</span><span class="i1">node-&gt;right = NULL;</span></div>
+        <div class="code-line"><span class="ln">15</span><span class="i1"><span class="kw">return</span> node;</span></div>
+        <div class="code-line"><span class="ln">16</span><span>}</span></div>
+        <div class="code-line"><span class="ln">17</span><span></span></div>
+        <div class="code-line"><span class="ln">18</span><span><span class="kw">struct</span> node* insert(<span class="kw">struct</span> node* node, <span class="dt">int</span> data) {</span></div>
+        <div class="code-line"><span class="ln">19</span><span class="i1"><span class="kw">if</span> (node == NULL)</span></div>
+        <div class="code-line"><span class="ln">20</span><span class="i2"><span class="kw">return</span> newNode(data);</span></div>
+        <div class="code-line"><span class="ln">21</span><span class="i1"><span class="kw">if</span> (data &lt; node-&gt;data)</span></div>
+        <div class="code-line"><span class="ln">22</span><span class="i2">node-&gt;left = insert(node-&gt;left, data);</span></div>
+        <div class="code-line"><span class="ln">23</span><span class="i1"><span class="kw">else</span> <span class="kw">if</span> (data &gt; node-&gt;data)</span></div>
+        <div class="code-line"><span class="ln">24</span><span class="i2">node-&gt;right = insert(node-&gt;right, data);</span></div>
+        <div class="code-line"><span class="ln">25</span><span class="i1"><span class="kw">return</span> node;</span></div>
+        <div class="code-line"><span class="ln">26</span><span>}</span></div>
+        <div class="code-line"><span class="ln">27</span><span></span></div>
+        <div class="code-line"><span class="ln">28</span><span><span class="dt">void</span> inorder(<span class="kw">struct</span> node* root) {</span></div>
+        <div class="code-line"><span class="ln">29</span><span class="i1"><span class="kw">if</span> (root != NULL) {</span></div>
+        <div class="code-line"><span class="ln">30</span><span class="i2">inorder(root-&gt;left);</span></div>
+        <div class="code-line"><span class="ln">31</span><span class="i2">printf(<span class="str">"%d "</span>, root-&gt;data);</span></div>
+        <div class="code-line"><span class="ln">32</span><span class="i2">inorder(root-&gt;right);</span></div>
+        <div class="code-line"><span class="ln">33</span><span class="i1">}</span></div>
+        <div class="code-line"><span class="ln">34</span><span>}</span></div>
+        <div class="code-line"><span class="ln">35</span><span></span></div>
+        <div class="code-line"><span class="ln">36</span><span><span class="dt">int</span> main() {</span></div>
+        <div class="code-line"><span class="ln">37</span><span class="i1"><span class="kw">struct</span> node* root = NULL;</span></div>
+        <div class="code-line"><span class="ln">38</span><span class="i1">root = insert(root, 50);</span></div>
+        <div class="code-line"><span class="ln">39</span><span class="i1">insert(root, 30);</span></div>
+        <div class="code-line"><span class="ln">40</span><span class="i1">insert(root, 20);</span></div>
+        <div class="code-line"><span class="ln">41</span><span class="i1">insert(root, 40);</span></div>
+        <div class="code-line"><span class="ln">42</span><span class="i1">insert(root, 70);</span></div>
+        <div class="code-line"><span class="ln">43</span><span class="i1">insert(root, 60);</span></div>
+        <div class="code-line"><span class="ln">44</span><span class="i1">insert(root, 80);</span></div>
+        <div class="code-line"><span class="ln">45</span><span class="i1">printf(<span class="str">"Inorder traversal: "</span>);</span></div>
+        <div class="code-line"><span class="ln">46</span><span class="i1">inorder(root);</span></div>
+        <div class="code-line"><span class="ln">47</span><span class="i1"><span class="kw">return</span> 0;</span></div>
+        <div class="code-line"><span class="ln">48</span><span>}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const canvas = document.getElementById('draw-canvas');
+const ctx = canvas.getContext('2d');
+let penActive = false, isDrawing = false;
+let penColor = '#fbbf24';
+let penSize = 3;
+let drawHistory = [];
+let redoStack = [];
+let lastX = 0, lastY = 0;
+let root = { value: 50, left: { value: 30, left: { value: 20 }, right: { value: 40 } }, right: { value: 70, left: { value: 60 }, right: { value: 80 } } };
+
+function resizeCanvas() {
+  let oldImage = null;
+  try { oldImage = ctx.getImageData(0,0,canvas.width,canvas.height); } catch(e) {}
+  const wrap = document.getElementById('tree-wrap');
+  const rect = wrap.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+  if (oldImage) { try { ctx.putImageData(oldImage,0,0); } catch(e) {} }
+}
+function saveSnapshot() { try { drawHistory.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e) {} redoStack = []; updateUndoRedo(); }
+function updateUndoRedo() { document.getElementById('btn-undo').disabled = drawHistory.length === 0; document.getElementById('btn-redo').disabled = redoStack.length === 0; }
+function undoDraw() { if (!drawHistory.length) return; try { redoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e) {} const prev = drawHistory.pop(); ctx.putImageData(prev,0,0); updateUndoRedo(); }
+function redoDraw() { if (!redoStack.length) return; try { drawHistory.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e) {} const next = redoStack.pop(); ctx.putImageData(next,0,0); updateUndoRedo(); }
+function clearDraw() { saveSnapshot(); ctx.clearRect(0,0,canvas.width,canvas.height); }
+function getCanvasPos(e) { const rect = canvas.getBoundingClientRect(); const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; return { x:(clientX-rect.left)*(canvas.width/rect.width), y:(clientY-rect.top)*(canvas.height/rect.height) }; }
+canvas.addEventListener('mousedown', e => { if(!penActive) return; const pos=getCanvasPos(e); saveSnapshot(); isDrawing=true; lastX=pos.x; lastY=pos.y; ctx.beginPath(); ctx.moveTo(lastX,lastY); });
+canvas.addEventListener('mousemove', e => { if(!isDrawing||!penActive) return; const pos=getCanvasPos(e); ctx.lineWidth=penSize; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=penColor; ctx.lineTo(pos.x,pos.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(pos.x,pos.y); lastX=pos.x; lastY=pos.y; });
+canvas.addEventListener('mouseup', () => { isDrawing=false; });
+canvas.addEventListener('mouseleave', () => { isDrawing=false; });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); if(!penActive) return; const pos=getCanvasPos(e); saveSnapshot(); isDrawing=true; lastX=pos.x; lastY=pos.y; ctx.beginPath(); ctx.moveTo(lastX,lastY); }, {passive:false});
+canvas.addEventListener('touchmove', e => { e.preventDefault(); if(!isDrawing||!penActive) return; const pos=getCanvasPos(e); ctx.lineWidth=penSize; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=penColor; ctx.lineTo(pos.x,pos.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(pos.x,pos.y); lastX=pos.x; lastY=pos.y; }, {passive:false});
+canvas.addEventListener('touchend', () => { isDrawing=false; });
+function togglePen() { penActive=!penActive; const toolbar=document.querySelector('.pen-toolbar'); const penBtn=document.getElementById('pen-toggle'); toolbar.classList.toggle('active', penActive); if(penActive){ canvas.classList.add('pen-active'); penBtn.classList.add('active'); penBtn.innerHTML='✏️ Pen ON'; resizeCanvas(); } else { canvas.classList.remove('pen-active'); penBtn.classList.remove('active'); penBtn.innerHTML='✏️ Pen'; }}
+function setColor(color) { penColor=color; }
+function setSize(value) { penSize=parseInt(value,10); }
+function drawNode(x,y,text) { const group=document.createElementNS('http://www.w3.org/2000/svg','g'); const circle=document.createElementNS('http://www.w3.org/2000/svg','circle'); circle.setAttribute('cx',x); circle.setAttribute('cy',y); circle.setAttribute('r',26); circle.setAttribute('fill','rgba(56,189,248,0.16)'); circle.setAttribute('stroke','rgba(56,189,248,0.45)'); circle.setAttribute('stroke-width','2'); group.appendChild(circle); const label=document.createElementNS('http://www.w3.org/2000/svg','text'); label.setAttribute('x',x); label.setAttribute('y',y+6); label.setAttribute('text-anchor','middle'); label.setAttribute('font-family','IBM Plex Mono,monospace'); label.setAttribute('font-size','18'); label.setAttribute('fill','#e2e8f4'); label.textContent=text; group.appendChild(label); return group; }
+function renderTree() { const svg=document.getElementById('tree-svg'); svg.innerHTML=''; const edges=[]; const nodes=[];
+  function traverse(node,x,y,depth,offset) {
+    if(!node) return;
+    nodes.push({x,y,value:node.value});
+    if(node.left){ const childX = x - offset; const childY = y + 110; edges.push({x,y,xx:childX,yy:childY}); traverse(node.left, childX, childY, depth+1, Math.max(60, offset*0.55)); }
+    if(node.right){ const childX = x + offset; const childY = y + 110; edges.push({x,y,xx:childX,yy:childY}); traverse(node.right, childX, childY, depth+1, Math.max(60, offset*0.55)); }
+  }
+  traverse(root, 380, 80, 0, 220);
+  edges.forEach(edge => { const line=document.createElementNS('http://www.w3.org/2000/svg','line'); line.setAttribute('x1',edge.x); line.setAttribute('y1',edge.y+26); line.setAttribute('x2',edge.xx); line.setAttribute('y2',edge.yy-26); line.setAttribute('stroke','rgba(88,166,255,0.25)'); line.setAttribute('stroke-width','2'); svg.appendChild(line); });
+  nodes.forEach(node => svg.appendChild(drawNode(node.x,node.y,node.value)));
+}
+function updateStatus(message) { document.getElementById('step-status').textContent = message || `Tree nodes: ${countNodes(root)}`; }
+function countNodes(node) { return node ? 1 + countNodes(node.left) + countNodes(node.right) : 0; }
+function insertValue(node,value) { if(!node) return { value, left:null, right:null }; if(value < node.value) node.left = insertValue(node.left,value); else node.right = insertValue(node.right,value); return node; }
+function insertNode() { const input=document.getElementById('insert-input'); const raw=input.value.trim(); const value = Number(raw); if(!raw || Number.isNaN(value)){ updateStatus('Enter a number to insert'); return; } root = insertValue(root, value); input.value=''; renderTree(); updateStatus(`Inserted ${value}`); }
+function resetStructure() { root = { value:50, left:{ value:30, left:{ value:20 }, right:{ value:40 } }, right:{ value:70, left:{ value:60 }, right:{ value:80 } } }; renderTree(); updateStatus('Reset to foundation tree'); }
+window.addEventListener('resize', () => { resizeCanvas(); updateUndoRedo(); });
+window.addEventListener('load', () => { resizeCanvas(); renderTree(); updateUndoRedo(); updateStatus('Ready'); });
+</script>
+</body>
+</html>

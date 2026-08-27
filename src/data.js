@@ -267,10 +267,42 @@ const websiteTopicsData = scrapedTopicEntries
     };
   });
 
+// Keep the learning path intentional: fundamentals first, then techniques,
+// data structures, and finally advanced algorithmic patterns.
+const curriculumOrder = [
+  'loops',
+  'functions',
+  'array',
+  'string',
+  'searching',
+  'sorting',
+  'timecomplexity',
+  'twopointer',
+  'sliding',
+  'linkedlist',
+  'stack',
+  'queue',
+  'recursion',
+  'heap',
+  'tree',
+  'binarytree',
+  'graph',
+  'greedy',
+  'divide',
+  'dynamic',
+  'oop'
+];
+
+const curriculumRank = new Map(curriculumOrder.map((id, index) => [id, index]));
+
 export const topicsData = [
   ...coreTopicsData.map(normalizeTopic),
   ...websiteTopicsData.map(normalizeTopic)
-];
+].sort((a, b) => {
+  const rankA = curriculumRank.get(a.id) ?? curriculumOrder.length;
+  const rankB = curriculumRank.get(b.id) ?? curriculumOrder.length;
+  return rankA - rankB;
+});
 
 const generatedPracticeQuestions = Object.fromEntries(
   websiteTopicsData.map(topic => [

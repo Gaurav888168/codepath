@@ -29,7 +29,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function App() {
   // Navigation State
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, learn, playground, games, store, firewall, settings
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, learn, playground, games, store, settings
   const [activeLanguage, setActiveLanguage] = useState('JavaScript');
   
   // Auth State
@@ -50,11 +50,6 @@ function App() {
   const [solvedQuestions, setSolvedQuestions] = useState([]);
   const [unlockedCompanyPacks, setUnlockedCompanyPacks] = useState([]);
   const [badges, setBadges] = useState(['Loops Rookie', 'Fast Learner']);
-
-  // Firewall & Backend State
-  const [firewallStatus, setFirewallStatus] = useState(null);
-  const [firewallLogs, setFirewallLogs] = useState([]);
-  const [firewallLoading, setFirewallLoading] = useState(false);
 
   // Ad simulation states
   const [isPlayingAd, setIsPlayingAd] = useState(false);
@@ -128,46 +123,6 @@ function App() {
   const [monsterColor, setMonsterColor] = useState('#ec4899');
   const [monsterName, setMonsterName] = useState('Gromp');
   const [instantiatedMonsters, setInstantiatedMonsters] = useState([]);
-
-  // -------------------------------------------------------------
-  // FETCH FIREWALL & SECURITY DATA FROM BACKEND
-  // -------------------------------------------------------------
-  const fetchFirewallData = async () => {
-    try {
-      setFirewallLoading(true);
-      const [resStatus, resLogs] = await Promise.all([
-        fetch(`${API_BASE}/api/firewall/status`),
-        fetch(`${API_BASE}/api/firewall/logs`)
-      ]);
-      if (resStatus.ok && resLogs.ok) {
-        const dataStatus = await resStatus.json();
-        const dataLogs = await resLogs.json();
-        setFirewallStatus(dataStatus);
-        setFirewallLogs(dataLogs.logs || []);
-      }
-    } catch (err) {
-      console.warn('Backend firewall API unreachable:', err);
-    } finally {
-      setFirewallLoading(false);
-    }
-  };
-
-  const handleToggleFirewall = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/firewall/toggle`, { method: 'POST' });
-      if (res.ok) {
-        fetchFirewallData();
-      }
-    } catch (err) {
-      alert('Error toggling firewall: ' + err.message);
-    }
-  };
-
-  useEffect(() => {
-    fetchFirewallData();
-    const interval = setInterval(fetchFirewallData, 4000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Trigger daily login reward effect
   useEffect(() => {
@@ -854,16 +809,6 @@ function App() {
               <span>Coding Games</span>
             </div>
 
-            <div 
-              className={`nav-item ${activeTab === 'firewall' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('firewall');
-                fetchFirewallData();
-              }}
-            >
-              <Shield size={20} />
-              <span>Firewall & WAF</span>
-            </div>
 
             <div 
               className={`nav-item ${activeTab === 'store' ? 'active' : ''}`}
@@ -977,8 +922,8 @@ function App() {
                       <button className="btn-primary" onClick={() => setActiveTab('learn')}>
                         Resume Learning <Play size={16} fill="#fff" />
                       </button>
-                      <button className="btn-secondary" onClick={() => setActiveTab('firewall')}>
-                        Security Firewall <Shield size={16} />
+                      <button className="btn-secondary" onClick={() => setActiveTab('playground')}>
+                        Open Playground <Code2 size={16} />
                       </button>
                     </div>
                   </div>
@@ -1017,12 +962,6 @@ function App() {
                       <span style={{ fontWeight: 'bold' }}>{solvedQuestions.length} Questions</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Backend Firewall:</span>
-                      <span style={{ fontWeight: 'bold', color: firewallStatus?.firewallEnabled ? 'var(--success)' : 'var(--error)' }}>
-                        {firewallStatus?.firewallEnabled ? '🛡️ ENABLED (Port 8000)' : '⚠️ DISABLED'}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Active Language:</span>
                       <span style={{ fontWeight: 'bold', color: 'var(--primary-solid)' }}>{activeLanguage}</span>
                     </div>
@@ -1033,121 +972,6 @@ function App() {
             </div>
           )}
 
-          {/* FIREWALL & SECURITY SCREEN */}
-          {activeTab === 'firewall' && (
-            <div className="screen-container">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h1><span className="gradient-text">Backend Security & Firewall (WAF)</span></h1>
-                  <p style={{ color: 'var(--text-muted)' }}>Real-time API Rate Limiter, Threat Inspection, Security Headers, and Live WAF Audit Logs.</p>
-                </div>
-                <button className="btn-secondary" onClick={fetchFirewallData} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <RefreshCw size={16} className={firewallLoading ? 'spin' : ''} /> Refresh Status
-                </button>
-              </div>
-
-              {/* Status Header Cards */}
-              <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-                <div className="glass-panel dashboard-card">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                    <Shield size={24} color="var(--primary-solid)" />
-                    <h4>Protection Mode</h4>
-                  </div>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: firewallStatus?.firewallEnabled ? 'var(--success)' : 'var(--error)' }}>
-                    {firewallStatus?.firewallEnabled ? 'ACTIVE & ENFORCING' : 'DISABLED'}
-                  </div>
-                  <button className="btn-primary" onClick={handleToggleFirewall} style={{ marginTop: '12px', padding: '6px 12px', fontSize: '12px' }}>
-                    {firewallStatus?.firewallEnabled ? 'Disable Firewall' : 'Enable Firewall Shield'}
-                  </button>
-                </div>
-
-                <div className="glass-panel dashboard-card">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                    <Activity size={24} color="#f59e0b" />
-                    <h4>Total API Requests</h4>
-                  </div>
-                  <div style={{ fontSize: '28px', fontWeight: 'bold' }}>
-                    {firewallStatus?.totalRequests || 0}
-                  </div>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Rate Limit: 120 req/min</span>
-                </div>
-
-                <div className="glass-panel dashboard-card">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                    <AlertCircle size={24} color="#ef4444" />
-                    <h4>Threats Blocked (WAF)</h4>
-                  </div>
-                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#ef4444' }}>
-                    {firewallStatus?.blockedRequests || 0}
-                  </div>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>XSS & SQL Injection filter</span>
-                </div>
-              </div>
-
-              {/* Active Rules List */}
-              <div className="glass-panel dashboard-card" style={{ marginTop: '20px' }}>
-                <h3>Enforced Firewall Rules</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat( auto-fit, minmax(220px, 1fr) )', gap: '12px', marginTop: '14px' }}>
-                  {firewallStatus?.activeRules?.map((rule, idx) => (
-                    <div key={idx} style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(16, 185, 129, 0.05)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <CheckCircle2 size={16} color="var(--success)" />
-                      <span>{rule}</span>
-                    </div>
-                  )) || (
-                    <p style={{ color: 'var(--text-muted)' }}>Loading active firewall rules...</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Security Logs Table */}
-              <div className="glass-panel dashboard-card" style={{ marginTop: '20px' }}>
-                <h3>Real-Time Security Audit Logs</h3>
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>Captures request IP, event type, authorization state, and threat inspection details.</p>
-
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)' }}>
-                        <th style={{ padding: '10px' }}>Timestamp</th>
-                        <th style={{ padding: '10px' }}>Client IP</th>
-                        <th style={{ padding: '10px' }}>Event</th>
-                        <th style={{ padding: '10px' }}>Status</th>
-                        <th style={{ padding: '10px' }}>Detail</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {firewallLogs.length > 0 ? (
-                        firewallLogs.map(log => (
-                          <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                            <td style={{ padding: '10px', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleTimeString()}</td>
-                            <td style={{ padding: '10px', fontFamily: 'monospace' }}>{log.ip}</td>
-                            <td style={{ padding: '10px', fontWeight: 'bold' }}>{log.event}</td>
-                            <td style={{ padding: '10px' }}>
-                              <span style={{ 
-                                padding: '3px 8px', 
-                                borderRadius: '12px', 
-                                fontSize: '11px', 
-                                fontWeight: 'bold',
-                                background: log.status === 'BLOCKED' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                                color: log.status === 'BLOCKED' ? '#ef4444' : '#10b981'
-                              }}>
-                                {log.status}
-                              </span>
-                            </td>
-                            <td style={{ padding: '10px', color: 'var(--text-muted)' }}>{log.detail}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No logs recorded yet. Server is monitoring.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* LEARN & PRACTICE SCREEN */}
           {activeTab === 'learn' && (

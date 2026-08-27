@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fractional Knapsack — Interactive Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d45;
+    --border2: #263550;
+    --text: #e2e8f4;
+    --muted: #6b7a99;
+    --accent-main: #58a6ff;
+    --accent-sel: #3fb950;
+    --accent2: #f472b6;
+    --accent3: #34d399;
+    --accent4: #fbbf24;
+    --accent-orange: #f0883e;
+    --rejected: #ef4444;
+  }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body { min-height:100vh; background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+  .top-bar { position:sticky; top:0; z-index:100000; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 20px; background:rgba(10,14,26,0.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+  .top-title { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; }
+  .top-title span { color:var(--accent4); }
+  .divider { width:1px; height:28px; background:var(--border2); flex-shrink:0; }
+  .pen-toolbar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tool-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .tool-btn:hover { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.06); }
+  .tool-btn.active { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.12); }
+  .page { position:relative; z-index:1; }
+  header { padding:36px 40px 28px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+  .tag-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+  .tag { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:4px 12px; border-radius:20px; }
+  .tag-blue { color:var(--accent-main); border:1px solid rgba(88,166,255,0.25); background:rgba(88,166,255,0.06); }
+  .tag-sel { color:var(--accent-sel); border:1px solid rgba(63,185,80,0.25); background:rgba(63,185,80,0.06); }
+  .tag-orange { color:var(--accent-orange); border:1px solid rgba(240,136,62,0.25); background:rgba(240,136,62,0.06); }
+  h1 { font-size:clamp(22px,4vw,38px); line-height:1.1; margin-bottom:8px; letter-spacing:-0.5px; }
+  .subtitle { font-size:13px; color:var(--muted); max-width:640px; line-height:1.75; }
+  .container { max-width:1100px; margin:0 auto; padding:28px 24px 48px; position:relative; }
+  .problem-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent-main); }
+  .problem-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent3); }
+  .theory-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-points { list-style:none; padding:0; }
+  .theory-points li { margin-bottom:12px; line-height:1.6; }
+  .theory-points li strong { color:var(--accent4); }
+  .theory-points li ul { margin-top:8px; margin-left:20px; }
+  .problem-body { color:var(--muted); font-size:13px; line-height:1.8; }
+  .problem-body strong { color:var(--text); }
+  .main-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface2); }
+  .dot { width:8px; height:8px; border-radius:50%; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:18px 20px; background:var(--surface2); border-top:1px solid var(--border); }
+  .btn { font-family:'IBM Plex Mono',monospace; font-size:12px; padding:10px 16px; border-radius:10px; border:1px solid var(--border2); background:var(--surface); color:var(--muted); cursor:pointer; }
+  .btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .btn-primary { border-color:var(--accent-main); color:var(--text); background:linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+  .step-label { color:var(--muted); font-size:12px; }
+  .small-input { width:120px; padding:10px 12px; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); color:var(--text); }
+  .graph-wrap { position:relative; display:block; line-height:0; background:#0f172a; min-height:250px; }
+  #knapsack-svg { width:100%; display:block; }
+  .section-hdr { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text); margin:24px 0 16px 0; display:flex; align-items:center; gap:12px; font-weight:600; }
+  .section-hdr::after { content:''; flex:1; height:2px; background:linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .code-block { padding:20px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .code-line { display:flex; gap:10px; }
+  .ln { color:var(--muted); min-width:18px; user-select:none; font-size:11px; }
+  .kw { color:var(--accent2); }
+  .fn { color:var(--accent-main); }
+  .cm { color:var(--muted); font-style:italic; }
+  .vr { color:var(--accent-sel); }
+  .op { color:var(--accent4); }
+  .dt { color:var(--accent3); }
+  .str { color:var(--accent-orange); }
+  .pp { color:var(--accent2); }
+  .i1 { padding-left:16px; }
+  .i2 { padding-left:32px; }
+  .i3 { padding-left:48px; }
+  /* Implementation selector */
+  .impl-selector { display:flex; gap:8px; align-items:center; margin-bottom:16px; }
+  .impl-selector label { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .impl-toggle { display:flex; gap:6px; }
+  .impl-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; }
+  .impl-btn.active { border-color:var(--accent-main); color:var(--accent-main); background:rgba(88,166,255,0.12); }
+  .impl-btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .impl-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .impl-grid.hidden { display:none; }
+  .status-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:20px; }
+  .status-box { background:var(--surface2); border:1px solid var(--border2); border-radius:10px; padding:14px 16px; }
+  .status-box h3 { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  .status-box pre { font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent3); white-space:pre-wrap; word-break:break-all; }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; padding:0 20px 16px; }
+  .legend-item { display:flex; align-items:center; gap:7px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+  .legend-dot { width:12px; height:12px; border-radius:50%; border:2px solid; }
+  select.small-input { appearance:none; -webkit-appearance:none; }
+
+  /* Pen Tool Styles */
+  #pen-canvas { position: fixed; top: 0; left: 0; z-index: 99999; cursor: crosshair; display: none; pointer-events: none; }
+  #pen-undo-btn:disabled, #pen-redo-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #pen-undo-btn:disabled:hover, #pen-redo-btn:disabled:hover { border-color: var(--border2); color: var(--muted); }
+  .pen-toolbar-top { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-left: auto; pointer-events: auto; }
+
+  @media(max-width:860px) { .grid-2 { grid-template-columns:1fr; } .status-grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<canvas id="pen-canvas"></canvas>
+<div class="top-bar">
+  <span class="top-title">Fractional Knapsack <span>Visualizer</span></span>
+  <div class="divider"></div>
+  <div class="pen-toolbar-top" id="pen-toolbar-top">
+    <button class="btn btn-primary" id="pen-toggle-btn" title="Toggle Drawing Mode (P)" style="padding: 8px 14px; font-size: 12px;">✏️ Start Drawing</button>
+    <button id="pen-undo-btn" class="btn" style="padding: 8px 12px; font-size: 12px;" title="Undo (Ctrl+Z)">↶ Undo</button>
+    <button id="pen-redo-btn" class="btn" style="padding: 8px 12px; font-size: 12px;" title="Redo (Ctrl+Y)">↷ Redo</button>
+    <button id="pen-clear-btn" class="btn" style="padding: 8px 12px; font-size: 12px;">🗑️ Clear</button>
+    <div style="display: flex; gap: 8px; align-items: center;">
+    <label for="pen-color" style="font-size: 12px; color: var(--muted); font-family: 'IBM Plex Mono', monospace;">Color:</label>
+    <input type="color" id="pen-color" value="#fbbf24" style="width: 36px; height: 28px; border: 1px solid var(--border2); border-radius: 6px; cursor: pointer;">
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+    <label for="pen-size" style="font-size: 12px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; min-width: 40px;">Size:</label>
+    <input type="range" id="pen-size" min="1" max="20" value="3" style="width: 100px;">
+    <span class="size-display" id="pen-size-display" style="font-size: 11px; color: var(--muted); min-width: 30px;">3px</span>
+    </div>
+  </div>
+</div>
+<div class="page">
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Greedy Algorithms</span>
+      <span class="tag tag-sel">Optimization</span>
+      <span class="tag tag-orange">Greedy Choice</span>
+    </div>
+    <h1>Fractional Knapsack <span style="color:var(--accent4)">Visualizer</span></h1>
+    <p class="subtitle">Solve the fractional knapsack problem using a greedy algorithm. Select items by their value-to-weight ratio to maximize total value within a weight capacity.</p>
+  </header>
+  <div class="container">
+    <div class="theory-box">
+      <h2>Theory</h2>
+      <div class="theory-body">
+        <p style="color:var(--muted); margin-bottom:16px; line-height:1.7;">The fractional knapsack problem allows items to be divided into fractional parts. The greedy strategy sorts items by value-to-weight ratio in descending order, then fills the knapsack by selecting items with highest ratio first. This greedy choice always yields the optimal solution for this variant.</p>
+        <ul class="theory-points">
+          <li><strong>Strategy:</strong> Sort by value/weight ratio (descending), greedily pick items until knapsack is full</li>
+          <li><strong>Time Complexity:</strong> O(n log n) due to sorting; selection is O(n)</li>
+          <li><strong>Space Complexity:</strong> O(n) for storing items and ratios</li>
+          <li><strong>Key Property:</strong> Greedy choice property holds: best ratio item is always optimal to pick first</li>
+          <li><strong>Common Applications:</strong>
+            <ul>
+              <li>Resource allocation with partial assignments</li>
+              <li>Portfolio optimization (fractional assets)</li>
+              <li>Load balancing with flexible tasks</li>
+              <li>Media transmission with partial files</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="problem-box">
+      <h2>Problem Statement</h2>
+      <div class="problem-body">
+        <p style="margin-bottom:10px;"><strong>Given</strong> an array <strong>items</strong> where <strong>items[i] = [weight<sub>i</sub>, value<sub>i</sub>]</strong>, and an integer <strong>capacity</strong> representing maximum weight the knapsack can hold, return the <strong>maximum total value</strong> you can place in the knapsack.</p>
+        <p style="margin-bottom:10px;">You may take an item fully or take any fraction of it. The value gained from a fraction is proportional to the fraction taken.</p>
+        <p style="margin-bottom:10px;"><strong>Required Output:</strong> A floating-point number representing the maximum achievable value.</p>
+
+        <p style="margin:14px 0 6px 0; color:var(--text);"><strong>Example 1:</strong></p>
+        <pre style="background:rgba(15,23,42,0.7); border:1px solid var(--border2); border-radius:8px; padding:10px; color:var(--muted); overflow:auto;">Input: items = [[10,60],[20,100],[30,120]], capacity = 50
+Output: 240.00
+Explanation:
+- Ratios: 6.0, 5.0, 4.0
+- Take item [10,60] fully, item [20,100] fully
+- Remaining capacity = 20, take 20/30 of [30,120] = 80
+- Total = 60 + 100 + 80 = 240</pre>
+
+        <p style="margin:14px 0 6px 0; color:var(--text);"><strong>Example 2:</strong></p>
+        <pre style="background:rgba(15,23,42,0.7); border:1px solid var(--border2); border-radius:8px; padding:10px; color:var(--muted); overflow:auto;">Input: items = [[5,30],[10,40],[20,100]], capacity = 15
+Output: 80.00
+Explanation:
+- Ratios: 6.0, 4.0, 5.0 -> sorted as [5,30], [20,100], [10,40]
+- Take [5,30] fully
+- Remaining capacity = 10, take 10/20 of [20,100] = 50
+- Total = 30 + 50 = 80.00</pre>
+
+        <p style="margin:14px 0 6px 0; color:var(--text);"><strong>Constraints:</strong></p>
+        <ul style="margin-left:20px; color:var(--muted); line-height:1.8;">
+          <li>1 &le; items.length &le; 10<sup>5</sup></li>
+          <li>1 &le; weight<sub>i</sub>, value<sub>i</sub> &le; 10<sup>4</sup></li>
+          <li>1 &le; capacity &le; 10<sup>9</sup></li>
+          <li>Answer accepted within 1e-5 absolute error.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>greedy_strategy.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// Greedy Strategy</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">struct</span> Item {</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="dt">double</span> weight, value;</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="dt">double</span> ratio; <span class="cm">// value/weight</span></span></div>
+          <div class="code-line"><span class="ln">5</span><span>}</span></div>
+          <div class="code-line"><span class="ln">6</span><span></span></div>
+          <div class="code-line"><span class="ln">7</span><span><span class="cm">// 1. Compute value/weight ratio for each item</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span><span class="cm">// 2. Sort items by ratio (descending)</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span><span class="cm">// 3. Fill knapsack greedily</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span><span class="cm">// 4. If item fits fully, take all</span></span></div>
+          <div class="code-line"><span class="ln">11</span><span><span class="cm">// 5. Else take fraction that fits</span></span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>ratio_anatomy.svg</h3></div>
+        <div style="padding:20px; text-align:center;">
+          <svg width="100%" height="200" viewBox="0 0 260 180" xmlns="http://www.w3.org/2000/svg" style="max-width:260px; margin:0 auto;">
+            <!-- Items sorted by ratio -->
+            <rect x="10" y="20" width="70" height="40" fill="rgba(63,185,80,0.18)" stroke="rgba(63,185,80,0.6)" stroke-width="2" rx="6"/>
+            <text x="45" y="35" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="11" font-weight="600">Item A</text>
+            <text x="45" y="52" text-anchor="middle" fill="#6b7a99" font-family="monospace" font-size="10">5.0</text>
+            <!-- Arrow -->
+            <path d="M 85 40 L 100 40" stroke="var(--accent4)" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+            <rect x="105" y="20" width="70" height="40" fill="rgba(88,166,255,0.14)" stroke="rgba(88,166,255,0.4)" stroke-width="1.5" rx="6"/>
+            <text x="140" y="35" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="11" font-weight="600">Item B</text>
+            <text x="140" y="52" text-anchor="middle" fill="#6b7a99" font-family="monospace" font-size="10">3.2</text>
+            <!-- Arrow -->
+            <path d="M 180 40 L 195 40" stroke="var(--accent4)" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+            <rect x="200" y="20" width="50" height="40" fill="rgba(88,166,255,0.14)" stroke="rgba(88,166,255,0.4)" stroke-width="1.5" rx="6"/>
+            <text x="225" y="35" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="11" font-weight="600">Item C</text>
+            <text x="225" y="52" text-anchor="middle" fill="#6b7a99" font-family="monospace" font-size="10">1.5</text>
+            <!-- Knapsack -->
+            <rect x="30" y="90" width="200" height="60" fill="none" stroke="var(--accent-main)" stroke-width="2" stroke-dasharray="5,5" rx="6"/>
+            <text x="130" y="110" text-anchor="middle" fill="var(--accent-main)" font-family="monospace" font-size="12" font-weight="600">Knapsack (Capacity)</text>
+            <text x="130" y="130" text-anchor="middle" fill="#6b7a99" font-family="monospace" font-size="10">Fill greedily by ratio</text>
+            <!-- Legend -->
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="var(--accent4)"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="main-card">
+      <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>knapsack.svg — Fractional Knapsack Visualization</h3></div>
+      <div class="graph-wrap" id="graph-wrap">
+        <svg id="knapsack-svg" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(63,185,80,0.18);border-color:var(--accent-sel);"></div>Selected (Full)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.25);border-color:var(--accent4);"></div>Partial</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(88,166,255,0.14);border-color:rgba(88,166,255,0.4);"></div>Available</div>
+      </div>
+      <div class="controls">
+        <label style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);">Capacity:</label>
+        <input type="number" class="small-input" id="capacity-input" value="50" min="1" max="200" style="width:70px;">
+        <button class="btn btn-primary" onclick="solveKnapsack()">▶ Solve Greedy</button>
+        <button class="btn" onclick="stepKnapsack()" id="btn-step">Step →</button>
+        <button class="btn" onclick="randomItems()">⟳ Random Items</button>
+        <button class="btn" onclick="resetKnapsack()">Reset</button>
+        <span class="step-label" id="step-status">Ready to solve</span>
+      </div>
+    </div>
+    <!-- Items & Selection status -->
+    <p class="section-hdr">Selection State</p>
+    <div class="grid-2" style="margin-bottom:24px;">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>items.log</h3></div>
+        <div style="padding:18px 20px; overflow-x:auto;">
+          <table id="items-table" style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px;">
+            <tr style="border-bottom:1px solid var(--border);">
+              <th style="text-align:left;padding:8px;color:var(--muted);">Item</th>
+              <th style="text-align:center;padding:8px;color:var(--muted);">Weight</th>
+              <th style="text-align:center;padding:8px;color:var(--muted);">Value</th>
+              <th style="text-align:center;padding:8px;color:var(--muted);">Ratio</th>
+              <th style="text-align:center;padding:8px;color:var(--muted);">Status</th>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>result.log</h3></div>
+        <div style="padding:18px 20px;">
+          <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">Total Value & Weight</p>
+          <pre id="result-view" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent-sel);white-space:pre-wrap;">Value: 0.0 | Weight: 0.0</pre>
+          <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:16px;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;">Step Info</p>
+          <pre id="step-info" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent-orange);white-space:pre-wrap;">Waiting to solve...</pre>
+        </div>
+      </div>
+    </div>
+    <p class="section-hdr">Algorithm & Pseudocode</p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>fractional_knapsack.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// Greedy Fractional Knapsack</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">function</span> <span class="fn">fractionalKnapsack</span>(<span class="vr">items</span>, <span class="vr">capacity</span>):</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="cm">// Compute ratio for each item</span></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="kw">for</span> <span class="vr">item</span> <span class="op">in</span> <span class="vr">items</span>:</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i2"><span class="vr">item</span>.<span class="vr">ratio</span> = <span class="vr">item</span>.<span class="vr">value</span> / <span class="vr">item</span>.<span class="vr">weight</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="cm">// Sort by ratio (descending)</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="fn">sort</span>(<span class="vr">items</span> <span class="kw">by</span> <span class="vr">ratio</span>, <span class="vr">descending</span>)</span></div>
+          <div class="code-line"><span class="ln">9</span><span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i1"><span class="vr">totalValue</span> = 0, <span class="vr">usedCapacity</span> = 0</span></div>
+          <div class="code-line"><span class="ln">11</span><span><span class="kw">for</span> <span class="vr">item</span> <span class="op">in</span> <span class="vr">items</span>:</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i1"><span class="kw">if</span> <span class="vr">usedCapacity</span> + <span class="vr">item</span>.<span class="vr">weight</span> ≤ <span class="vr">capacity</span>:</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i2"><span class="vr">totalValue</span> += <span class="vr">item</span>.<span class="vr">value</span></span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i2"><span class="vr">usedCapacity</span> += <span class="vr">item</span>.<span class="vr">weight</span></span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i1"><span class="kw">else</span>:</span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i2"><span class="vr">fraction</span> = (<span class="vr">capacity</span> - <span class="vr">usedCapacity</span>) / <span class="vr">item</span>.<span class="vr">weight</span></span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i2"><span class="vr">totalValue</span> += <span class="vr">item</span>.<span class="vr">value</span> * <span class="vr">fraction</span></span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i2"><span class="kw">break</span></span></div>
+          <div class="code-line"><span class="ln">19</span><span><span class="kw">return</span> <span class="vr">totalValue</span></span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>complexity.md</h3></div>
+        <div style="padding:20px;">
+          <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+            <tr><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Aspect</th><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Complexity</th></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Time</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(n log n)</td></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Space</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(n)</td></tr>
+            <tr><td style="padding:10px 14px;color:var(--text);font-weight:600;">Greedy Choice</td><td style="padding:10px 14px;color:var(--accent-sel);font-weight:600;">Max Ratio</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p class="section-hdr">Implementation</p>
+    <div class="impl-selector">
+      <label>Language:</label>
+      <div class="impl-toggle">
+        <button class="impl-btn active" id="impl-c" onclick="switchImpl('c')">C</button>
+        <button class="impl-btn" id="impl-python" onclick="switchImpl('python')">Python</button>
+      </div>
+    </div>
+    <div class="impl-grid" id="c-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>fractional_knapsack.c</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="pp">#include</span> <span class="str">&lt;stdio.h&gt;</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="pp">#include</span> <span class="str">&lt;stdlib.h&gt;</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span><span class="kw">typedef</span> <span class="kw">struct</span> {</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="dt">double</span> weight, value;</span></div>
+          <div class="code-line"><span class="ln">5</span><span>} <span class="dt">Item</span>;</span></div>
+          <div class="code-line"><span class="ln">6</span><span><span class="dt">int</span> <span class="fn">compare</span>(<span class="kw">const</span> <span class="dt">void</span> *<span class="vr">a</span>, <span class="kw">const</span> <span class="dt">void</span> *<span class="vr">b</span>) {</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="dt">double</span> <span class="vr">r1</span> = ((<span class="dt">Item</span> *)<span class="vr">a</span>)-><span class="vr">value</span> / ((<span class="dt">Item</span> *)<span class="vr">a</span>)-><span class="vr">weight</span>;</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="dt">double</span> <span class="vr">r2</span> = ((<span class="dt">Item</span> *)<span class="vr">b</span>)-><span class="vr">value</span> / ((<span class="dt">Item</span> *)<span class="vr">b</span>)-><span class="vr">weight</span>;</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i1"><span class="kw">return</span> <span class="vr">r2</span> > <span class="vr">r1</span> ? 1 : -1;</span></div>
+          <div class="code-line"><span class="ln">10</span><span>}</span></div>
+          <div class="code-line"><span class="ln">11</span><span><span class="dt">double</span> <span class="fn">fractionalKnapsack</span>(<span class="dt">Item</span> <span class="vr">items</span>[], <span class="dt">int</span> <span class="vr">n</span>, <span class="dt">double</span> <span class="vr">capacity</span>) {</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i1"><span class="fn">qsort</span>(<span class="vr">items</span>, <span class="vr">n</span>, <span class="kw">sizeof</span>(<span class="dt">Item</span>), <span class="fn">compare</span>);</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i1"><span class="dt">double</span> <span class="vr">totalValue</span> = 0.0;</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> <span class="vr">i</span> = 0; <span class="vr">i</span> < <span class="vr">n</span>; <span class="vr">i</span>++) {</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i2"><span class="kw">if</span> (<span class="vr">capacity</span> >= <span class="vr">items</span>[<span class="vr">i</span>].<span class="vr">weight</span>) {</span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i3"><span class="vr">capacity</span> -= <span class="vr">items</span>[<span class="vr">i</span>].<span class="vr">weight</span>;</span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i3"><span class="vr">totalValue</span> += <span class="vr">items</span>[<span class="vr">i</span>].<span class="vr">value</span>;</span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i2">} <span class="kw">else</span> {</span></div>
+          <div class="code-line"><span class="ln">19</span><span class="i3"><span class="vr">totalValue</span> += <span class="vr">items</span>[<span class="vr">i</span>].<span class="vr">value</span> * (<span class="vr">capacity</span> / <span class="vr">items</span>[<span class="vr">i</span>].<span class="vr">weight</span>);</span></div>
+          <div class="code-line"><span class="ln">20</span><span class="i3"><span class="kw">break</span>;</span></div>
+          <div class="code-line"><span class="ln">21</span><span class="i2">}</span></div>
+          <div class="code-line"><span class="ln">22</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">23</span><span class="i1"><span class="kw">return</span> <span class="vr">totalValue</span>;</span></div>
+          <div class="code-line"><span class="ln">24</span><span>}</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>Explanation</h3></div>
+        <div style="padding:20px; color:var(--muted); font-size:13px; line-height:1.7;">
+          <p><strong style="color:var(--text);">typedef struct:</strong> Defines Item structure holding weight and value as doubles for fractional calculations.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">compare():</strong> Comparator for qsort computes value/weight ratio on-the-fly for each item pair, returns 1 or -1 to sort descending by ratio. Essential for greedy selection.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">qsort():</strong> Standard library function performs sorting in O(n log n) time. Pass items array, count, size of each element, and comparator function pointer.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">Main Loop:</strong> Iterates through sorted items in order of best ratio. If item fits fully, add entire value; else calculate fractional part and break (greedy fill).</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">Fractional Calculation:</strong> Line 19 computes (remaining_capacity / item_weight) * item_value—the maximum value achievable by partially taking an item.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">Time Complexity:</strong> O(n log n) dominated by sorting; greedy iteration is O(n). Space O(n) for storing items.</p>
+        </div>
+      </div>
+    </div>
+    <div class="impl-grid hidden" id="python-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>fractional_knapsack.py</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="kw">def</span> <span class="fn">fractional_knapsack</span>(<span class="vr">items</span>, <span class="vr">capacity</span>):</span></div>
+          <div class="code-line"><span class="ln">2</span><span class="i1"><span class="cm">"""Solve fractional knapsack with greedy algorithm"""</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="cm"># Sort by value/weight ratio descending</span></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="vr">items</span>.sort(<span class="kw">key</span>=<span class="kw">lambda</span> <span class="vr">x</span>: <span class="vr">x</span>[1] / <span class="vr">x</span>[0], <span class="vr">reverse</span>=<span class="dt">True</span>)</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1"><span class="vr">total_value</span> = 0.0</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i1"><span class="vr">used_capacity</span> = 0.0</span></div>
+          <div class="code-line"><span class="ln">7</span><span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="kw">for</span> <span class="vr">weight</span>, <span class="vr">value</span> <span class="op">in</span> <span class="vr">items</span>:</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i2"><span class="kw">if</span> <span class="vr">used_capacity</span> + <span class="vr">weight</span> <= <span class="vr">capacity</span>:</span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i3"><span class="cm"># Take item fully</span></span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i3"><span class="vr">total_value</span> += <span class="vr">value</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i3"><span class="vr">used_capacity</span> += <span class="vr">weight</span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i2"><span class="kw">else</span>:</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i3"><span class="cm"># Take fractional part</span></span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i3"><span class="vr">remaining</span> = <span class="vr">capacity</span> - <span class="vr">used_capacity</span></span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i3"><span class="vr">fraction</span> = <span class="vr">remaining</span> / <span class="vr">weight</span></span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i3"><span class="vr">total_value</span> += <span class="vr">value</span> * <span class="vr">fraction</span></span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i3"><span class="kw">break</span></span></div>
+          <div class="code-line"><span class="ln">19</span><span><span class="kw">return</span> <span class="vr">total_value</span></span></div>
+          <div class="code-line"><span class="ln">20</span><span></span></div>
+          <div class="code-line"><span class="ln">21</span><span><span class="cm"># Example usage</span></span></div>
+          <div class="code-line"><span class="ln">22</span><span><span class="vr">items</span> = [(10, 60), (20, 100), (30, 120)]</span></div>
+          <div class="code-line"><span class="ln">23</span><span><span class="vr">result</span> = <span class="fn">fractional_knapsack</span>(<span class="vr">items</span>, 50)</span></div>
+          <div class="code-line"><span class="ln">24</span><span><span class="kw">print</span>(<span class="str">"Maximum value:"</span>, <span class="vr">result</span>)</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>Explanation</h3></div>
+        <div style="padding:20px; color:var(--muted); font-size:13px; line-height:1.7;">
+          <p><strong style="color:var(--text);">Docstring:</strong> Function docstring describes purpose: solve fractional knapsack with greedy algorithm to maximize value.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">sort() with lambda:</strong> Line 4 sorts items using lambda key=lambda x: x[1]/x[0] (value/weight) in reverse order. Single-line replacement for C's qsort with comparator.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">Initialization:</strong> total_value and used_capacity track algorithm state; starting both at 0.0 allows float precision for fractional parts.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">Greedy Loop:</strong> Iteration checks if item fits fully in remaining capacity (line 9). If yes, add all; if no (line 13), compute remaining space and fraction to maximize partial value.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">Fraction Calculation:</strong> Line 15-16 computes remaining capacity, then fraction as decimal ratio of item weight. Line 17 multiplies fractional amount by item value.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">Time Complexity:</strong> O(n log n) for sorting; greedy selection loop runs at most n times = O(n). Python's built-in sort uses Timsort, highly optimized for real-world data.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let items = [
+    { weight: 10, value: 60 },
+    { weight: 20, value: 100 },
+    { weight: 30, value: 120 }
+  ];
+  let capacity = 50;
+  let selectedItems = [];
+  let sortedItems = [];
+  let currentStep = 0;
+  let isSolving = false;
+
+  function sortByRatio(itemsToSort) {
+    return itemsToSort.map((item, idx) => ({
+      ...item,
+      ratio: item.value / item.weight,
+      index: idx,
+      originalIndex: idx
+    })).sort((a, b) => b.ratio - a.ratio);
+  }
+
+  function updateItemsTable() {
+    const table = document.getElementById('items-table');
+    const rows = table.querySelectorAll('tr');
+    rows.forEach((row, idx) => { if (idx > 0) row.remove(); });
+    
+    sortedItems.forEach((item, idx) => {
+      const selected = selectedItems.find(s => s.index === item.index);
+      const fraction = selected ? selected.fraction : 0;
+      const status = fraction === 1 ? '✓ Full' : fraction > 0 ? `${(fraction * 100).toFixed(0)}%` : '—';
+      const statusColor = fraction === 1 ? 'var(--accent-sel)' : fraction > 0 ? 'var(--accent4)' : 'var(--muted)';
+      
+      const row = document.createElement('tr');
+      row.style.borderBottom = '1px solid var(--border)';
+      row.innerHTML = `
+        <td style="padding:8px;color:var(--accent-main);">Item ${item.index}</td>
+        <td style="text-align:center;padding:8px;color:var(--muted);">${item.weight.toFixed(1)}</td>
+        <td style="text-align:center;padding:8px;color:var(--muted);">${item.value.toFixed(1)}</td>
+        <td style="text-align:center;padding:8px;color:var(--accent3);">${item.ratio.toFixed(2)}</td>
+        <td style="text-align:center;padding:8px;color:${statusColor};font-weight:600;">${status}</td>
+      `;
+      table.appendChild(row);
+    });
+  }
+
+  function updateDisplay() {
+    sortedItems = sortByRatio(items);
+    updateItemsTable();
+    
+    const totalValue = selectedItems.reduce((sum, item) => sum + item.value * item.fraction, 0);
+    const totalWeight = selectedItems.reduce((sum, item) => sum + item.weight * item.fraction, 0);
+    document.getElementById('result-view').textContent = `Value: ${totalValue.toFixed(2)} | Weight: ${totalWeight.toFixed(2)} / ${capacity}`;
+  }
+
+  function drawVisualization() {
+    const svg = document.getElementById('knapsack-svg');
+    svg.innerHTML = '';
+    const sorted = sortByRatio(items);
+
+    let yPos = 20;
+    let knapsackUsed = 0;
+
+    sorted.forEach((item, idx) => {
+      const selected = selectedItems.find(s => s.index === item.index);
+      const fraction = selected ? selected.fraction : 0;
+      
+      // Item box
+      const color = fraction === 1 ? 'rgba(63,185,80,0.18)' : fraction > 0 ? 'rgba(251,191,36,0.25)' : 'rgba(88,166,255,0.14)';
+      const stroke = fraction === 1 ? 'rgba(63,185,80,0.6)' : fraction > 0 ? 'var(--accent4)' : 'rgba(88,166,255,0.4)';
+      
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', '20'); rect.setAttribute('y', yPos);
+      rect.setAttribute('width', '80'); rect.setAttribute('height', '40');
+      rect.setAttribute('fill', color);
+      rect.setAttribute('stroke', stroke);
+      rect.setAttribute('stroke-width', '2');
+      rect.setAttribute('rx', '6');
+      svg.appendChild(rect);
+
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', '60'); text.setAttribute('y', yPos + 18);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('fill', '#e2e8f4');
+      text.setAttribute('font-family', 'monospace');
+      text.setAttribute('font-size', '12');
+      text.setAttribute('font-weight', '600');
+      text.textContent = `Item ${item.index}`;
+      svg.appendChild(text);
+
+      const info = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      info.setAttribute('x', '60'); info.setAttribute('y', yPos + 35);
+      info.setAttribute('text-anchor', 'middle');
+      info.setAttribute('fill', '#6b7a99');
+      info.setAttribute('font-family', 'monospace');
+      info.setAttribute('font-size', '10');
+      info.textContent = `Ratio: ${(item.ratio).toFixed(2)}`;
+      svg.appendChild(info);
+
+      if (fraction > 0) {
+        const frac = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        frac.setAttribute('x', '115'); frac.setAttribute('y', yPos + 25);
+        frac.setAttribute('fill', 'var(--accent4)');
+        frac.setAttribute('font-family', 'monospace');
+        frac.setAttribute('font-size', '11');
+        frac.textContent = `(${(fraction * 100).toFixed(0)}%)`;
+        svg.appendChild(frac);
+      }
+
+      yPos += 50;
+    });
+
+    // Knapsack capacity bar
+    yPos += 10;
+    const barWidth = 600;
+    const totalValue = selectedItems.reduce((sum, item) => sum + item.value * item.fraction, 0);
+    const totalWeight = selectedItems.reduce((sum, item) => sum + item.weight * item.fraction, 0);
+    const filledWidth = (totalWeight / capacity) * barWidth;
+
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('x', '120'); bg.setAttribute('y', yPos);
+    bg.setAttribute('width', barWidth); bg.setAttribute('height', '30');
+    bg.setAttribute('fill', 'rgba(88,166,255,0.08)');
+    bg.setAttribute('stroke', 'var(--accent-main)');
+    bg.setAttribute('stroke-width', '1.5');
+    bg.setAttribute('rx', '6');
+    svg.appendChild(bg);
+
+    const fill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    fill.setAttribute('x', '120'); fill.setAttribute('y', yPos);
+    fill.setAttribute('width', filledWidth); fill.setAttribute('height', '30');
+    fill.setAttribute('fill', 'rgba(63,185,80,0.35)');
+    fill.setAttribute('rx', '6');
+    svg.appendChild(fill);
+
+    const cap = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    cap.setAttribute('x', '420'); cap.setAttribute('y', yPos + 20);
+    cap.setAttribute('text-anchor', 'middle');
+    cap.setAttribute('fill', '#e2e8f4');
+    cap.setAttribute('font-family', 'monospace');
+    cap.setAttribute('font-size', '12');
+    cap.textContent = `${totalWeight.toFixed(1)}/${capacity}`;
+    svg.appendChild(cap);
+  }
+
+  function solveKnapsack() {
+    capacity = parseFloat(document.getElementById('capacity-input').value);
+    sortedItems = sortByRatio(items);
+    selectedItems = [];
+    currentStep = 0;
+    isSolving = true;
+    updateDisplay();
+    document.getElementById('step-status').textContent = '▶ Running... Click Step to proceed';
+    document.getElementById('step-info').textContent = 'Sorted items by ratio. Ready to select greedily.';
+  }
+
+  function stepKnapsack() {
+    if (!isSolving) {
+      document.getElementById('step-status').textContent = 'Press "Solve Greedy" first';
+      return;
+    }
+    
+    if (currentStep >= sortedItems.length) {
+      document.getElementById('step-status').textContent = '✓ Completed!';
+      isSolving = false;
+      return;
+    }
+
+    const item = sortedItems[currentStep];
+    let remainingCapacity = capacity;
+    
+    selectedItems.forEach(s => {
+      remainingCapacity -= s.weight * s.fraction;
+    });
+
+    if (remainingCapacity >= item.weight) {
+      // Take full item
+      selectedItems.push({ ...item, fraction: 1 });
+      document.getElementById('step-info').textContent = `Step ${currentStep + 1}: Selected Item ${item.index} fully (w=${item.weight.toFixed(1)}, v=${item.value.toFixed(1)}, ratio=${item.ratio.toFixed(2)})`;
+      document.getElementById('step-status').textContent = `Step ${currentStep + 1}/${sortedItems.length} — Added full item`;
+    } else if (remainingCapacity > 0.01) {
+      // Take fractional part
+      const fraction = remainingCapacity / item.weight;
+      selectedItems.push({ ...item, fraction });
+      document.getElementById('step-info').textContent = `Step ${currentStep + 1}: Selected ${(fraction * 100).toFixed(1)}% of Item ${item.index} (remaining capacity=${remainingCapacity.toFixed(1)})`;
+      document.getElementById('step-status').textContent = `Step ${currentStep + 1}/${sortedItems.length} — Added partial item`;
+      currentStep = sortedItems.length; // Stop after fractional
+    } else {
+      // Skip (no capacity)
+      document.getElementById('step-info').textContent = `Step ${currentStep + 1}: Skipped Item ${item.index} (no capacity left)`;
+      document.getElementById('step-status').textContent = `Step ${currentStep + 1}/${sortedItems.length} — No capacity`;
+    }
+
+    currentStep++;
+    updateDisplay();
+    drawVisualization();
+
+    if (currentStep >= sortedItems.length) {
+      document.getElementById('step-status').textContent = '✓ Algorithm Complete!';
+      isSolving = false;
+    }
+  }
+
+  function randomItems() {
+    items = [];
+    for (let i = 0; i < 5; i++) {
+      items.push({
+        weight: Math.random() * 30 + 10,
+        value: Math.random() * 150 + 30
+      });
+    }
+    selectedItems = [];
+    capacity = 50;
+    document.getElementById('capacity-input').value = capacity;
+    updateDisplay();
+    drawVisualization();
+    document.getElementById('step-status').textContent = 'Random items generated';
+  }
+
+  function resetKnapsack() {
+    selectedItems = [];
+    updateDisplay();
+    drawVisualization();
+    document.getElementById('step-status').textContent = 'Ready to solve';
+  }
+
+  function switchImpl(lang) {
+    const cImpl = document.getElementById('c-impl');
+    const pythonImpl = document.getElementById('python-impl');
+    const cBtn = document.getElementById('impl-c');
+    const pythonBtn = document.getElementById('impl-python');
+
+    if (lang === 'c') {
+      cImpl.classList.remove('hidden');
+      pythonImpl.classList.add('hidden');
+      cBtn.classList.add('active');
+      pythonBtn.classList.remove('active');
+    } else {
+      pythonImpl.classList.remove('hidden');
+      cImpl.classList.add('hidden');
+      pythonBtn.classList.add('active');
+      cBtn.classList.remove('active');
+    }
+  }
+
+  // ===================== PEN TOOL FUNCTIONALITY =====================
+  let penActive = false;
+  let isDrawing = false;
+  let drawingHistory = [];
+  let historyStep = -1;
+
+  function initPenTool() {
+    const canvas = document.getElementById('pen-canvas');
+    const ctx = canvas.getContext('2d');
+    const toggleBtn = document.getElementById('pen-toggle-btn');
+    const undoBtn = document.getElementById('pen-undo-btn');
+    const redoBtn = document.getElementById('pen-redo-btn');
+    const colorInput = document.getElementById('pen-color');
+    const sizeInput = document.getElementById('pen-size');
+    const sizeDisplay = document.getElementById('pen-size-display');
+    const clearBtn = document.getElementById('pen-clear-btn');
+    const toolbar = document.getElementById('pen-toolbar-top');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+
+      if (penActive && drawingHistory.length > 0 && historyStep >= 0) {
+        const img = new Image();
+        img.src = drawingHistory[historyStep];
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+        };
+      }
+    }
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    function saveToHistory() {
+      historyStep++;
+      if (historyStep < drawingHistory.length) {
+        drawingHistory.length = historyStep;
+      }
+      drawingHistory.push(canvas.toDataURL());
+      updateUndoRedoButtons();
+    }
+
+    function updateUndoRedoButtons() {
+      undoBtn.disabled = historyStep <= 0;
+      redoBtn.disabled = historyStep >= drawingHistory.length - 1;
+    }
+
+    function undo() {
+      if (historyStep > 0) {
+        historyStep--;
+        const img = new Image();
+        img.src = drawingHistory[historyStep];
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          updateUndoRedoButtons();
+        };
+      }
+    }
+
+    function redo() {
+      if (historyStep < drawingHistory.length - 1) {
+        historyStep++;
+        const img = new Image();
+        img.src = drawingHistory[historyStep];
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          updateUndoRedoButtons();
+        };
+      }
+    }
+
+    function togglePenMode() {
+      penActive = !penActive;
+      canvas.style.display = penActive ? 'block' : 'none';
+      canvas.style.pointerEvents = penActive ? 'auto' : 'none';
+      toggleBtn.textContent = penActive ? '✏️ Stop Drawing' : '✏️ Start Drawing';
+      toggleBtn.classList.toggle('active', penActive);
+      if (penActive) {
+        canvas.style.cursor = 'crosshair';
+        if (drawingHistory.length === 0) {
+          saveToHistory();
+        }
+      } else {
+        canvas.style.cursor = 'default';
+      }
+    }
+
+    let lastX = 0, lastY = 0;
+
+    function startDrawing(e) {
+      if (!penActive) return;
+      isDrawing = true;
+      [lastX, lastY] = [e.clientX, e.clientY];
+    }
+
+    function draw(e) {
+      if (!penActive || !isDrawing) return;
+
+      const x = e.clientX;
+      const y = e.clientY;
+
+      ctx.strokeStyle = colorInput.value;
+      ctx.lineWidth = sizeInput.value;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+
+      [lastX, lastY] = [x, y];
+    }
+
+    function stopDrawing() {
+      if (isDrawing) {
+        isDrawing = false;
+        saveToHistory();
+      }
+    }
+
+    function getTouchCoords(e) {
+      return {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      };
+    }
+
+    function startDrawingTouch(e) {
+      if (!penActive) return;
+      isDrawing = true;
+      const coords = getTouchCoords(e);
+      [lastX, lastY] = [coords.x, coords.y];
+    }
+
+    function drawTouch(e) {
+      if (!penActive || !isDrawing) return;
+      e.preventDefault();
+
+      const coords = getTouchCoords(e);
+
+      ctx.strokeStyle = colorInput.value;
+      ctx.lineWidth = sizeInput.value;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(coords.x, coords.y);
+      ctx.stroke();
+
+      [lastX, lastY] = [coords.x, coords.y];
+    }
+
+    function stopDrawingTouch() {
+      if (isDrawing) {
+        isDrawing = false;
+        saveToHistory();
+      }
+    }
+
+    function setCanvasInteractivity(enabled) {
+      if (!penActive) return;
+      canvas.style.pointerEvents = enabled ? 'auto' : 'none';
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (!penActive) return;
+      e.preventDefault();
+      startDrawing(e);
+    });
+    canvas.addEventListener('mousemove', (e) => {
+      if (!penActive) return;
+      e.preventDefault();
+      draw(e);
+    });
+    canvas.addEventListener('mouseup', (e) => {
+      if (!penActive) return;
+      e.preventDefault();
+      stopDrawing(e);
+    });
+    canvas.addEventListener('mouseout', (e) => {
+      if (!penActive) return;
+      stopDrawing(e);
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+      if (!penActive) return;
+      e.preventDefault();
+      startDrawingTouch(e);
+    });
+    canvas.addEventListener('touchmove', (e) => {
+      if (!penActive) return;
+      e.preventDefault();
+      drawTouch(e);
+    });
+    canvas.addEventListener('touchend', (e) => {
+      if (!penActive) return;
+      e.preventDefault();
+      stopDrawingTouch(e);
+    });
+
+    toolbar.addEventListener('mouseenter', () => {
+      stopDrawing();
+      setCanvasInteractivity(false);
+    });
+    toolbar.addEventListener('mouseleave', () => {
+      setCanvasInteractivity(true);
+    });
+
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePenMode();
+    });
+
+    undoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      undo();
+    });
+
+    redoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      redo();
+    });
+
+    clearBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawingHistory = [];
+      historyStep = -1;
+      updateUndoRedoButtons();
+    });
+
+    sizeInput.addEventListener('input', (e) => {
+      sizeDisplay.textContent = e.target.value + 'px';
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey) {
+        if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+          togglePenMode();
+        }
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        undo();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    });
+
+    updateUndoRedoButtons();
+  }
+
+  // Initial setup
+  updateDisplay();
+  drawVisualization();
+  initPenTool();
+</script>
+</body>
+</html>

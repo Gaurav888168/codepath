@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heap Foundation — Interactive Visual</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d45;
+    --border2: #263550;
+    --text: #e2e8f4;
+    --muted: #6b7a99;
+    --accent-main: #58a6ff;
+    --accent-sel: #3fb950;
+    --accent2: #f472b6;
+    --accent3: #34d399;
+    --accent4: #fbbf24;
+    --accent-orange: #f0883e;
+    --rejected: #ef4444;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+  body { min-height:100vh; background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+  .top-bar { position:sticky; top:0; z-index:100; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 20px; background:rgba(10,14,26,0.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+  .top-title { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; }
+  .top-title span { color:var(--accent4); }
+  .divider { width:1px; height:28px; background:var(--border2); flex-shrink:0; }
+  .pen-toolbar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tool-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .tool-btn:hover { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.06); }
+  .tool-btn.active { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.12); }
+  .pen-toolbar input[type="color"] { width:34px; height:34px; padding:0; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); cursor:pointer; }
+  .pen-toolbar input[type="range"] { width:110px; }
+  .pen-toolbar > *:not(#pen-toggle) { display:none; }
+  .pen-toolbar.active > *:not(#pen-toggle) { display:inline-flex; }
+  .page { position:relative; z-index:1; }
+  header { padding:36px 40px 28px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+  .tag-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+  .tag { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:4px 12px; border-radius:20px; }
+  .tag-blue { color:var(--accent-main); border:1px solid rgba(88,166,255,0.25); background:rgba(88,166,255,0.06); }
+  .tag-sel { color:var(--accent-sel); border:1px solid rgba(63,185,80,0.25); background:rgba(63,185,80,0.06); }
+  .tag-orange { color:var(--accent-orange); border:1px solid rgba(240,136,62,0.25); background:rgba(240,136,62,0.06); }
+  h1 { font-size:clamp(22px,4vw,38px); line-height:1.1; margin-bottom:8px; letter-spacing:-0.5px; }
+  .subtitle { font-size:13px; color:var(--muted); max-width:640px; line-height:1.75; }
+  .progress-bar { height:2px; background:var(--border); margin-top:16px; }
+  .progress-fill { height:100%; width:100%; background:linear-gradient(90deg, var(--accent-sel), var(--accent3), var(--accent-main)); transition:width .4s ease; }
+  .container { max-width:1100px; margin:0 auto; padding:28px 24px 48px; position:relative; }
+  .problem-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent-main); }
+  .problem-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent3); }
+  .theory-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-points { list-style:none; padding:0; }
+  .theory-points li { margin-bottom:12px; line-height:1.6; }
+  .theory-points li strong { color:var(--accent4); }
+  .theory-points li ul { margin-top:8px; margin-left:20px; }
+  .theory-points li ul li { margin-bottom:6px; color:var(--muted); }
+  .problem-body { color:var(--muted); font-size:13px; line-height:1.8; }
+  .problem-body strong { color:var(--text); }
+  .main-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface2); }
+  .dot { width:8px; height:8px; border-radius:50%; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:18px 20px; background:var(--surface2); border-top:1px solid var(--border); }
+  .btn { font-family:'IBM Plex Mono',monospace; font-size:12px; padding:10px 16px; border-radius:10px; border:1px solid var(--border2); background:var(--surface); color:var(--muted); cursor:pointer; }
+  .btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .btn-primary { border-color:var(--accent-main); color:var(--text); background:linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+  .step-label { color:var(--muted); font-size:12px; }
+  .small-input { width:120px; padding:10px 12px; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); color:var(--text); }
+  .heap-container { position:relative; display:block; line-height:0; background:#0f172a; min-height:350px; overflow:auto; }
+  #heap-svg { width:100%; min-width:600px; display:block; }
+  #draw-canvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; }
+  #draw-canvas.pen-active { pointer-events:all; cursor:crosshair; }
+  .section-hdr { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text); margin:24px 0 16px 0; display:flex; align-items:center; gap:12px; font-weight:600; }
+  .section-hdr::after { content:''; flex:1; height:2px; background:linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .code-block { padding:20px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .code-line { display:flex; gap:10px; }
+  .ln { color:var(--muted); min-width:18px; user-select:none; font-size:11px; }
+  .kw { color:var(--accent2); }
+  .fn { color:var(--accent-main); }
+  .cm { color:var(--muted); font-style:italic; }
+  .vr { color:var(--accent-sel); }
+  .op { color:var(--accent4); }
+  .pp { color:var(--accent2); }
+  .str { color:var(--accent3); }
+  .dt { color:var(--accent-orange); }
+  .i1 { display:inline-block; margin-left:20px; }
+  .i2 { display:inline-block; margin-left:40px; }
+  .heap-type-tabs { display:flex; gap:10px; margin-bottom:20px; }
+  .heap-tab { padding:10px 16px; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:12px; transition:all 0.15s; }
+  .heap-tab:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .heap-tab.active { border-color:var(--accent-main); color:var(--text); background:linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+  @media(max-width:860px) { .grid-2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <span class="top-title">Heap Foundation <span>Visualizer</span></span>
+  <div class="divider"></div>
+  <div class="pen-toolbar">
+    <button class="tool-btn" id="pen-toggle" onclick="togglePen()">✏️ Pen</button>
+    <button class="tool-btn" id="btn-undo" onclick="undoDraw()" disabled title="Undo">↶ Undo</button>
+    <button class="tool-btn" id="btn-redo" onclick="redoDraw()" disabled title="Redo">↷ Redo</button>
+    <input type="color" id="pen-color" value="#fbbf24" onchange="setColor(this.value)" title="Pen Color" />
+    <input type="range" id="pen-size" min="1" max="12" value="3" onchange="setSize(this.value)" title="Thickness" />
+    <button class="tool-btn" id="btn-clear" onclick="clearDraw()" title="Clear Drawing">🧹 Clear</button>
+  </div>
+</div>
+<div class="page">
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Data Structures</span>
+      <span class="tag tag-sel">Heap</span>
+      <span class="tag tag-orange">Foundation</span>
+    </div>
+    <h1>Heap <span style="color:var(--accent4)">Foundation</span></h1>
+    <p class="subtitle">Understand binary heaps with Min Heap and Max Heap structures, and master insertion, deletion operations with complete C implementation.</p>
+    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  </header>
+  <div class="container">
+    <div class="theory-box">
+      <h2>Theory</h2>
+      <div class="theory-body">
+        <p style="color:var(--muted); margin-bottom:16px; line-height:1.7;">A Heap is a specialized tree-based data structure that satisfies the heap property. It's a complete binary tree where every parent node is either greater than (max heap) or less than (min heap) its children. Heaps are used in priority queues, sorting algorithms (heap sort), and many optimization problems.</p>
+        <ul class="theory-points">
+          <li><strong>Complete Binary Tree:</strong> All levels filled except possibly the last, which is filled left to right</li>
+          <li><strong>Min Heap Property:</strong> Parent ≤ Children (smallest element at root)</li>
+          <li><strong>Max Heap Property:</strong> Parent ≥ Children (largest element at root)</li>
+          <li><strong>Key Operations:</strong>
+            <ul>
+              <li>Insert: Add element at end, bubble up O(log n)</li>
+              <li>Delete/Extract: Remove root, replace with last element, bubble down O(log n)</li>
+              <li>Peek: View root element O(1)</li>
+              <li>Heapify: Build heap from array O(n)</li>
+            </ul>
+          </li>
+          <li><strong>Real-world Applications:</strong>
+            <ul>
+              <li>Priority Queue implementation</li>
+              <li>Heap Sort algorithm</li>
+              <li>Dijkstra's shortest path algorithm</li>
+              <li>Top K elements in a stream</li>
+              <li>Huffman coding for compression</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="problem-box">
+      <h2>Problem Statement</h2>
+      <div class="problem-body">
+        A heap stores elements in a complete binary tree where the heap property is maintained. For a Min Heap, each parent is smaller than its children. Use the visualizer to insert values and see how the heap structure is maintained.
+      </div>
+    </div>
+    
+    <div class="heap-type-tabs">
+      <button class="heap-tab active" data-heap-type="min" onclick="switchHeapType('min')">Min Heap</button>
+      <button class="heap-tab" data-heap-type="max" onclick="switchHeapType('max')">Max Heap</button>
+    </div>
+
+    <div class="main-card">
+      <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3 id="heap-title">heap.svg — Min Heap View</h3></div>
+      <div class="heap-container" id="heap-container">
+        <svg id="heap-svg" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg"></svg>
+        <canvas id="draw-canvas"></canvas>
+      </div>
+      <div class="controls">
+        <input class="small-input" id="insert-input" type="text" placeholder="Value" maxlength="5" />
+        <button class="btn btn-primary" onclick="insertHeap()">Insert</button>
+        <button class="btn" onclick="deleteHeap()">Delete Root</button>
+        <button class="btn" onclick="resetHeap()">Reset</button>
+        <span class="step-label" id="step-status"></span>
+      </div>
+    </div>
+
+    <p class="section-hdr">Pseudocode & Complexity</p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>pseudocode.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// Min Heap Operations</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">function</span> <span class="fn">insert</span>(<span class="vr">heap</span>, <span class="vr">value</span>):</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="vr">heap</span>.append(<span class="vr">value</span>)</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="fn">bubbleUp</span>(<span class="vr">heap</span>, <span class="vr">heap</span>.size - 1)</span></div>
+          <div class="code-line"><span class="ln">5</span><span></span></div>
+          <div class="code-line"><span class="ln">6</span><span><span class="kw">function</span> <span class="fn">bubbleUp</span>(<span class="vr">heap</span>, <span class="vr">index</span>):</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="kw">while</span> <span class="vr">index</span> > 0:</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i2"><span class="vr">parent</span> = (<span class="vr">index</span> - 1) / 2</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i2"><span class="kw">if</span> <span class="vr">heap</span>[<span class="vr">index</span>] < <span class="vr">heap</span>[<span class="vr">parent</span>]:</span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i3"><span class="fn">swap</span>(<span class="vr">heap</span>[<span class="vr">index</span>], <span class="vr">heap</span>[<span class="vr">parent</span>])</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i3"><span class="vr">index</span> = <span class="vr">parent</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i2"><span class="kw">else</span>: <span class="kw">break</span></span></div>
+          <div class="code-line"><span class="ln">13</span><span></span></div>
+          <div class="code-line"><span class="ln">14</span><span><span class="kw">function</span> <span class="fn">deleteRoot</span>(<span class="vr">heap</span>):</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i1"><span class="kw">if</span> <span class="vr">heap</span>.isEmpty(): <span class="kw">return</span> <span class="vr">null</span></span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i1"><span class="vr">root</span> = <span class="vr">heap</span>[0]</span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i1"><span class="vr">heap</span>[0] = <span class="vr">heap</span>.pop()</span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i1"><span class="fn">bubbleDown</span>(<span class="vr">heap</span>, 0)</span></div>
+          <div class="code-line"><span class="ln">19</span><span class="i1"><span class="kw">return</span> <span class="vr">root</span></span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>complexity.md</h3></div>
+        <div style="padding:20px;">
+          <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+            <tr><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Operation</th><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Time</th></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Insert</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(log n)</td></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Delete Root</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(log n)</td></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Peek</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(1)</td></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Heapify</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(n)</td></tr>
+            <tr><td style="padding:10px 14px;color:var(--text);font-weight:600;">Space</td><td style="padding:10px 14px;color:var(--accent-sel);font-weight:600;">O(n)</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-hdr">C Implementation</p>
+    <div class="card">
+      <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>heap.c</h3></div>
+      <div class="code-block">
+        <div class="code-line"><span class="ln">1</span><span><span class="pp">#include</span> <span class="str">&lt;stdio.h&gt;</span></span></div>
+        <div class="code-line"><span class="ln">2</span><span><span class="pp">#include</span> <span class="str">&lt;stdlib.h&gt;</span></span></div>
+        <div class="code-line"><span class="ln">3</span><span><span class="pp">#include</span> <span class="str">&lt;string.h&gt;</span></span></div>
+        <div class="code-line"><span class="ln">4</span><span></span></div>
+        <div class="code-line"><span class="ln">5</span><span><span class="kw">typedef struct</span> MinHeap {</span></div>
+        <div class="code-line"><span class="ln">6</span><span class="i1"><span class="dt">int</span> *arr;</span></div>
+        <div class="code-line"><span class="ln">7</span><span class="i1"><span class="dt">int</span> size;</span></div>
+        <div class="code-line"><span class="ln">8</span><span class="i1"><span class="dt">int</span> capacity;</span></div>
+        <div class="code-line"><span class="ln">9</span><span>} MinHeap;</span></div>
+        <div class="code-line"><span class="ln">10</span><span></span></div>
+        <div class="code-line"><span class="ln">11</span><span>MinHeap* createMinHeap(<span class="dt">int</span> capacity) {</span></div>
+        <div class="code-line"><span class="ln">12</span><span class="i1">MinHeap* heap = (<span class="dt">MinHeap*</span>)malloc(<span class="kw">sizeof</span>(MinHeap));</span></div>
+        <div class="code-line"><span class="ln">13</span><span class="i1">heap-&gt;capacity = capacity;</span></div>
+        <div class="code-line"><span class="ln">14</span><span class="i1">heap-&gt;size = 0;</span></div>
+        <div class="code-line"><span class="ln">15</span><span class="i1">heap-&gt;arr = (<span class="dt">int*</span>)malloc(capacity * <span class="kw">sizeof</span>(<span class="dt">int</span>));</span></div>
+        <div class="code-line"><span class="ln">16</span><span class="i1"><span class="kw">return</span> heap;</span></div>
+        <div class="code-line"><span class="ln">17</span><span>}</span></div>
+        <div class="code-line"><span class="ln">18</span><span></span></div>
+        <div class="code-line"><span class="ln">19</span><span><span class="dt">int</span> parent(<span class="dt">int</span> i) { <span class="kw">return</span> (i - 1) / 2; }</span></div>
+        <div class="code-line"><span class="ln">20</span><span><span class="dt">int</span> left(<span class="dt">int</span> i) { <span class="kw">return</span> 2 * i + 1; }</span></div>
+        <div class="code-line"><span class="ln">21</span><span><span class="dt">int</span> right(<span class="dt">int</span> i) { <span class="kw">return</span> 2 * i + 2; }</span></div>
+        <div class="code-line"><span class="ln">22</span><span></span></div>
+        <div class="code-line"><span class="ln">23</span><span><span class="dt">void</span> swap(<span class="dt">int</span> *a, <span class="dt">int</span> *b) {</span></div>
+        <div class="code-line"><span class="ln">24</span><span class="i1"><span class="dt">int</span> temp = *a;</span></div>
+        <div class="code-line"><span class="ln">25</span><span class="i1">*a = *b;</span></div>
+        <div class="code-line"><span class="ln">26</span><span class="i1">*b = temp;</span></div>
+        <div class="code-line"><span class="ln">27</span><span>}</span></div>
+        <div class="code-line"><span class="ln">28</span><span></span></div>
+        <div class="code-line"><span class="ln">29</span><span><span class="dt">void</span> bubbleUp(MinHeap* heap, <span class="dt">int</span> index) {</span></div>
+        <div class="code-line"><span class="ln">30</span><span class="i1"><span class="kw">while</span> (index > 0 && heap-&gt;arr[parent(index)] > heap-&gt;arr[index]) {</span></div>
+        <div class="code-line"><span class="ln">31</span><span class="i2">swap(&amp;heap-&gt;arr[parent(index)], &amp;heap-&gt;arr[index]);</span></div>
+        <div class="code-line"><span class="ln">32</span><span class="i2">index = parent(index);</span></div>
+        <div class="code-line"><span class="ln">33</span><span class="i1">}</span></div>
+        <div class="code-line"><span class="ln">34</span><span>}</span></div>
+        <div class="code-line"><span class="ln">35</span><span></span></div>
+        <div class="code-line"><span class="ln">36</span><span><span class="dt">void</span> bubbleDown(MinHeap* heap, <span class="dt">int</span> index) {</span></div>
+        <div class="code-line"><span class="ln">37</span><span class="i1"><span class="dt">int</span> smallest = index;</span></div>
+        <div class="code-line"><span class="ln">38</span><span class="i1"><span class="dt">int</span> l = left(index);</span></div>
+        <div class="code-line"><span class="ln">39</span><span class="i1"><span class="dt">int</span> r = right(index);</span></div>
+        <div class="code-line"><span class="ln">40</span><span></span></div>
+        <div class="code-line"><span class="ln">41</span><span class="i1"><span class="kw">if</span> (l < heap-&gt;size && heap-&gt;arr[l] < heap-&gt;arr[smallest])</span></div>
+        <div class="code-line"><span class="ln">42</span><span class="i2">smallest = l;</span></div>
+        <div class="code-line"><span class="ln">43</span><span class="i1"><span class="kw">if</span> (r < heap-&gt;size && heap-&gt;arr[r] < heap-&gt;arr[smallest])</span></div>
+        <div class="code-line"><span class="ln">44</span><span class="i2">smallest = r;</span></div>
+        <div class="code-line"><span class="ln">45</span><span></span></div>
+        <div class="code-line"><span class="ln">46</span><span class="i1"><span class="kw">if</span> (smallest != index) {</span></div>
+        <div class="code-line"><span class="ln">47</span><span class="i2">swap(&amp;heap-&gt;arr[index], &amp;heap-&gt;arr[smallest]);</span></div>
+        <div class="code-line"><span class="ln">48</span><span class="i2">bubbleDown(heap, smallest);</span></div>
+        <div class="code-line"><span class="ln">49</span><span class="i1">}</span></div>
+        <div class="code-line"><span class="ln">50</span><span>}</span></div>
+        <div class="code-line"><span class="ln">51</span><span></span></div>
+        <div class="code-line"><span class="ln">52</span><span><span class="dt">void</span> insert(MinHeap* heap, <span class="dt">int</span> value) {</span></div>
+        <div class="code-line"><span class="ln">53</span><span class="i1"><span class="kw">if</span> (heap-&gt;size == heap-&gt;capacity) {</span></div>
+        <div class="code-line"><span class="ln">54</span><span class="i2">printf(<span class="str">"Heap is full\n"</span>);</span></div>
+        <div class="code-line"><span class="ln">55</span><span class="i2"><span class="kw">return</span>;</span></div>
+        <div class="code-line"><span class="ln">56</span><span class="i1">}</span></div>
+        <div class="code-line"><span class="ln">57</span><span class="i1">heap-&gt;arr[heap-&gt;size] = value;</span></div>
+        <div class="code-line"><span class="ln">58</span><span class="i1">bubbleUp(heap, heap-&gt;size);</span></div>
+        <div class="code-line"><span class="ln">59</span><span class="i1">heap-&gt;size++;</span></div>
+        <div class="code-line"><span class="ln">60</span><span class="i1">printf(<span class="str">"%d inserted\n"</span>, value);</span></div>
+        <div class="code-line"><span class="ln">61</span><span>}</span></div>
+        <div class="code-line"><span class="ln">62</span><span></span></div>
+        <div class="code-line"><span class="ln">63</span><span><span class="dt">int</span> extractMin(MinHeap* heap) {</span></div>
+        <div class="code-line"><span class="ln">64</span><span class="i1"><span class="kw">if</span> (heap-&gt;size == 0) {</span></div>
+        <div class="code-line"><span class="ln">65</span><span class="i2">printf(<span class="str">"Heap is empty\n"</span>);</span></div>
+        <div class="code-line"><span class="ln">66</span><span class="i2"><span class="kw">return</span> -1;</span></div>
+        <div class="code-line"><span class="ln">67</span><span class="i1">}</span></div>
+        <div class="code-line"><span class="ln">68</span><span class="i1"><span class="dt">int</span> root = heap-&gt;arr[0];</span></div>
+        <div class="code-line"><span class="ln">69</span><span class="i1">heap-&gt;arr[0] = heap-&gt;arr[heap-&gt;size - 1];</span></div>
+        <div class="code-line"><span class="ln">70</span><span class="i1">heap-&gt;size--;</span></div>
+        <div class="code-line"><span class="ln">71</span><span class="i1">bubbleDown(heap, 0);</span></div>
+        <div class="code-line"><span class="ln">72</span><span class="i1"><span class="kw">return</span> root;</span></div>
+        <div class="code-line"><span class="ln">73</span><span>}</span></div>
+        <div class="code-line"><span class="ln">74</span><span></span></div>
+        <div class="code-line"><span class="ln">75</span><span><span class="dt">int</span> getMin(MinHeap* heap) {</span></div>
+        <div class="code-line"><span class="ln">76</span><span class="i1"><span class="kw">if</span> (heap-&gt;size == 0) <span class="kw">return</span> -1;</span></div>
+        <div class="code-line"><span class="ln">77</span><span class="i1"><span class="kw">return</span> heap-&gt;arr[0];</span></div>
+        <div class="code-line"><span class="ln">78</span><span>}</span></div>
+        <div class="code-line"><span class="ln">79</span><span></span></div>
+        <div class="code-line"><span class="ln">80</span><span><span class="dt">int</span> main() {</span></div>
+        <div class="code-line"><span class="ln">81</span><span class="i1">MinHeap* heap = createMinHeap(100);</span></div>
+        <div class="code-line"><span class="ln">82</span><span class="i1">insert(heap, 10);</span></div>
+        <div class="code-line"><span class="ln">83</span><span class="i1">insert(heap, 5);</span></div>
+        <div class="code-line"><span class="ln">84</span><span class="i1">insert(heap, 20);</span></div>
+        <div class="code-line"><span class="ln">85</span><span class="i1">insert(heap, 2);</span></div>
+        <div class="code-line"><span class="ln">86</span><span class="i1">printf(<span class="str">"Min: %d\n"</span>, getMin(heap));</span></div>
+        <div class="code-line"><span class="ln">87</span><span class="i1">printf(<span class="str">"Extracted: %d\n"</span>, extractMin(heap));</span></div>
+        <div class="code-line"><span class="ln">88</span><span class="i1"><span class="kw">return</span> 0;</span></div>
+        <div class="code-line"><span class="ln">89</span><span>}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('draw-canvas');
+const ctx = canvas.getContext('2d');
+let penActive = false, isDrawing = false;
+let penColor = '#fbbf24';
+let penSize = 3;
+let drawHistory = [];
+let redoStack = [];
+let lastX = 0, lastY = 0;
+let heap = [10, 20, 30, 40, 50];
+let heapType = 'min';
+
+function resizeCanvas() {
+  let oldImage = null;
+  try { oldImage = ctx.getImageData(0,0,canvas.width,canvas.height); } catch(e) {}
+  const container = document.getElementById('heap-container');
+  const rect = container.getBoundingClientRect();
+  canvas.width = Math.max(600, rect.width);
+  canvas.height = Math.max(350, rect.height);
+  if (oldImage) { try { ctx.putImageData(oldImage,0,0); } catch(e) {} }
+}
+
+function saveSnapshot() {
+  try { drawHistory.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e) {}
+  redoStack = [];
+  updateUndoRedo();
+}
+
+function updateUndoRedo() {
+  document.getElementById('btn-undo').disabled = drawHistory.length === 0;
+  document.getElementById('btn-redo').disabled = redoStack.length === 0;
+}
+
+function undoDraw() {
+  if (!drawHistory.length) return;
+  try { redoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e) {}
+  const prev = drawHistory.pop();
+  ctx.putImageData(prev,0,0);
+  updateUndoRedo();
+}
+
+function redoDraw() {
+  if (!redoStack.length) return;
+  try { drawHistory.push(ctx.getImageData(0,0,canvas.width,canvas.height)); } catch(e) {}
+  const next = redoStack.pop();
+  ctx.putImageData(next,0,0);
+  updateUndoRedo();
+}
+
+function clearDraw() {
+  saveSnapshot();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+function togglePen() {
+  penActive = !penActive;
+  document.getElementById('pen-toggle').classList.toggle('active');
+  document.getElementById('draw-canvas').classList.toggle('pen-active');
+  document.querySelector('.pen-toolbar').classList.toggle('active');
+}
+
+function setColor(color) { penColor = color; }
+function setSize(size) { penSize = size; }
+
+function resetHeap() {
+  heap = [10, 20, 30, 40, 50];
+  document.getElementById('insert-input').value = '';
+  document.getElementById('step-status').textContent = '';
+  drawHeap();
+}
+
+function insertHeap() {
+  const input = document.getElementById('insert-input');
+  const value = parseInt(input.value);
+  if (isNaN(value)) { alert('Enter a valid number'); return; }
+  heap.push(value);
+  bubbleUp(heap.length - 1);
+  input.value = '';
+  document.getElementById('step-status').textContent = `Inserted ${value}`;
+  drawHeap();
+}
+
+function deleteHeap() {
+  if (heap.length === 0) { alert('Heap is empty'); return; }
+  const deleted = heap[0];
+  heap[0] = heap[heap.length - 1];
+  heap.pop();
+  if (heap.length > 0) bubbleDown(0);
+  document.getElementById('step-status').textContent = `Deleted ${deleted}`;
+  drawHeap();
+}
+
+function bubbleUp(index) {
+  while (index > 0) {
+    const parentIdx = Math.floor((index - 1) / 2);
+    const shouldSwap = heapType === 'min' ? heap[index] < heap[parentIdx] : heap[index] > heap[parentIdx];
+    if (shouldSwap) {
+      [heap[index], heap[parentIdx]] = [heap[parentIdx], heap[index]];
+      index = parentIdx;
+    } else break;
+  }
+}
+
+function bubbleDown(index) {
+  while (true) {
+    let smallest = index;
+    const left = 2 * index + 1;
+    const right = 2 * index + 2;
+    
+    if (heapType === 'min') {
+      if (left < heap.length && heap[left] < heap[smallest]) smallest = left;
+      if (right < heap.length && heap[right] < heap[smallest]) smallest = right;
+    } else {
+      if (left < heap.length && heap[left] > heap[smallest]) smallest = left;
+      if (right < heap.length && heap[right] > heap[smallest]) smallest = right;
+    }
+    
+    if (smallest !== index) {
+      [heap[index], heap[smallest]] = [heap[smallest], heap[index]];
+      index = smallest;
+    } else break;
+  }
+}
+
+function switchHeapType(type) {
+  heapType = type;
+  document.querySelectorAll('.heap-tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelector(`[data-heap-type="${type}"]`).classList.add('active');
+  document.getElementById('heap-title').textContent = `heap.svg — ${type === 'min' ? 'Min' : 'Max'} Heap View`;
+  heap = heapType === 'min' ? [10, 20, 30, 40, 50] : [50, 40, 30, 20, 10];
+  drawHeap();
+}
+
+function drawHeap() {
+  const svg = document.getElementById('heap-svg');
+  svg.innerHTML = '';
+  
+  if (heap.length === 0) return;
+  
+  const width = 600, height = 400;
+  const nodeRadius = 18;
+  const levelHeight = 50;
+  
+  // Calculate positions
+  const positions = {};
+  function calculatePositions(index, x, y) {
+    if (index >= heap.length) return;
+    positions[index] = { x, y };
+    const offset = Math.pow(2, 3 - Math.floor(Math.log2(index + 1))) * 20;
+    const left = 2 * index + 1;
+    const right = 2 * index + 2;
+    if (left < heap.length) calculatePositions(left, x - offset, y + levelHeight);
+    if (right < heap.length) calculatePositions(right, x + offset, y + levelHeight);
+  }
+  
+  calculatePositions(0, width / 2, 30);
+  
+  // Draw edges
+  for (let i = 0; i < heap.length; i++) {
+    const left = 2 * i + 1;
+    const right = 2 * i + 2;
+    if (left < heap.length) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', positions[i].x);
+      line.setAttribute('y1', positions[i].y);
+      line.setAttribute('x2', positions[left].x);
+      line.setAttribute('y2', positions[left].y);
+      line.setAttribute('stroke', '#263550');
+      line.setAttribute('stroke-width', '2');
+      svg.appendChild(line);
+    }
+    if (right < heap.length) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', positions[i].x);
+      line.setAttribute('y1', positions[i].y);
+      line.setAttribute('x2', positions[right].x);
+      line.setAttribute('y2', positions[right].y);
+      line.setAttribute('stroke', '#263550');
+      line.setAttribute('stroke-width', '2');
+      svg.appendChild(line);
+    }
+  }
+  
+  // Draw nodes
+  for (let i = 0; i < heap.length; i++) {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', positions[i].x);
+    circle.setAttribute('cy', positions[i].y);
+    circle.setAttribute('r', nodeRadius);
+    circle.setAttribute('fill', i === 0 ? '#58a6ff' : '#34d399');
+    circle.setAttribute('stroke', '#fbbf24');
+    circle.setAttribute('stroke-width', '2');
+    svg.appendChild(circle);
+    
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', positions[i].x);
+    text.setAttribute('y', positions[i].y);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dy', '0.3em');
+    text.setAttribute('fill', '#0a0e1a');
+    text.setAttribute('font-family', 'IBM Plex Mono');
+    text.setAttribute('font-size', '12');
+    text.setAttribute('font-weight', '600');
+    text.textContent = heap[i];
+    svg.appendChild(text);
+  }
+}
+
+// Mouse events for drawing
+canvas.addEventListener('mousedown', (e) => {
+  if (!penActive) return;
+  isDrawing = true;
+  saveSnapshot();
+  const rect = canvas.getBoundingClientRect();
+  lastX = e.clientX - rect.left;
+  lastY = e.clientY - rect.top;
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!isDrawing || !penActive) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  ctx.strokeStyle = penColor;
+  ctx.lineWidth = penSize;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  lastX = x;
+  lastY = y;
+});
+
+canvas.addEventListener('mouseup', () => { isDrawing = false; });
+canvas.addEventListener('mouseleave', () => { isDrawing = false; });
+
+window.addEventListener('resize', resizeCanvas);
+document.addEventListener('DOMContentLoaded', () => {
+  resizeCanvas();
+  drawHeap();
+});
+</script>
+</body>
+</html>

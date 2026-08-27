@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merge Intervals - Interactive Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0a0e1a; --surface:#111827; --surface2:#1a2236; --border:#1e2d45; --border2:#263550; --text:#e2e8f4; --muted:#6b7a99; --accent-main:#58a6ff; --accent-sel:#3fb950; --accent2:#f472b6; --accent3:#34d399; --accent4:#fbbf24; --accent-orange:#f0883e; --rejected:#ef4444; }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(88,166,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(88,166,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+  #pen-canvas{position:fixed;top:0;left:0;z-index:99999;display:none;pointer-events:none}
+  .top-bar{position:sticky;top:0;z-index:100000;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 20px;background:rgba(10,14,26,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .top-title{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;white-space:nowrap}.top-title span{color:var(--accent4)}.divider{width:1px;height:28px;background:var(--border2)}
+  .pen-toolbar-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-left:auto}
+  .btn{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer}.btn:hover{border-color:var(--accent-main);color:var(--accent-main)}
+  .btn-primary{border-color:var(--accent-main);color:var(--text);background:linear-gradient(90deg,rgba(88,166,255,.2),rgba(52,211,153,.12))}
+  .page{position:relative;z-index:1} header{padding:36px 40px 28px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(88,166,255,.04) 0%,transparent 100%)}
+  .tag-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}.tag{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:20px}
+  .tag-blue{color:var(--accent-main);border:1px solid rgba(88,166,255,.25);background:rgba(88,166,255,.06)}.tag-sel{color:var(--accent-sel);border:1px solid rgba(63,185,80,.25);background:rgba(63,185,80,.06)}.tag-orange{color:var(--accent-orange);border:1px solid rgba(240,136,62,.25);background:rgba(240,136,62,.06)}
+  h1{font-size:clamp(22px,4vw,38px);line-height:1.1;margin-bottom:8px}.subtitle{font-size:13px;color:var(--muted);max-width:740px;line-height:1.75}
+  .container{max-width:1100px;margin:0 auto;padding:28px 24px 48px}
+  .theory-box,.problem-box,.card{background:var(--surface);border:1px solid var(--border2);border-radius:14px}.theory-box,.problem-box{padding:24px 28px;margin-bottom:24px}
+  .theory-box{border-left:3px solid var(--accent3)}.problem-box{border-left:3px solid var(--accent-main)}
+  .theory-box h2,.problem-box h2{font-size:16px;margin-bottom:14px}.problem-body,.theory-box p{color:var(--muted);font-size:13px;line-height:1.8}
+  .section-hdr{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin:24px 0 16px;display:flex;align-items:center;gap:12px;font-weight:600}
+  .card{overflow:hidden;margin-bottom:24px;border-color:var(--border)}.card-header{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface2)}.dot{width:8px;height:8px;border-radius:50%}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:16px 20px;background:var(--surface2);border-top:1px solid var(--border)}
+  .small-input{width:280px;padding:10px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-family:'IBM Plex Mono',monospace}
+  .step-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+  .vis-area{padding:18px;background:#0f172a;min-height:280px}
+  .array-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;padding:12px;background:rgba(88,166,255,.05);border-radius:8px;border:1px solid var(--border2)}
+  .array-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;width:100%}
+  .interval-badge{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:6px;border:1px solid;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;transition:all .2s}
+  .interval-badge.input{border-color:var(--muted);background:rgba(107,122,153,.15);color:var(--muted)}
+  .interval-badge.sorted{border-color:var(--accent4);background:rgba(251,191,36,.15);color:var(--accent4)}
+  .interval-badge.active{border-color:var(--accent-main);background:rgba(88,166,255,.25);color:var(--accent-main);transform:scale(1.05)}
+  .timeline{position:relative;height:220px}
+  .base-line{position:absolute;left:20px;right:20px;top:170px;height:2px;background:var(--border2)}
+  .interval{position:absolute;height:32px;border-radius:8px;border:2px solid;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;transition:all .3s}
+  .interval.current{border-color:var(--accent4);background:rgba(251,191,36,.2)}
+  .interval.merged{border-color:var(--accent-sel);background:rgba(63,185,80,.2)}
+  .interval.pending{border-color:var(--accent-main);background:rgba(88,166,255,.18)}
+  .status-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 20px}.status-box{background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:12px}
+  .status-box h3{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase}.status-box pre{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent3);white-space:pre-wrap}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}.code-block{padding:18px 20px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.8;overflow:auto;max-height:500px}
+  .code-line{display:flex;gap:10px;padding:4px 8px;border-radius:4px;transition:all .15s}.ln{color:var(--muted);min-width:18px;font-size:11px}.kw{color:var(--accent2)}.fn{color:var(--accent-main)}.cm{color:var(--muted);font-style:italic}.vr{color:var(--accent-sel)}.op{color:var(--accent4)}.i1{padding-left:16px}.i2{padding-left:32px}
+  .code-line.active{background:rgba(88,166,255,.15);border-left:2px solid var(--accent4);padding-left:6px}
+  .code-line.executed{background:rgba(63,185,80,.1)}
+  .sync-container{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+  .pseudocode-panel,.viz-panel{background:var(--surface);border:1px solid var(--border2);border-radius:14px;overflow:hidden}
+  .pseudocode-panel{display:flex;flex-direction:column}
+  .pseudocode-header,.viz-header{padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:13px;font-weight:600;display:flex;gap:10px;align-items:center}
+  .pseudocode-header .dot{background:var(--accent2)}
+  .viz-header .dot{background:var(--accent-main)}
+  .pseudocode-content{flex:1;overflow-y:auto}
+  .viz-content{padding:18px}
+  .algo-step-log{margin-top:16px;padding:12px 20px;background:var(--surface2);border-top:1px solid var(--border);font-size:12px;color:var(--accent3);font-family:'IBM Plex Mono',monospace;line-height:1.6;max-height:120px;overflow-y:auto}
+  .lang-selector{display:flex;gap:8px;margin-bottom:16px}.lang-btn{padding:8px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;transition:all .2s}
+  .lang-btn:hover{border-color:var(--accent-main);color:var(--accent-main)}
+  .lang-btn.active{border-color:var(--accent-sel);background:rgba(63,185,80,.15);color:var(--accent-sel)}
+  .impl-grid{display:grid;grid-template-columns:1fr;gap:24px}.impl-card{display:none;background:var(--surface);border:1px solid var(--border2);border-radius:14px;overflow:hidden}.impl-card.show{display:block}
+  .highlight-box{background:rgba(251,191,36,.1);border-left:2px solid var(--accent4);padding:12px 14px;margin:12px 0;border-radius:6px;font-size:13px;line-height:1.7}
+  .highlight-text{color:var(--accent4);font-weight:600}
+  /* Custom scrollbar styling */
+  .viz-content::-webkit-scrollbar, .algo-step-log::-webkit-scrollbar{width:8px}
+  .viz-content::-webkit-scrollbar-track, .algo-step-log::-webkit-scrollbar-track{background:rgba(30,45,69,.5);border-radius:4px}
+  .viz-content::-webkit-scrollbar-thumb, .algo-step-log::-webkit-scrollbar-thumb{background:rgba(88,166,255,.4);border-radius:4px}
+  .viz-content::-webkit-scrollbar-thumb:hover, .algo-step-log::-webkit-scrollbar-thumb:hover{background:rgba(88,166,255,.6)}
+  .viz-content{max-height:800px;overflow-y:auto}
+  @media(max-width:860px){.grid-2,.status-grid{grid-template-columns:1fr}.sync-container{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<canvas id="pen-canvas"></canvas>
+<div class="top-bar">
+  <span class="top-title">Merge Intervals <span>Visualizer</span></span>
+  <div class="divider"></div>
+  <div class="pen-toolbar-top">
+    <button class="btn btn-primary" id="pen-toggle-btn">✏️ Start Drawing</button>
+    <button class="btn" id="pen-undo-btn">↶ Undo</button>
+    <button class="btn" id="pen-redo-btn">↷ Redo</button>
+    <button class="btn" id="pen-clear-btn">🗑️ Clear</button>
+  </div>
+</div>
+<div class="page">
+  <header>
+    <div class="tag-row"><span class="tag tag-blue">Array</span><span class="tag tag-sel">Sorting</span><span class="tag tag-orange">Intervals</span></div>
+    <h1>Merge Intervals <span style="color:var(--accent4)">Visualizer</span></h1>
+    <p class="subtitle">Sort intervals by start, then scan left to right. If current interval overlaps the last merged interval, extend it; otherwise start a new merged block.</p>
+  </header>
+  <div class="container">
+    <div class="theory-box"><h2>Theory</h2><p>Core idea: sort by start time first. Maintain output list. For each interval [s,e], compare with last merged [ls,le]. If s <= le, merge: last.end = max(le,e). Else append new.</p></div>
+    <div class="problem-box"><h2>Problem Statement</h2><div class="problem-body">Given intervals where intervals[i] = [start, end], merge all overlapping intervals and return non-overlapping intervals covering same range.
+      <br><br><strong>Example:</strong> [[1,3],[2,6],[8,10],[15,18]] => [[1,6],[8,10],[15,18]]
+    </div></div>
+
+    <p class="section-hdr">Approach</p>
+    <div class="card">
+      <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>How It Works</h3></div>
+      <div style="padding:18px 20px;color:var(--muted);font-size:13px;line-height:1.8;">
+        <div class="highlight-box">
+          <span class="highlight-text">Step 1: Sort</span> all intervals by their start point. This puts overlapping intervals next to each other.
+        </div>
+        <div class="highlight-box">
+          <span class="highlight-text">Step 2: Iterate</span> through sorted intervals and maintain a <span class="highlight-text">merged output list</span>.
+        </div>
+        <strong style="color:var(--text)">At each interval [s, e], check:</strong>
+        <br>• If list is empty or <span style="color:var(--accent-sel)">s > last_merged.end</span> → <span style="color:var(--accent-sel)">NO OVERLAP</span> → Add as new interval
+        <br>• If <span style="color:var(--accent-sel)">s ≤ last_merged.end</span> → <span style="color:var(--accent-sel)">OVERLAP</span> → Extend last interval's end
+        <br><br>
+        <div class="highlight-box">
+          <span class="highlight-text">Result:</span> Single pass through sorted array gives clean non-overlapping intervals. Time: O(n log n) for sorting, Space: O(n) for output.
+        </div>
+      </div>
+    </div>
+
+    <p class="section-hdr">Visualization & Algorithm Execution</p>
+    <div class="card">
+      <div class="controls">
+        <input class="small-input" id="intervals-input" value="1-4,2-5,3-6,4-7,6-8,9-10" />
+        <button class="btn btn-primary" onclick="initMerge()">▶ Initialize</button>
+        <button class="btn" onclick="stepMerge()">Step →</button>
+        <button class="btn" onclick="autoMerge()">⏩ Auto</button>
+        <button class="btn" onclick="resetMerge()">Reset</button>
+        <span class="step-label" id="step-status">Ready</span>
+      </div>
+      
+      <div class="sync-container">
+        <!-- Pseudocode Panel -->
+        <div class="pseudocode-panel">
+          <div class="pseudocode-header"><div class="dot"></div><h3>Pseudocode (Merge Algorithm)</h3></div>
+          <div class="pseudocode-content">
+            <div class="code-block">
+              <div class="code-line" data-line="1"><span class="ln">1</span><span><span class="kw">sort</span> intervals by start</span></div>
+              <div class="code-line" data-line="2"><span class="ln">2</span><span><span class="vr">merged</span> = []</span></div>
+              <div class="code-line" data-line="3"><span class="ln">3</span><span><span class="kw">for</span> each <span class="vr">iv</span> in intervals:</span></div>
+              <div class="code-line" data-line="4"><span class="ln">4</span><span class="i1"><span class="kw">if</span> merged empty or iv.start > merged[-1].end:</span></div>
+              <div class="code-line" data-line="5"><span class="ln">5</span><span class="i2">append iv</span></div>
+              <div class="code-line" data-line="6"><span class="ln">6</span><span class="i1"><span class="kw">else</span>:</span></div>
+              <div class="code-line" data-line="7"><span class="ln">7</span><span class="i2">merged[-1].end = max(merged[-1].end, iv.end)</span></div>
+            </div>
+          </div>
+          <div class="algo-step-log" id="step-log">Trace Log:<br>Ready to execute...</div>
+        </div>
+
+        <!-- Visualization Panel -->
+        <div class="viz-panel">
+          <div class="viz-header"><div class="dot"></div><h3>Step-by-Step Visualization</h3></div>
+          <div class="viz-content">
+            <!-- Input Array -->
+            <div style="margin-bottom:24px">
+              <div class="array-label">📥 Input (Unsorted)</div>
+              <div class="array-row" id="input-array-display"></div>
+            </div>
+
+            <!-- Sorted Array -->
+            <div style="margin-bottom:24px">
+              <div class="array-label">📊 After Sorting by Start</div>
+              <div class="array-row" id="sorted-array-display"></div>
+            </div>
+
+            <!-- Merge Timeline -->
+            <div style="margin-bottom:24px">
+              <div class="array-label">🔀 Merge Process (Timeline)</div>
+              <div class="timeline" id="timeline"><div class="base-line"></div></div>
+            </div>
+
+            <!-- Status Info -->
+            <div class="status-grid" style="gap:12px">
+              <div class="status-box"><h3>Current Interval</h3><pre id="current-view" style="font-size:13px;color:var(--accent4)">-</pre></div>
+              <div class="status-box"><h3>Merged Output</h3><pre id="merged-view" style="font-size:13px;color:var(--accent-sel)">[]</pre></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-hdr">Implementation</p>
+    <div style="display:flex;gap:12px;margin-bottom:20px" id="lang-selector">
+      <button class="lang-btn active" onclick="switchLang('python')">Python</button>
+      <button class="lang-btn" onclick="switchLang('js')">JavaScript</button>
+      <button class="lang-btn" onclick="switchLang('c')">C</button>
+    </div>
+    <div class="impl-grid">
+      <div class="impl-card show" id="lang-python">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>Python</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="kw">def</span> <span class="fn">merge</span>(<span class="vr">intervals</span>):</span></div>
+          <div class="code-line"><span class="ln">2</span><span class="i1"><span class="vr">intervals</span>.sort(key=<span class="kw">lambda</span> x: x[0])</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="vr">merged</span> = []</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="kw">for</span> <span class="vr">s</span>,<span class="vr">e</span> <span class="kw">in</span> <span class="vr">intervals</span>:</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i2"><span class="kw">if</span> <span class="kw">not</span> <span class="vr">merged</span> <span class="kw">or</span> <span class="vr">s</span> > <span class="vr">merged</span>[-1][1]:</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i2"><span class="i1"><span class="vr">merged</span>.append([<span class="vr">s</span>,<span class="vr">e</span>])</span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i2"><span class="kw">else</span>:</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i2"><span class="i1"><span class="vr">merged</span>[-1][1] = max(<span class="vr">merged</span>[-1][1], <span class="vr">e</span>)</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i1"><span class="kw">return</span> <span class="vr">merged</span></span></div>
+        </div>
+      </div>
+      <div class="impl-card" id="lang-js">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>JavaScript</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="kw">function</span> <span class="fn">merge</span>(<span class="vr">intervals</span>) {</span></div>
+          <div class="code-line"><span class="ln">2</span><span class="i1"><span class="vr">intervals</span>.sort((a, b) =&gt; a[0] - b[0]);</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="kw">let</span> <span class="vr">merged</span> = [];</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="kw">for</span> (<span class="kw">let</span> [<span class="vr">s</span>, <span class="vr">e</span>] <span class="kw">of</span> <span class="vr">intervals</span>) {</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i2"><span class="kw">if</span> (!<span class="vr">merged</span>.length || <span class="vr">s</span> &gt; <span class="vr">merged</span>[<span class="vr">merged</span>.length-1][1])</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i2"><span class="i1"><span class="vr">merged</span>.push([<span class="vr">s</span>, <span class="vr">e</span>]);</span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i2"><span class="kw">else</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i2"><span class="i1"><span class="vr">merged</span>[<span class="vr">merged</span>.length-1][1] = Math.max(</span></span><br/><span class="i2"><span class="i1"><span class="vr">merged</span>[<span class="vr">merged</span>.length-1][1], <span class="vr">e</span>);</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i1"><span class="kw">return</span> <span class="vr">merged</span>;</span></div>
+          <div class="code-line"><span class="ln">11</span><span>}</span></div>
+        </div>
+      </div>
+      <div class="impl-card" id="lang-c">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>C</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="kw">int</span> <span class="fn">compare</span>(<span class="kw">const void</span>* a, <span class="kw">const void</span>* b) {</span></div>
+          <div class="code-line"><span class="ln">2</span><span class="i1"><span class="kw">return</span> (*(int*)a - *(int*)b);</span></div>
+          <div class="code-line"><span class="ln">3</span><span>}</span></div>
+          <div class="code-line"><span class="ln">4</span><span><span class="kw">int</span>** <span class="fn">merge</span>(<span class="kw">int</span>** <span class="vr">intervals</span>, <span class="kw">int</span> <span class="vr">size</span>,</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1"><span class="kw">int</span>* <span class="vr">returnSize</span>) {</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i1"><span class="kw">int</span>** <span class="vr">merged</span> = (int**)malloc(size*<span class="kw">sizeof</span>(<span class="kw">int</span>*));</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="kw">int</span> <span class="vr">m</span> = 0;</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1">qsort(<span class="vr">intervals</span>, <span class="vr">size</span>, <span class="kw">sizeof</span>(<span class="kw">int</span>*), compare);</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i1"><span class="kw">for</span> (<span class="kw">int</span> <span class="vr">i</span>=0; <span class="vr">i</span>&lt;<span class="vr">size</span>; <span class="vr">i</span>++) {</span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i2"><span class="kw">if</span> (m==0 || <span class="vr">intervals</span>[<span class="vr">i</span>][0] &gt; <span class="vr">merged</span>[<span class="vr">m</span>-1][1])</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i2"><span class="i1"><span class="vr">merged</span>[<span class="vr">m</span>++] = <span class="vr">intervals</span>[<span class="vr">i</span>];</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i2"><span class="kw">else</span> <span class="vr">merged</span>[<span class="vr">m</span>-1][1] = <span class="vr">MAX</span>(...)</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i1">*<span class="vr">returnSize</span> = <span class="vr">m</span>;</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i1"><span class="kw">return</span> <span class="vr">merged</span>;</span></div>
+          <div class="code-line"><span class="ln">16</span><span>}</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+let intervals = [], sortedIntervals = [], merged = [], idx = 0, timer = null, sortCompleted = false;
+
+// Highlight pseudocode line
+function highlightLine(lineNum, isExecuted = false) {
+  document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active', 'executed'));
+  if (lineNum > 0) {
+    const line = document.querySelector(`.code-line[data-line="${lineNum}"]`);
+    if (line) {
+      line.classList.add('active');
+      if (isExecuted) line.classList.add('executed');
+      line.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+}
+
+// Add step to trace log
+function logStep(msg) {
+  const log = document.getElementById('step-log');
+  const lines = log.innerHTML.split('<br>');
+  lines.push(msg);
+  if (lines.length > 10) lines.shift();
+  log.innerHTML = lines.join('<br>');
+  log.scrollTop = log.scrollHeight;
+}
+
+// Language selector for implementations
+function switchLang(lang) {
+  document.querySelectorAll('.impl-card').forEach(el => el.classList.remove('show'));
+  document.querySelectorAll('.lang-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(`lang-${lang}`).classList.add('show');
+  document.querySelector(`button[onclick="switchLang('${lang}')"]`).classList.add('active');
+}
+
+function parseIntervals(str) {
+  return str.split(',').map(x => x.trim()).filter(Boolean).map(p => p.split('-').map(Number)).filter(p => p.length===2 && !Number.isNaN(p[0]) && !Number.isNaN(p[1])).map(([a,b]) => [Math.min(a,b), Math.max(a,b)]);
+}
+
+function renderArrays() {
+  // Input array display
+  const inputDisplay = document.getElementById('input-array-display');
+  inputDisplay.innerHTML = '';
+  intervals.forEach((iv, i) => {
+    const badge = document.createElement('div');
+    badge.className = 'interval-badge input';
+    badge.textContent = `[${iv[0]}, ${iv[1]}]`;
+    inputDisplay.appendChild(badge);
+  });
+
+  // Sorted array display
+  const sortedDisplay = document.getElementById('sorted-array-display');
+  sortedDisplay.innerHTML = '';
+  sortedIntervals.forEach((iv, i) => {
+    const badge = document.createElement('div');
+    badge.className = `interval-badge sorted ${i === idx && sortCompleted ? 'active' : ''}`;
+    badge.textContent = `[${iv[0]}, ${iv[1]}]`;
+    sortedDisplay.appendChild(badge);
+  });
+}
+
+function initMerge() {
+  intervals = parseIntervals(document.getElementById('intervals-input').value);
+  if (!intervals.length) { 
+    logStep('❌ Enter valid intervals (format: 1-3,2-6,8-10)');
+    return; 
+  }
+  sortedIntervals = [...intervals].sort((a,b) => a[0]-b[0]); 
+  merged = []; idx = 0; sortCompleted = false;
+  renderArrays();
+  renderTimeline();
+  document.getElementById('step-log').innerHTML = 
+    `Trace Log:<br>✓ Initialized<br>• Input: ${JSON.stringify(intervals)}<br>• After sort: ${JSON.stringify(sortedIntervals)}<br>▶ Ready to merge!`;
+  highlightLine(1);
+  updateViews('Initialized - showing input and sorted arrays');
+}
+
+function renderTimeline() {
+  const t = document.getElementById('timeline');
+  t.innerHTML = '<div class="base-line"></div>';
+  const all = sortedIntervals.flat();
+  const min = Math.min(...all), max = Math.max(...all), span = Math.max(1, max - min);
+  
+  // Calculate proper spacing with padding
+  const padding = 40;
+  const usableWidth = 640;
+  const scale = usableWidth / span;
+  
+  sortedIntervals.forEach((iv, i) => {
+    const l = padding + ((iv[0] - min) * scale);
+    const w = Math.max(32, ((iv[1] - iv[0]) * scale));
+    const row = i < idx ? 35 : 110;
+    const cls = i === idx ? 'current' : 'pending';
+    const el = document.createElement('div');
+    el.className = `interval ${cls}`;
+    el.style.left = l + 'px'; el.style.top = row + 'px'; el.style.width = w + 'px';
+    el.textContent = `[${iv[0]},${iv[1]}]`;
+    el.title = `[${iv[0]}, ${iv[1]}]`;
+    t.appendChild(el);
+  });
+  
+  merged.forEach((iv, i) => {
+    const l = padding + ((iv[0] - min) * scale);
+    const w = Math.max(32, ((iv[1] - iv[0]) * scale));
+    const el = document.createElement('div');
+    el.className = 'interval merged';
+    el.style.left = l + 'px'; el.style.top = (180) + 'px'; el.style.width = w + 'px';
+    el.textContent = `[${iv[0]},${iv[1]}]`;
+    el.title = `Merged: [${iv[0]}, ${iv[1]}]`;
+    t.appendChild(el);
+  });
+}
+
+function updateViews(msg) {
+  document.getElementById('step-status').textContent = msg;
+  document.getElementById('current-view').textContent = idx < sortedIntervals.length ? `[${sortedIntervals[idx][0]}, ${sortedIntervals[idx][1]}]` : '✓ Done';
+  document.getElementById('merged-view').textContent = JSON.stringify(merged);
+}
+
+function stepMerge() {
+  if (!sortedIntervals.length) initMerge();
+  
+  // First step: show sorting is complete
+  if (!sortCompleted) {
+    sortCompleted = true;
+    logStep('✓ Line 1: Sort complete');
+    logStep(`  Input was: ${JSON.stringify(intervals)}`);
+    logStep(`  Now sorted: ${JSON.stringify(sortedIntervals)}`);
+    highlightLine(2);
+    updateViews('Sorting complete - now processing intervals');
+    renderArrays();
+    return;
+  }
+  
+  if (idx >= sortedIntervals.length) { 
+    logStep('✓ Algorithm complete!');
+    highlightLine(0);
+    document.getElementById('step-status').textContent = 'Completed';
+    if (timer) clearInterval(timer); 
+    return; 
+  }
+  
+  const [s,e] = sortedIntervals[idx];
+  highlightLine(3);
+  logStep(`→ Iteration ${idx+1}: Processing [${s},${e}]`);
+  
+  if (!merged.length || s > merged[merged.length-1][1]) {
+    merged.push([s,e]);
+    highlightLine(4);
+    logStep(`  Line 4: ${!merged.length ? 'List empty' : `${s} > ${merged[merged.length-2][1]}`} → NO OVERLAP`);
+    highlightLine(5);
+    logStep(`  Line 5: ✓ Append [${s},${e}] to merged`);
+    updateViews(`Step ${idx+1}: no overlap -> append [${s},${e}]`);
+  } else {
+    const oldEnd = merged[merged.length-1][1];
+    merged[merged.length-1][1] = Math.max(merged[merged.length-1][1], e);
+    highlightLine(4);
+    logStep(`  Line 4: ${s} ≤ ${oldEnd} → OVERLAP DETECTED`);
+    highlightLine(6);
+    logStep(`  Line 6-7: ✓ Extend end from ${oldEnd} to ${merged[merged.length-1][1]}`);
+    updateViews(`Step ${idx+1}: overlap -> merge to [${merged[merged.length-1][0]},${merged[merged.length-1][1]}]`);
+  }
+  idx++;
+  renderArrays();
+  renderTimeline();
+}
+
+function autoMerge() {
+  if (timer) { 
+    clearInterval(timer); 
+    timer = null; 
+    document.getElementById('step-status').textContent = 'Paused';
+    return; 
+  }
+  document.getElementById('step-status').textContent = 'Running...';
+  timer = setInterval(() => { 
+    if (sortCompleted && idx >= sortedIntervals.length) { 
+      clearInterval(timer); 
+      timer = null; 
+      return; 
+    } 
+    stepMerge(); 
+  }, 1000);
+}
+
+function resetMerge() { 
+  if (timer) clearInterval(timer); 
+  timer = null;
+  sortCompleted = false;
+  initMerge(); 
+}
+
+let penActive=false,drawing=false,drawingHistory=[],historyStep=-1;
+function initPen(){
+  const canvas=document.getElementById('pen-canvas'),ctx=canvas.getContext('2d');
+  const toggleBtn=document.getElementById('pen-toggle-btn'),undoBtn=document.getElementById('pen-undo-btn'),redoBtn=document.getElementById('pen-redo-btn'),clearBtn=document.getElementById('pen-clear-btn');
+  function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight}
+  function sync(){undoBtn.disabled=historyStep<=0;redoBtn.disabled=historyStep>=drawingHistory.length-1}
+  function save(){historyStep++;if(historyStep<drawingHistory.length)drawingHistory.length=historyStep;drawingHistory.push(canvas.toDataURL());sync()}
+  function load(step){const img=new Image();img.src=drawingHistory[step];img.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0)}}
+  toggleBtn.onclick=()=>{penActive=!penActive;canvas.style.display=penActive?'block':'none';canvas.style.pointerEvents=penActive?'auto':'none';toggleBtn.textContent=penActive?'✏️ Stop Drawing':'✏️ Start Drawing';if(penActive&&!drawingHistory.length)save()}
+  undoBtn.onclick=()=>{if(historyStep>0){historyStep--;load(historyStep);sync()}}
+  redoBtn.onclick=()=>{if(historyStep<drawingHistory.length-1){historyStep++;load(historyStep);sync()}}
+  clearBtn.onclick=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);drawingHistory=[];historyStep=-1;sync()}
+  canvas.addEventListener('mousedown',e=>{if(!penActive)return;drawing=true;ctx.beginPath();ctx.moveTo(e.clientX,e.clientY)})
+  canvas.addEventListener('mousemove',e=>{if(!drawing||!penActive)return;ctx.lineWidth=3;ctx.strokeStyle='#fbbf24';ctx.lineCap='round';ctx.lineTo(e.clientX,e.clientY);ctx.stroke()})
+  canvas.addEventListener('mouseup',()=>{if(drawing){drawing=false;save()}});canvas.addEventListener('mouseleave',()=>{drawing=false})
+  window.addEventListener('resize',resize);resize();sync()
+}
+initMerge();initPen();
+</script>
+</body>
+</html>

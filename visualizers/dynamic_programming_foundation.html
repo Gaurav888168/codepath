@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Programming Foundation — Fibonacci Visualizer</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1a2236;
+      --border: #1e2d45;
+      --border2: #263550;
+      --text: #e2e8f4;
+      --muted: #6b7a99;
+      --accent-main: #58a6ff;
+      --accent-sel: #3fb950;
+      --accent2: #f472b6;
+      --accent3: #34d399;
+      --accent4: #fbbf24;
+      --accent-orange: #f0883e;
+      --rejected: #ef4444;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
+    body::before { content: ""; position: fixed; inset: 0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+
+    .top-bar { position: sticky; top: 0; z-index: 100000; display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: rgba(10,14,26,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .top-title { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; }
+    .top-title span { color: var(--accent4); }
+    .badge { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-main); border: 1px solid rgba(88,166,255,0.3); background: rgba(88,166,255,0.08); border-radius: 999px; padding: 4px 10px; }
+    .pen-toolbar-top { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-left: auto; pointer-events: auto; }
+    #pen-canvas { position: fixed; top: 0; left: 0; z-index: 99999; cursor: crosshair; display: none; pointer-events: none; }
+    #pen-undo-btn:disabled, #pen-redo-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #pen-undo-btn:disabled:hover, #pen-redo-btn:disabled:hover { border-color: var(--border2); color: var(--muted); }
+
+    .page { position: relative; z-index: 1; }
+    header { padding: 32px 34px 24px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .tag { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; }
+    .tag-blue { color: var(--accent-main); border: 1px solid rgba(88,166,255,0.25); background: rgba(88,166,255,0.06); }
+    .tag-sel { color: var(--accent-sel); border: 1px solid rgba(63,185,80,0.25); background: rgba(63,185,80,0.06); }
+    .tag-orange { color: var(--accent-orange); border: 1px solid rgba(240,136,62,0.25); background: rgba(240,136,62,0.06); }
+    .tag-pink { color: var(--accent2); border: 1px solid rgba(244,114,182,0.25); background: rgba(244,114,182,0.06); }
+    h1 { font-size: clamp(22px, 4vw, 38px); line-height: 1.1; margin-bottom: 8px; letter-spacing: -0.5px; }
+    .subtitle { font-size: 13px; color: var(--muted); max-width: 760px; line-height: 1.75; }
+
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px 20px 42px; }
+    .section-hdr { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin: 24px 0 16px; display: flex; align-items: center; gap: 12px; font-weight: 600; }
+    .section-hdr::after { content: ""; flex: 1; height: 2px; background: linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 20px; align-items: start; }
+    .viz-stack { display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .card-header { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .content { padding: 14px 16px; }
+
+    .theory-box { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; padding: 18px 20px; border-left: 3px solid var(--accent3); }
+    .theory-box h2 { font-size: 16px; margin-bottom: 12px; }
+    .theory-box p { color: var(--muted); line-height: 1.75; margin-bottom: 14px; }
+    .theory-list { list-style: none; display: flex; flex-direction: column; gap: 10px; color: var(--text); }
+    .theory-list strong { color: var(--accent4); }
+    .theory-highlights { margin-top: 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .mini-point { border: 1px solid var(--border2); background: rgba(88,166,255,0.06); border-radius: 12px; padding: 12px; }
+    .mini-point h4 { font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--accent-main); margin-bottom: 6px; }
+    .mini-point p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+    .controls { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .small-input, .btn {
+      font-family: 'IBM Plex Mono', monospace;
+      border-radius: 10px;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+    .btn { cursor: pointer; transition: all .15s; }
+    .btn:hover { border-color: var(--accent-main); color: var(--accent-main); }
+    .btn-primary { border-color: var(--accent-main); background: linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .pill { font-family: 'IBM Plex Mono', monospace; font-size: 11px; border: 1px solid var(--border2); border-radius: 999px; background: var(--surface2); padding: 7px 10px; color: var(--muted); }
+    .pill b { color: var(--accent4); }
+    .pill.success b { color: var(--accent-sel); }
+    .pill.error b { color: var(--rejected); }
+    .walk-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+
+    .walk-layout { display: grid; grid-template-columns: 1.9fr 1fr; gap: 10px; align-items: start; }
+    .tree-wrap { min-height: 620px; max-height: 700px; overflow-x: auto; overflow-y: auto; padding: 14px; width: 100%; background: #0f172a; border: 1px solid var(--border2); border-radius: 12px; }
+    .tree-wrap { scrollbar-color: #2f4e7d #0b1324; scrollbar-width: thin; }
+    .tree-wrap::-webkit-scrollbar { height: 12px; width: 12px; }
+    .tree-wrap::-webkit-scrollbar-track { background: #0b1324; border-radius: 10px; }
+    .tree-wrap::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #2f4e7d, #3b82f6); border-radius: 10px; border: 2px solid #0b1324; }
+    .tree-wrap::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #3b82f6, #58a6ff); }
+    .svg-tree { display: block; width: max-content; min-width: 0; }
+    .edge { stroke: var(--border2); stroke-width: 1.2; fill: none; }
+    .edge-label { font-family: 'IBM Plex Mono', monospace; font-size: 12px; fill: var(--muted); }
+    .node-box { stroke-width: 1; rx: 8; ry: 8; }
+    .node-box.normal { fill: rgba(88,166,255,0.1); stroke: rgba(88,166,255,0.35); }
+    .node-box.leaf { fill: rgba(63,185,80,0.12); stroke: rgba(63,185,80,0.35); }
+    .node-box.cached { fill: rgba(244,114,182,0.12); stroke: rgba(244,114,182,0.35); }
+    .node-box.visited { stroke-width: 1.6; }
+    .node-box.active { stroke: var(--accent4); stroke-width: 2.2; filter: drop-shadow(0 0 6px rgba(251,191,36,0.35)); }
+    .node-text { font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; }
+    .node-text.normal { fill: var(--accent-main); }
+    .node-text.leaf { fill: var(--accent-sel); }
+    .node-text.cached { fill: var(--accent2); }
+    .approach-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 20px; }
+    .plain-steps, .impl-notes { list-style: none; display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .plain-steps strong, .impl-notes strong { color: var(--accent4); }
+    .code-block { font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.7; color: var(--text); background: #0f172a; border: 1px solid var(--border2); border-radius: 10px; padding: 12px; overflow-x: auto; margin-bottom: 10px; }
+    .note { color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .code-line { font-family: 'IBM Plex Mono', monospace; color: var(--muted); font-size: 12px; line-height: 1.9; }
+    .code-line .kw { color: var(--accent2); }
+    .code-line .fn { color: var(--accent-main); }
+    .code-line .ok { color: var(--accent-sel); }
+    .code-line .bad { color: var(--rejected); }
+    .walk-panel { background: #0f172a; border: 1px solid var(--border2); border-radius: 12px; padding: 12px; }
+    .ps-line { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); padding: 6px 8px; border-radius: 6px; margin-bottom: 5px; border: 1px solid transparent; }
+    .ps-line.active { color: var(--accent4); background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.35); }
+    .call-box { margin-top: 10px; padding: 10px; border-radius: 8px; border: 1px solid var(--border2); background: rgba(88,166,255,0.06); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.6; }
+    .lang-switch { display: flex; gap: 8px; margin-bottom: 10px; }
+    .lang-btn.active { border-color: var(--accent-sel); color: var(--accent-sel); background: rgba(63,185,80,0.12); }
+    .hidden { display: none; }
+
+    @media(max-width: 900px) {
+      .grid-2, .controls, .stats, .approach-grid, .walk-controls, .walk-layout { grid-template-columns: 1fr; }
+      .theory-highlights { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="pen-canvas"></canvas>
+  <div class="top-bar">
+    <span class="top-title">Dynamic Programming <span>Foundation</span></span>
+    <span class="badge">Fibonacci</span>
+    <div class="pen-toolbar-top" id="pen-toolbar-top">
+      <button class="btn btn-primary" id="pen-toggle-btn" title="Toggle Drawing Mode (P)" style="padding: 8px 14px; font-size: 12px;">✏️ Start Drawing</button>
+      <button id="pen-undo-btn" class="btn" style="padding: 8px 12px; font-size: 12px;">↶ Undo</button>
+      <button id="pen-redo-btn" class="btn" style="padding: 8px 12px; font-size: 12px;">↷ Redo</button>
+      <button id="pen-clear-btn" class="btn" style="padding: 8px 12px; font-size: 12px;">🗑️ Clear</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label for="pen-color" style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono', monospace;">Color:</label>
+        <input type="color" id="pen-color" value="#fbbf24" style="width:36px;height:28px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label for="pen-size" style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono', monospace; min-width:40px;">Size:</label>
+        <input type="range" id="pen-size" min="1" max="20" value="3" style="width:100px;">
+        <span id="pen-size-display" style="font-size:11px;color:var(--muted);min-width:30px;">3px</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <header>
+      <div class="tag-row">
+        <span class="tag tag-blue">Recursion</span>
+        <span class="tag tag-pink">Overlapping Subproblems</span>
+        <span class="tag tag-sel">Memoization</span>
+        <span class="tag tag-orange">Interactive</span>
+      </div>
+      <h1>Dynamic Programming with <span style="color:var(--accent4)">Fibonacci</span></h1>
+      <p class="subtitle">This page shows exactly why DP is powerful: first a full recursive tree with repeated calls, then a pruned recursion tree where repeated calls are reused from cache. You can change n and compare call counts instantly.</p>
+    </header>
+
+    <div class="container">
+      <div class="theory-box">
+        <h2>Core Idea</h2>
+        <p>Dynamic Programming (DP) is a smart way to solve problems by solving smaller subproblems once and reusing those answers. It is best used when recursion creates repeated work and when the final answer can be built from smaller correct answers.</p>
+        <ul class="theory-list">
+          <li><strong>When to think DP:</strong> if recursion tree has repeated nodes (overlapping subproblems), DP is likely useful.</li>
+          <li><strong>Core conditions:</strong> (1) overlapping subproblems, (2) optimal substructure (small optimal answers combine to big optimal answer).</li>
+          <li><strong>Overlapping subproblems:</strong> same subproblem appears multiple times, like <code>fib(3)</code> being solved in different branches.</li>
+          <li><strong>Optimal substructure:</strong> best answer for a big problem can be built from best answers of its smaller subproblems.</li>
+          <li><strong>Two DP styles:</strong> memoization (top-down recursion + cache) and tabulation (bottom-up table filling).</li>
+          <li><strong>Typical workflow:</strong> define state, write recurrence, set base cases, choose storage, then compute answers safely.</li>
+          <li><strong>Result:</strong> for Fibonacci, time improves from <code>O(2^n)</code> to <code>O(n)</code> by avoiding repeated calls.</li>
+        </ul>
+        <div class="theory-highlights">
+          <div class="mini-point">
+            <h4>1) State</h4>
+            <p>State means what one subproblem represents, e.g. <code>dp[n]</code> = value of fib(n).</p>
+          </div>
+          <div class="mini-point">
+            <h4>2) Transition</h4>
+            <p>Transition is the recurrence relation, e.g. <code>dp[n] = dp[n-1] + dp[n-2]</code>.</p>
+          </div>
+          <div class="mini-point">
+            <h4>3) Base Case</h4>
+            <p>Base cases anchor recursion/table, e.g. <code>dp[0]=0</code>, <code>dp[1]=1</code>; without them DP breaks.</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Approach In Plain English</p>
+      <div class="approach-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--rejected)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Recursive Approach (Without DP)</h3>
+          </div>
+          <div class="content">
+            <ul class="plain-steps">
+              <li><strong>Step 1:</strong> To find <code>fib(n)</code>, break it into two smaller problems: <code>fib(n-1)</code> and <code>fib(n-2)</code>.</li>
+              <li><strong>Step 2:</strong> Each subproblem again breaks into two more subproblems, creating a full recursion tree.</li>
+              <li><strong>Step 3:</strong> Stop only at base cases: <code>fib(0)=0</code> and <code>fib(1)=1</code>.</li>
+              <li><strong>Step 4:</strong> Add child results while returning back up the tree.</li>
+              <li><strong>Problem:</strong> Same nodes like <code>fib(3)</code> and <code>fib(2)</code> are recalculated multiple times.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-sel)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">DP Memoization Approach</h3>
+          </div>
+          <div class="content">
+            <ul class="plain-steps">
+              <li><strong>Step 1:</strong> Solve recursively in the same style, but keep a memo cache.</li>
+              <li><strong>Step 2:</strong> Before solving <code>fib(k)</code>, check if it is already in cache.</li>
+              <li><strong>Step 3:</strong> If cached, return immediately. This prunes the recursion branch.</li>
+              <li><strong>Step 4:</strong> If not cached, compute once and store it for future calls.</li>
+              <li><strong>Advantage:</strong> Every unique subproblem <code>fib(k)</code> is solved only once.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Recursive Walkthrough</p>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+          <div class="dot" style="background:var(--accent4)"></div>
+          <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Try Any Fibonacci n</h3>
+        </div>
+        <div class="content">
+          <div class="controls">
+            <input id="fib-n" class="small-input" type="number" min="2" max="10" value="6" />
+            <button class="btn btn-primary" onclick="renderAll()">Generate Trees</button>
+            <button class="btn" onclick="loadN7()">Example n = 7</button>
+          </div>
+          <p class="note">Tip: keep n up to 10 for readable trees. Base case is <code>fib(0)=0</code> and <code>fib(1)=1</code>.</p>
+          <div class="stats">
+            <div class="pill">Fibonacci Value: <b id="fib-value">0</b></div>
+            <div class="pill">Calls Saved by DP: <b id="saved-calls">0</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="viz-stack">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--rejected)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Without Dynamic Programming (Repeated Work)</h3>
+          </div>
+          <div class="content">
+            <p class="note" style="margin-bottom:10px;">Every recursive call expands fully, even if the same subproblem was solved earlier.</p>
+            <div class="walk-layout">
+              <div class="tree-wrap" id="plain-tree"></div>
+              <div class="walk-panel">
+                <div class="ps-line" id="plain-l1">def fib(n):</div>
+                <div class="ps-line" id="plain-l2">if n &lt;= 1: return n</div>
+                <div class="ps-line" id="plain-l3">return fib(n-1) + fib(n-2)</div>
+                <div class="call-box" id="plain-current-call">Press Next to start walkthrough.</div>
+              </div>
+            </div>
+            <div class="walk-controls">
+              <button class="btn" onclick="clearPlainWalkthrough()">Clear Without DP</button>
+              <button class="btn" onclick="nextPlainStep()">Next (Without DP)</button>
+            </div>
+            <div class="stats" style="margin-top:10px;">
+              <div class="pill error">Without DP Calls: <b id="plain-calls">0</b></div>
+              <div class="pill error">Without DP Step: <b id="plain-step">0</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-sel)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">With DP Memoization (Pruned Tree)</h3>
+          </div>
+          <div class="content">
+            <p class="note" style="margin-bottom:10px;">First visit computes a node; repeat visits become cache hits and stop expanding.</p>
+            <div class="walk-layout">
+              <div class="tree-wrap" id="dp-tree"></div>
+              <div class="walk-panel">
+                <div class="ps-line" id="dp-l1">def fib_dp(n, memo):</div>
+                <div class="ps-line" id="dp-l2">if n in memo: return memo[n]</div>
+                <div class="ps-line" id="dp-l3">if n &lt;= 1: return n</div>
+                <div class="ps-line" id="dp-l4">memo[n] = fib_dp(n-1,memo) + fib_dp(n-2,memo)</div>
+                <div class="ps-line" id="dp-l5">return memo[n]</div>
+                <div class="call-box" id="dp-current-call">Press Next to start walkthrough.</div>
+              </div>
+            </div>
+            <div class="walk-controls">
+              <button class="btn" onclick="clearDpWalkthrough()">Clear With DP</button>
+              <button class="btn" onclick="nextDpStep()">Next (With DP)</button>
+            </div>
+            <div class="stats" style="margin-top:10px;">
+              <div class="pill success">With DP Calls: <b id="dp-calls">0</b></div>
+              <div class="pill success">With DP Step: <b id="dp-step">0</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Pseudocode And Complexity</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent4)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Pseudocode (DP Memoization)</h3>
+          </div>
+          <div class="content">
+            <pre class="code-block">function fib_dp(n, memo):
+    if n in memo:
+        return memo[n]
+    if n &lt;= 1:
+        return n
+    left = fib_dp(n - 1, memo)
+    right = fib_dp(n - 2, memo)
+    memo[n] = left + right
+    return memo[n]
+
+main:
+    memo = empty map
+    answer = fib_dp(n, memo)</pre>
+            <ul class="impl-notes">
+              <li><strong>Why first:</strong> pseudocode helps understand logic before syntax.</li>
+              <li><strong>Cache check:</strong> prevents repeated recursion on same state.</li>
+              <li><strong>Recurrence:</strong> still follows Fibonacci relation exactly.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-sel)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Time / Space Complexity</h3>
+          </div>
+          <div class="content">
+            <pre class="code-block">Without DP recursion:
+Time  : O(2^n)   (repeated branches)
+Space : O(n)     (recursion stack)
+
+With DP memoization:
+Time  : O(n)     (each state computed once)
+Space : O(n)     (memo + recursion stack)
+
+With tabulation:
+Time  : O(n)
+Space : O(n), can be O(1) with two variables</pre>
+            <ul class="impl-notes">
+              <li><strong>Big picture:</strong> DP reduces recomputation cost dramatically.</li>
+              <li><strong>Reason:</strong> number of unique states is only <code>n+1</code>.</li>
+              <li><strong>Interview tip:</strong> always mention both time and space trade-off.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-hdr">Implementation (Choose Language)</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-main)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Language Selector</h3>
+          </div>
+          <div class="content">
+            <div class="lang-switch">
+              <button id="btn-python" class="btn lang-btn active" onclick="setImplLanguage('python')">Python</button>
+              <button id="btn-c" class="btn lang-btn" onclick="setImplLanguage('c')">C</button>
+            </div>
+            <pre id="code-python" class="code-block">def fib_recursive(n):
+    if n &lt;= 1:
+        return n
+    return fib_recursive(n - 1) + fib_recursive(n - 2)
+
+def fib_dp(n, memo=None):
+    if memo is None:
+        memo = {}
+    if n in memo:
+        return memo[n]
+    if n &lt;= 1:
+        return n
+    memo[n] = fib_dp(n - 1, memo) + fib_dp(n - 2, memo)
+    return memo[n]</pre>
+            <pre id="code-c" class="code-block hidden">int fib_recursive(int n) {
+    if (n &lt;= 1) return n;
+    return fib_recursive(n - 1) + fib_recursive(n - 2);
+}
+
+int fib_dp(int n, int memo[]) {
+    if (memo[n] != -1) return memo[n];
+    if (n &lt;= 1) return n;
+    memo[n] = fib_dp(n - 1, memo) + fib_dp(n - 2, memo);
+    return memo[n];
+}</pre>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="dot" style="background:var(--accent-orange)"></div>
+            <h3 style="font-family:'IBM Plex Mono',monospace;font-size:13px;">Line-by-Line Explanation</h3>
+          </div>
+          <div class="content">
+            <ul id="explain-python" class="impl-notes">
+              <li><strong><code>if memo is None</code>:</strong> creates cache only once per top-level call.</li>
+              <li><strong><code>if n in memo</code>:</strong> immediately returns stored value, skipping recursion.</li>
+              <li><strong><code>if n &lt;= 1</code>:</strong> handles base cases to stop recursion safely.</li>
+              <li><strong><code>memo[n] = ...</code>:</strong> stores solved state for future reuse.</li>
+              <li><strong><code>return memo[n]</code>:</strong> returns cached final result for this subproblem.</li>
+            </ul>
+            <ul id="explain-c" class="impl-notes hidden">
+              <li><strong><code>memo[n] != -1</code>:</strong> means the state is already computed.</li>
+              <li><strong><code>n &lt;= 1</code>:</strong> base case for Fibonacci, same as math definition.</li>
+              <li><strong>Recursive calls:</strong> compute left and right subproblems once per new state.</li>
+              <li><strong><code>memo[n] = ...</code>:</strong> stores result in array to avoid repeat work.</li>
+              <li><strong>Initialization:</strong> fill memo with <code>-1</code> before first call.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const NODE_W = 180;
+    const NODE_H = 52;
+    const H_GAP = 42;
+    const V_GAP = 96;
+    const PAD = 20;
+
+    let model = null;
+    let plainStep = 0;
+    let dpStep = 0;
+    let nodeCounter = 0;
+
+    function nextId() {
+      nodeCounter += 1;
+      return `node-${nodeCounter}`;
+    }
+
+    function plainTreeData(n, stats, trace, edge = "") {
+      stats.calls++;
+      const leaf = n <= 1;
+      const node = {
+        id: nextId(),
+        label: leaf ? `fib(${n}) = ${n}` : `fib(${n})`,
+        type: leaf ? "leaf" : "normal",
+        edge,
+        children: []
+      };
+      trace.push(node.id);
+      if (!leaf) {
+        node.children.push(plainTreeData(n - 1, stats, trace, "n-1"));
+        node.children.push(plainTreeData(n - 2, stats, trace, "n-2"));
+      }
+      return node;
+    }
+
+    function dpTreeData(n, memo, seen, stats, trace, edge = "") {
+      stats.calls++;
+      if (seen.has(n)) {
+        const cached = { id: nextId(), label: `fib(${n}) [cache hit]`, type: "cached", edge, children: [] };
+        trace.push(cached.id);
+        return cached;
+      }
+      seen.add(n);
+      if (n <= 1) {
+        memo[n] = n;
+        const leaf = { id: nextId(), label: `fib(${n}) = ${n}`, type: "leaf", edge, children: [] };
+        trace.push(leaf.id);
+        return leaf;
+      }
+      const node = { id: nextId(), label: `fib(${n})`, type: "normal", edge, children: [] };
+      trace.push(node.id);
+      const left = dpTreeData(n - 1, memo, seen, stats, trace, "n-1");
+      const right = dpTreeData(n - 2, memo, seen, stats, trace, "n-2");
+      memo[n] = (memo[n - 1] ?? fibMemoValue(n - 1, memo)) + (memo[n - 2] ?? fibMemoValue(n - 2, memo));
+      node.children = [left, right];
+      return node;
+    }
+
+    function computeLayout(node, depth, nextXRef, placed) {
+      const children = node.children || [];
+      let x;
+      if (children.length === 0) {
+        x = nextXRef.value;
+        nextXRef.value += NODE_W + H_GAP;
+      } else {
+        children.forEach((child) => computeLayout(child, depth + 1, nextXRef, placed));
+        x = (children[0]._x + children[children.length - 1]._x) / 2;
+      }
+      node._x = x;
+      node._y = PAD + depth * V_GAP;
+      placed.push(node);
+    }
+
+    function maxDepth(node) {
+      if (!node.children || node.children.length === 0) return 0;
+      return 1 + Math.max(...node.children.map(maxDepth));
+    }
+
+    function renderSvgTree(containerId, root, trace, step) {
+      const host = document.getElementById(containerId);
+      host.innerHTML = "";
+      const placed = [];
+      computeLayout(root, 0, { value: PAD }, placed);
+      const width = Math.max(...placed.map((n) => n._x)) + NODE_W + PAD;
+      const height = PAD * 2 + (maxDepth(root) * V_GAP) + NODE_H;
+
+      const activeId = step > 0 ? trace[Math.min(step - 1, trace.length - 1)] : null;
+      const visited = new Set(trace.slice(0, Math.max(step - 1, 0)));
+      const revealed = new Set(trace.slice(0, Math.max(step, 0)));
+
+      const svg = document.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("class", "svg-tree");
+      svg.setAttribute("width", `${width}`);
+      svg.setAttribute("height", height);
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      svg.setAttribute("preserveAspectRatio", "xMinYMin meet");
+
+      function drawEdges(node) {
+        (node.children || []).forEach((child) => {
+          if (!(revealed.has(node.id) && revealed.has(child.id))) {
+            drawEdges(child);
+            return;
+          }
+          const x1 = node._x + NODE_W / 2;
+          const y1 = node._y + NODE_H;
+          const x2 = child._x + NODE_W / 2;
+          const y2 = child._y;
+          const path = document.createElementNS(SVG_NS, "path");
+          const midY = y1 + (y2 - y1) / 2;
+          path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
+          path.setAttribute("class", "edge");
+          svg.appendChild(path);
+
+          if (child.edge) {
+            const label = document.createElementNS(SVG_NS, "text");
+            label.setAttribute("x", (x1 + x2) / 2);
+            label.setAttribute("y", midY - 4);
+            label.setAttribute("text-anchor", "middle");
+            label.setAttribute("class", "edge-label");
+            label.textContent = child.edge;
+            svg.appendChild(label);
+          }
+          drawEdges(child);
+        });
+      }
+
+      function drawNodes(node) {
+        if (!revealed.has(node.id)) {
+          return;
+        }
+        const rect = document.createElementNS(SVG_NS, "rect");
+        rect.setAttribute("x", node._x);
+        rect.setAttribute("y", node._y);
+        rect.setAttribute("width", NODE_W);
+        rect.setAttribute("height", NODE_H);
+        let rectClass = `node-box ${node.type}`;
+        if (visited.has(node.id)) rectClass += " visited";
+        if (activeId === node.id) rectClass += " active";
+        rect.setAttribute("class", rectClass);
+        svg.appendChild(rect);
+
+        const text = document.createElementNS(SVG_NS, "text");
+        text.setAttribute("x", node._x + NODE_W / 2);
+        text.setAttribute("y", node._y + NODE_H / 2 + 0.5);
+        text.setAttribute("class", `node-text ${node.type}`);
+        text.textContent = node.label;
+        svg.appendChild(text);
+
+        (node.children || []).forEach(drawNodes);
+      }
+
+      drawEdges(root);
+      drawNodes(root);
+      host.appendChild(svg);
+    }
+
+    function fibMemoValue(n, memo) {
+      if (memo[n] !== undefined) return memo[n];
+      if (n <= 1) return n;
+      memo[n] = fibMemoValue(n - 1, memo) + fibMemoValue(n - 2, memo);
+      return memo[n];
+    }
+
+    function buildIdMap(root, map) {
+      map[root.id] = root;
+      (root.children || []).forEach((child) => buildIdMap(child, map));
+    }
+
+    function clearPseudo(prefix, count) {
+      for (let i = 1; i <= count; i++) {
+        const el = document.getElementById(`${prefix}-l${i}`);
+        if (el) el.classList.remove("active");
+      }
+    }
+
+    function updatePseudoPanels() {
+      if (!model) return;
+      clearPseudo("plain", 3);
+      clearPseudo("dp", 5);
+
+      if (plainStep === 0) {
+        document.getElementById("plain-current-call").textContent = "Press Next to start walkthrough.";
+      } else {
+        const plainId = model.plainTrace[Math.min(plainStep - 1, model.plainTrace.length - 1)];
+        const plainNode = model.plainNodeMap[plainId];
+        const plainLine = plainNode.type === "leaf" ? 2 : 3;
+        document.getElementById(`plain-l${plainLine}`).classList.add("active");
+        document.getElementById("plain-current-call").textContent = `Active call: ${plainNode.label}`;
+      }
+
+      if (dpStep === 0) {
+        document.getElementById("dp-current-call").textContent = "Press Next to start walkthrough.";
+      } else {
+        const dpId = model.dpTrace[Math.min(dpStep - 1, model.dpTrace.length - 1)];
+        const dpNode = model.dpNodeMap[dpId];
+        let dpLine = 4;
+        if (dpNode.type === "cached") dpLine = 2;
+        else if (dpNode.type === "leaf") dpLine = 3;
+        document.getElementById(`dp-l${dpLine}`).classList.add("active");
+        document.getElementById("dp-current-call").textContent = `Active call: ${dpNode.label}`;
+      }
+    }
+
+    function updateTreeViews() {
+      if (!model) return;
+      renderSvgTree("plain-tree", model.plainRoot, model.plainTrace, plainStep);
+      renderSvgTree("dp-tree", model.dpRoot, model.dpTrace, dpStep);
+      document.getElementById("plain-step").textContent = `${plainStep}/${model.plainTrace.length}`;
+      document.getElementById("dp-step").textContent = `${dpStep}/${model.dpTrace.length}`;
+      updatePseudoPanels();
+    }
+
+    function resetWalkthrough() {
+      plainStep = 0;
+      dpStep = 0;
+      updateTreeViews();
+    }
+
+    function resetPlainWalkthrough() {
+      plainStep = 0;
+      updateTreeViews();
+    }
+
+    function clearPlainWalkthrough() {
+      plainStep = 0;
+      updateTreeViews();
+    }
+
+    function resetDpWalkthrough() {
+      dpStep = 0;
+      updateTreeViews();
+    }
+
+    function clearDpWalkthrough() {
+      dpStep = 0;
+      updateTreeViews();
+    }
+
+    function preloadWalkthrough() {
+      if (!model) return;
+      plainStep = model.plainTrace.length;
+      dpStep = model.dpTrace.length;
+      updateTreeViews();
+    }
+
+    function nextPlainStep() {
+      if (!model) return;
+      plainStep = Math.min(plainStep + 1, model.plainTrace.length);
+      updateTreeViews();
+    }
+
+    function nextDpStep() {
+      if (!model) return;
+      dpStep = Math.min(dpStep + 1, model.dpTrace.length);
+      updateTreeViews();
+    }
+
+    function renderAll() {
+      const input = document.getElementById("fib-n");
+      let n = parseInt(input.value, 10);
+      if (Number.isNaN(n)) n = 6;
+      if (n < 2) n = 2;
+      if (n > 10) n = 10;
+      input.value = n;
+
+      nodeCounter = 0;
+      const plainStats = { calls: 0 };
+      const dpStats = { calls: 0 };
+      const memo = {};
+      const plainTrace = [];
+      const dpTrace = [];
+      const plainRoot = plainTreeData(n, plainStats, plainTrace);
+      const dpRoot = dpTreeData(n, memo, new Set(), dpStats, dpTrace);
+      const plainNodeMap = {};
+      const dpNodeMap = {};
+      buildIdMap(plainRoot, plainNodeMap);
+      buildIdMap(dpRoot, dpNodeMap);
+      model = { plainRoot, dpRoot, plainTrace, dpTrace, plainNodeMap, dpNodeMap };
+
+      const fibValue = fibMemoValue(n, memo);
+      const saved = Math.max(plainStats.calls - dpStats.calls, 0);
+      document.getElementById("plain-calls").textContent = plainStats.calls;
+      document.getElementById("dp-calls").textContent = dpStats.calls;
+      document.getElementById("fib-value").textContent = fibValue;
+      document.getElementById("saved-calls").textContent = saved;
+
+      preloadWalkthrough();
+    }
+
+    function loadN7() {
+      document.getElementById("fib-n").value = 7;
+      renderAll();
+    }
+
+    function setImplLanguage(lang) {
+      const isPython = lang === "python";
+      document.getElementById("code-python").classList.toggle("hidden", !isPython);
+      document.getElementById("code-c").classList.toggle("hidden", isPython);
+      document.getElementById("explain-python").classList.toggle("hidden", !isPython);
+      document.getElementById("explain-c").classList.toggle("hidden", isPython);
+      document.getElementById("btn-python").classList.toggle("active", isPython);
+      document.getElementById("btn-c").classList.toggle("active", !isPython);
+    }
+
+    let penActive = false, isDrawing = false, drawingHistory = [], historyStep = -1;
+    function initPenTool() {
+      const canvas = document.getElementById('pen-canvas');
+      const ctx = canvas.getContext('2d');
+      const toggleBtn = document.getElementById('pen-toggle-btn');
+      const undoBtn = document.getElementById('pen-undo-btn');
+      const redoBtn = document.getElementById('pen-redo-btn');
+      const colorInput = document.getElementById('pen-color');
+      const sizeInput = document.getElementById('pen-size');
+      const sizeDisplay = document.getElementById('pen-size-display');
+      const clearBtn = document.getElementById('pen-clear-btn');
+      const toolbar = document.getElementById('pen-toolbar-top');
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px';
+        if (penActive && drawingHistory.length > 0 && historyStep >= 0) {
+          const img = new Image();
+          img.src = drawingHistory[historyStep];
+          img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
+        }
+      }
+      function saveToHistory() {
+        historyStep++;
+        if (historyStep < drawingHistory.length) drawingHistory.length = historyStep;
+        drawingHistory.push(canvas.toDataURL());
+        undoBtn.disabled = historyStep <= 0;
+        redoBtn.disabled = historyStep >= drawingHistory.length - 1;
+      }
+      function undo() {
+        if (historyStep <= 0) return;
+        historyStep--;
+        const img = new Image(); img.src = drawingHistory[historyStep];
+        img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); undoBtn.disabled = historyStep <= 0; redoBtn.disabled = historyStep >= drawingHistory.length - 1; };
+      }
+      function redo() {
+        if (historyStep >= drawingHistory.length - 1) return;
+        historyStep++;
+        const img = new Image(); img.src = drawingHistory[historyStep];
+        img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); undoBtn.disabled = historyStep <= 0; redoBtn.disabled = historyStep >= drawingHistory.length - 1; };
+      }
+      function togglePenMode() {
+        penActive = !penActive;
+        canvas.style.display = penActive ? 'block' : 'none';
+        canvas.style.pointerEvents = penActive ? 'auto' : 'none';
+        toggleBtn.textContent = penActive ? '✏️ Stop Drawing' : '✏️ Start Drawing';
+        if (penActive && drawingHistory.length === 0) saveToHistory();
+      }
+      function setCanvasInteractivity(enabled) { if (penActive) canvas.style.pointerEvents = enabled ? 'auto' : 'none'; }
+
+      let lx = 0, ly = 0;
+      canvas.addEventListener('mousedown', e => { if (!penActive) return; e.preventDefault(); isDrawing = true; lx = e.clientX; ly = e.clientY; });
+      canvas.addEventListener('mousemove', e => {
+        if (!penActive || !isDrawing) return;
+        e.preventDefault();
+        ctx.strokeStyle = colorInput.value; ctx.lineWidth = sizeInput.value; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(e.clientX, e.clientY); ctx.stroke(); lx = e.clientX; ly = e.clientY;
+      });
+      canvas.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } });
+      canvas.addEventListener('mouseout', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } });
+      toggleBtn.addEventListener('click', e => { e.stopPropagation(); togglePenMode(); });
+      undoBtn.addEventListener('click', e => { e.stopPropagation(); undo(); });
+      redoBtn.addEventListener('click', e => { e.stopPropagation(); redo(); });
+      clearBtn.addEventListener('click', e => { e.stopPropagation(); ctx.clearRect(0,0,canvas.width,canvas.height); drawingHistory = []; historyStep = -1; undoBtn.disabled = true; redoBtn.disabled = true; });
+      sizeInput.addEventListener('input', e => { sizeDisplay.textContent = e.target.value + 'px'; });
+      toolbar.addEventListener('mouseenter', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } setCanvasInteractivity(false); });
+      toolbar.addEventListener('mouseleave', () => setCanvasInteractivity(true));
+      document.addEventListener('keydown', e => {
+        if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') togglePenMode();
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+      });
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      undoBtn.disabled = true; redoBtn.disabled = true;
+    }
+
+    window.addEventListener("load", function() {
+      renderAll();
+      initPenTool();
+    });
+  </script>
+</body>
+</html>

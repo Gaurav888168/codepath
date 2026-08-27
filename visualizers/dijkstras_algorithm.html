@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dijkstra's Algorithm — Interactive Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e2d45;
+    --border2: #263550;
+    --text: #e2e8f4;
+    --muted: #6b7a99;
+    --accent-main: #58a6ff;
+    --accent-sel: #3fb950;
+    --accent2: #f472b6;
+    --accent3: #34d399;
+    --accent4: #fbbf24;
+    --accent-orange: #f0883e;
+    --rejected: #ef4444;
+  }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body { min-height:100vh; background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+  .top-bar { position:sticky; top:0; z-index:100; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 20px; background:rgba(10,14,26,0.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+  .top-title { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; }
+  .top-title span { color:var(--accent4); }
+  .divider { width:1px; height:28px; background:var(--border2); flex-shrink:0; }
+  .pen-toolbar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tool-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .tool-btn:hover { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.06); }
+  .tool-btn.active { border-color:var(--accent4); color:var(--accent4); background:rgba(251,191,36,0.12); }
+  .pen-toolbar input[type="color"] { width:34px; height:34px; padding:0; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); cursor:pointer; }
+  .pen-toolbar input[type="range"] { width:110px; }
+  .pen-toolbar > *:not(#pen-toggle) { display:none; }
+  .pen-toolbar.active > *:not(#pen-toggle) { display:inline-flex; }
+  .page { position:relative; z-index:1; }
+  header { padding:36px 40px 28px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+  .tag-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+  .tag { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:4px 12px; border-radius:20px; }
+  .tag-blue { color:var(--accent-main); border:1px solid rgba(88,166,255,0.25); background:rgba(88,166,255,0.06); }
+  .tag-sel { color:var(--accent-sel); border:1px solid rgba(63,185,80,0.25); background:rgba(63,185,80,0.06); }
+  .tag-orange { color:var(--accent-orange); border:1px solid rgba(240,136,62,0.25); background:rgba(240,136,62,0.06); }
+  h1 { font-size:clamp(22px,4vw,38px); line-height:1.1; margin-bottom:8px; letter-spacing:-0.5px; }
+  .subtitle { font-size:13px; color:var(--muted); max-width:640px; line-height:1.75; }
+  .progress-bar { height:2px; background:var(--border); margin-top:16px; }
+  .progress-fill { height:100%; width:100%; background:linear-gradient(90deg, var(--accent-sel), var(--accent3), var(--accent-main)); transition:width .4s ease; }
+  .container { max-width:1100px; margin:0 auto; padding:28px 24px 48px; position:relative; }
+  .problem-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent-main); }
+  .problem-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; border-left:3px solid var(--accent3); }
+  .theory-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-points { list-style:none; padding:0; }
+  .theory-points li { margin-bottom:12px; line-height:1.6; }
+  .theory-points li strong { color:var(--accent4); }
+  .theory-points li ul { margin-top:8px; margin-left:20px; }
+  .theory-points li ul li { margin-bottom:6px; color:var(--muted); }
+  .problem-body { color:var(--muted); font-size:13px; line-height:1.8; }
+  .problem-body strong { color:var(--text); }
+  .main-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface2); }
+  .dot { width:8px; height:8px; border-radius:50%; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:18px 20px; background:var(--surface2); border-top:1px solid var(--border); }
+  .btn { font-family:'IBM Plex Mono',monospace; font-size:12px; padding:10px 16px; border-radius:10px; border:1px solid var(--border2); background:var(--surface); color:var(--muted); cursor:pointer; }
+  .btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .btn-primary { border-color:var(--accent-main); color:var(--text); background:linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+  .step-label { color:var(--muted); font-size:12px; }
+  .small-input { width:120px; padding:10px 12px; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); color:var(--text); }
+  .graph-wrap { position:relative; display:block; line-height:0; background:#0f172a; min-height:250px; }
+  #graph-svg { width:100%; display:block; }
+  #draw-canvas { position:fixed; top:0; left:0; z-index:99999; cursor:crosshair; display:none; pointer-events:none; }
+  #draw-canvas.pen-active { pointer-events:all; display:block; }
+  .section-hdr { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text); margin:24px 0 16px 0; display:flex; align-items:center; gap:12px; font-weight:600; }
+  .section-hdr::after { content:''; flex:1; height:2px; background:linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .code-block { padding:20px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .code-line { display:flex; gap:10px; }
+  .ln { color:var(--muted); min-width:18px; user-select:none; font-size:11px; }
+  .kw { color:var(--accent2); }
+  .fn { color:var(--accent-main); }
+  .cm { color:var(--muted); font-style:italic; }
+  .vr { color:var(--accent-sel); }
+  .op { color:var(--accent4); }
+  .dt { color:var(--accent3); }
+  .str { color:var(--accent-orange); }
+  .pp { color:var(--accent2); }
+  .i1 { padding-left:16px; }
+  .i2 { padding-left:32px; }
+  .i3 { padding-left:48px; }
+  /* Implementation selector */
+  .impl-selector { display:flex; gap:8px; align-items:center; margin-bottom:16px; }
+  .impl-selector label { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .impl-toggle { display:flex; gap:6px; }
+  .impl-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; transition:all .15s; }
+  .impl-btn.active { border-color:var(--accent-main); color:var(--accent-main); background:rgba(88,166,255,0.12); }
+  .impl-btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .impl-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .impl-grid.hidden { display:none; }
+  /* Dijkstra-specific: node states in SVG */
+  .dijkstra-node-default circle { fill:rgba(88,166,255,0.14); stroke:rgba(88,166,255,0.4); stroke-width:2; }
+  .dijkstra-node-current circle { fill:rgba(251,191,36,0.25); stroke:var(--accent4); stroke-width:2.5; }
+  .dijkstra-node-visited circle { fill:rgba(63,185,80,0.18); stroke:var(--accent-sel); stroke-width:2; }
+  .dijkstra-node-queued circle { fill:rgba(240,136,62,0.18); stroke:var(--accent-orange); stroke-width:2; }
+  .dijkstra-edge { stroke:rgba(88,166,255,0.22); stroke-width:2; }
+  .dijkstra-edge-active { stroke:var(--accent4); stroke-width:2.5; }
+  /* Status panel */
+  .status-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:20px; }
+  .status-box { background:var(--surface2); border:1px solid var(--border2); border-radius:10px; padding:14px 16px; }
+  .status-box h3 { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  .status-box pre { font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent3); white-space:pre-wrap; word-break:break-all; }
+  /* Legend */
+  .legend { display:flex; flex-wrap:wrap; gap:14px; padding:0 20px 16px; }
+  .legend-item { display:flex; align-items:center; gap:7px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+  .legend-dot { width:12px; height:12px; border-radius:50%; border:2px solid; }
+  /* Select input */
+  select.small-input { appearance:none; -webkit-appearance:none; }
+  @media(max-width:1024px) {
+    header { padding:28px 24px 22px; }
+    .container { padding:22px 18px 40px; }
+    .impl-grid { grid-template-columns:1fr; }
+  }
+  @media(max-width:860px) {
+    .top-bar { padding:10px 14px; gap:10px; }
+    .top-title { width:100%; }
+    .divider { display:none; }
+    .grid-2 { grid-template-columns:1fr; gap:18px; }
+    .status-grid { grid-template-columns:1fr; }
+    .controls { padding:14px; gap:8px; }
+    .controls .btn { padding:9px 12px; font-size:11px; }
+    .step-label { width:100%; }
+  }
+  @media(max-width:640px) {
+    header { padding:20px 14px 18px; }
+    .container { padding:16px 12px 28px; }
+    .problem-box, .theory-box { padding:16px; }
+    .card-header { padding:12px 14px; }
+    .card-header h3 { font-size:13px; }
+    .code-block { padding:14px; font-size:11px; line-height:1.65; }
+    .controls {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      align-items:stretch;
+    }
+    .controls label, .controls .small-input, .controls .step-label {
+      grid-column:1 / -1;
+    }
+    .small-input, #start-select { width:100% !important; }
+    .btn { width:100%; text-align:center; }
+    .impl-selector { flex-direction:column; align-items:flex-start; gap:10px; }
+    .impl-toggle { width:100%; }
+    .impl-btn { flex:1; text-align:center; }
+    .graph-wrap { min-height:210px; }
+    #graph-svg { min-height:210px; }
+    .legend { padding:0 14px 14px; gap:10px; }
+    .legend-item { font-size:10px; }
+    table { display:block; overflow-x:auto; white-space:nowrap; }
+  }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <span class="top-title">Dijkstra's Algorithm <span>Visualizer</span></span>
+  <div class="divider"></div>
+  <div class="pen-toolbar">
+    <button class="tool-btn" id="pen-toggle">✏️ Pen</button>
+    <button class="tool-btn" id="btn-undo" disabled title="Undo">↶ Undo</button>
+    <button class="tool-btn" id="btn-redo" disabled title="Redo">↷ Redo</button>
+    <input type="color" id="pen-color" value="#fbbf24" title="Pen Color" />
+    <input type="range" id="pen-size" min="1" max="12" value="3" title="Thickness" />
+    <button class="tool-btn" id="btn-clear" title="Clear Drawing">🧹 Clear</button>
+  </div>
+</div>
+<div class="page">
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Graph Algorithms</span>
+      <span class="tag tag-sel">Shortest Path</span>
+      <span class="tag tag-orange">Dijkstra</span>
+    </div>
+    <h1>Dijkstra's Algorithm <span style="color:var(--accent4)">Visualizer</span></h1>
+    <p class="subtitle">Find the shortest path from a start node to all other nodes in a weighted graph using Dijkstra's algorithm with a priority queue.</p>
+  </header>
+  <div class="container">
+    <div class="theory-box">
+      <h2>Theory</h2>
+      <div class="theory-body">
+        <p style="color:var(--muted); margin-bottom:16px; line-height:1.7;">Dijkstra's algorithm finds the shortest path between nodes in a weighted graph with non-negative edge weights. It uses a priority queue to always expand the node with the smallest tentative distance, guaranteeing the shortest path when weights are positive.</p>
+        <ul class="theory-points">
+          <li><strong>Strategy:</strong> Greedily select the unvisited node with smallest distance, update neighbors' distances if shorter path found</li>
+          <li><strong>Time Complexity:</strong> O((V + E) log V) with binary heap priority queue</li>
+          <li><strong>Space Complexity:</strong> O(V) for distance array and priority queue</li>
+          <li><strong>Common Applications:</strong>
+            <ul>
+              <li>Network routing protocols</li>
+              <li>GPS navigation systems</li>
+              <li>Minimum cost path problems</li>
+              <li>Game pathfinding with costs</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="problem-box">
+      <h2>Problem Statement</h2>
+      <div class="problem-body">
+        Given a weighted graph and a starting node, compute the shortest path distances to all reachable nodes. Use the visualizer to <strong>step through Dijkstra's algorithm</strong>, observing how the priority queue selects nodes and updates distances across the graph.
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>priority_queue.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// Min-Heap Priority Queue</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">struct</span> PriorityQueue {</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="dt">Node</span>[] heap;</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="dt">int</span>[] distances;</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1"><span class="dt">bool</span>[] visited;</span></div>
+          <div class="code-line"><span class="ln">6</span><span>}</span></div>
+          <div class="code-line"><span class="ln">7</span><span></span></div>
+          <div class="code-line"><span class="ln">8</span><span><span class="cm">// extract-min → smallest distance</span></span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>dijkstra_anatomy.svg</h3></div>
+        <div style="padding:20px; text-align:center;">
+          <svg width="100%" height="200" viewBox="0 0 220 180" xmlns="http://www.w3.org/2000/svg" style="max-width:220px; margin:0 auto;">
+            <!-- root -->
+            <circle cx="110" cy="28" r="18" fill="rgba(251,191,36,0.2)" stroke="rgba(251,191,36,0.7)" stroke-width="2"/>
+            <text x="110" y="33" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="11">A</text>
+            <text x="110" y="50" text-anchor="middle" fill="#6b7a99" font-family="monospace" font-size="9">0</text>
+            <!-- level 1 edges -->
+            <line x1="100" y1="46" x2="65" y2="80" stroke="rgba(88,166,255,0.25)" stroke-width="1.5"/>
+            <text x="82" y="63" fill="#e2e8f4" font-family="monospace" font-size="9">4</text>
+            <line x1="120" y1="46" x2="155" y2="80" stroke="rgba(88,166,255,0.25)" stroke-width="1.5"/>
+            <text x="137" y="63" fill="#e2e8f4" font-family="monospace" font-size="9">2</text>
+            <!-- level 1 nodes -->
+            <circle cx="65" cy="96" r="16" fill="rgba(63,185,80,0.18)" stroke="rgba(63,185,80,0.6)" stroke-width="2"/>
+            <text x="65" y="101" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="11">B</text>
+            <text x="65" y="118" text-anchor="middle" fill="#6b7a99" font-family="monospace" font-size="9">4</text>
+            <circle cx="155" cy="96" r="16" fill="rgba(63,185,80,0.18)" stroke="rgba(63,185,80,0.6)" stroke-width="2"/>
+            <text x="155" y="101" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="11">C</text>
+            <text x="155" y="118" text-anchor="middle" fill="#6b7a99" font-family="monospace" font-size="9">2</text>
+            <!-- level 2 edges -->
+            <line x1="58" y1="112" x2="40" y2="145" stroke="rgba(88,166,255,0.18)" stroke-width="1.5"/>
+            <text x="49" y="129" fill="#e2e8f4" font-family="monospace" font-size="9">3</text>
+            <!-- level 2 nodes -->
+            <circle cx="40" cy="158" r="14" fill="rgba(88,166,255,0.14)" stroke="rgba(88,166,255,0.4)" stroke-width="1.5"/>
+            <text x="40" y="163" text-anchor="middle" fill="#e2e8f4" font-family="monospace" font-size="10">D</text>
+            <text x="40" y="175" text-anchor="middle" fill="#6b7a99" font-family="monospace" font-size="8">∞</text>
+            <!-- label -->
+            <text x="185" y="100" fill="var(--muted)" font-family="monospace" font-size="8">Priority Queue</text>
+            <text x="185" y="160" fill="var(--muted)" font-family="monospace" font-size="8">Distance Updates</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="main-card">
+      <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>graph.svg — Dijkstra's Visualization</h3></div>
+      <div class="graph-wrap" id="graph-wrap">
+        <svg id="graph-svg" viewBox="0 0 760 460" xmlns="http://www.w3.org/2000/svg"></svg>
+        <canvas id="draw-canvas"></canvas>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.25);border-color:var(--accent4);"></div>Current</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(63,185,80,0.18);border-color:var(--accent-sel);"></div>Visited</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(240,136,62,0.18);border-color:var(--accent-orange);"></div>In Queue</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(88,166,255,0.14);border-color:rgba(88,166,255,0.4);"></div>Unvisited</div>
+      </div>
+      <div class="controls">
+        <label style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);">Start:</label>
+        <select class="small-input" id="start-select" style="width:80px;font-family:'IBM Plex Mono',monospace;font-size:12px;"></select>
+        <button class="btn btn-primary" onclick="startDijkstra()">▶ Run Dijkstra</button>
+        <button class="btn" onclick="nextStep()" id="btn-next">Step →</button>
+        <button class="btn" onclick="randomGraph()">⟳ Random</button>
+        <button class="btn" onclick="resetGraph()">Reset</button>
+        <span class="step-label" id="step-status">Ready to start</span>
+      </div>
+    </div>
+    <!-- Priority Queue & Distances status -->
+    <p class="section-hdr">Traversal State</p>
+    <div class="grid-2" style="margin-bottom:24px;">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>priority_queue.log</h3></div>
+        <div style="padding:18px 20px;">
+          <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">Min-Heap Priority Queue</p>
+          <pre id="queue-view" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent-orange);white-space:pre-wrap;">[ ]</pre>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>distances.log</h3></div>
+        <div style="padding:18px 20px;">
+          <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">Shortest Distances</p>
+          <pre id="distances-view" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--accent-sel);white-space:pre-wrap;">[ ]</pre>
+        </div>
+      </div>
+    </div>
+    <p class="section-hdr">Algorithm & Pseudocode</p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>dijkstra_algorithm.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// Dijkstra's with priority queue</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">function</span> <span class="fn">dijkstra</span>(<span class="vr">graph</span>, <span class="vr">start</span>):</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="vr">dist</span> = <span class="kw">array</span>(<span class="dt">INF</span>)</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1"><span class="vr">dist</span>[<span class="vr">start</span>] = 0</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1"><span class="vr">pq</span> = <span class="fn">priority_queue</span>()</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i1"><span class="vr">pq</span>.<span class="fn">insert</span>(<span class="vr">start</span>, 0)</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="vr">visited</span> = <span class="kw">set</span>()</span></div>
+          <div class="code-line"><span class="ln">8</span><span></span></div>
+          <div class="code-line"><span class="ln">9</span><span><span class="kw">while</span> <span class="vr">pq</span> <span class="op">is not</span> <span class="vr">empty</span>:</span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i1"><span class="vr">node</span>, <span class="vr">cost</span> = <span class="vr">pq</span>.<span class="fn">extract_min</span>()</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i1"><span class="kw">if</span> <span class="vr">node</span> <span class="op">in</span> <span class="vr">visited</span>: <span class="kw">continue</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i1"><span class="vr">visited</span>.<span class="fn">add</span>(<span class="vr">node</span>)</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i1"><span class="kw">for</span> <span class="vr">neighbor</span>, <span class="vr">weight</span> <span class="op">in</span> <span class="vr">graph</span>[<span class="vr">node</span>]:</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i2"><span class="kw">if</span> <span class="vr">dist</span>[<span class="vr">neighbor</span>] > <span class="vr">dist</span>[<span class="vr">node</span>] + <span class="vr">weight</span>:</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i3"><span class="vr">dist</span>[<span class="vr">neighbor</span>] = <span class="vr">dist</span>[<span class="vr">node</span>] + <span class="vr">weight</span></span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i3"><span class="vr">pq</span>.<span class="fn">insert</span>(<span class="vr">neighbor</span>, <span class="vr">dist</span>[<span class="vr">neighbor</span>])</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>complexity.md</h3></div>
+        <div style="padding:20px;">
+          <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+            <tr><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Aspect</th><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Complexity</th></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Time</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O((V + E) log V)</td></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Space</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(V)</td></tr>
+            <tr><td style="padding:10px 14px;color:var(--text);font-weight:600;">Greedy Choice</td><td style="padding:10px 14px;color:var(--accent-sel);font-weight:600;">Min Distance</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p class="section-hdr">Implementation</p>
+    <div class="impl-selector">
+      <label>Language:</label>
+      <div class="impl-toggle">
+        <button class="impl-btn active" id="impl-c" onclick="switchImpl('c')">C</button>
+        <button class="impl-btn" id="impl-python" onclick="switchImpl('python')">Python</button>
+      </div>
+    </div>
+    <div class="impl-grid" id="c-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>dijkstra.c</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="pp">#include</span> <span class="str">&lt;stdio.h&gt;</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="pp">#include</span> <span class="str">&lt;stdlib.h&gt;</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span><span class="pp">#define</span> INF 99999</span></div>
+          <div class="code-line"><span class="ln">4</span><span><span class="pp">#define</span> MAX 100</span></div>
+          <div class="code-line"><span class="ln">5</span><span></span></div>
+          <div class="code-line"><span class="ln">6</span><span><span class="dt">int</span> graph[MAX][MAX];</span></div>
+          <div class="code-line"><span class="ln">7</span><span><span class="dt">int</span> dist[MAX];</span></div>
+          <div class="code-line"><span class="ln">8</span><span><span class="dt">int</span> visited[MAX];</span></div>
+          <div class="code-line"><span class="ln">9</span><span></span></div>
+          <div class="code-line"><span class="ln">10</span><span><span class="dt">int</span> <span class="fn">minDistance</span>(<span class="dt">int</span> n) {</span></div>
+          <div class="code-line"><span class="ln">11</span><span class="i1"><span class="dt">int</span> min = INF, min_index;</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> v = 0; v &lt; n; v++) {</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i2"><span class="kw">if</span> (!visited[v] &amp;&amp; dist[v] &lt;= min) {</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i3">min = dist[v]; min_index = v;</span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i2">}</span></div>
+          <div class="code-line"><span class="ln">16</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i1"><span class="kw">return</span> min_index;</span></div>
+          <div class="code-line"><span class="ln">18</span><span>}</span></div>
+          <div class="code-line"><span class="ln">19</span><span></span></div>
+          <div class="code-line"><span class="ln">20</span><span><span class="dt">void</span> <span class="fn">dijkstra</span>(<span class="dt">int</span> start, <span class="dt">int</span> n) {</span></div>
+          <div class="code-line"><span class="ln">21</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> i = 0; i &lt; n; i++) {</span></div>
+          <div class="code-line"><span class="ln">22</span><span class="i2">dist[i] = INF; visited[i] = 0;</span></div>
+          <div class="code-line"><span class="ln">23</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">24</span><span class="i1">dist[start] = 0;</span></div>
+          <div class="code-line"><span class="ln">25</span><span></span></div>
+          <div class="code-line"><span class="ln">26</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> count = 0; count &lt; n - 1; count++) {</span></div>
+          <div class="code-line"><span class="ln">27</span><span class="i2"><span class="dt">int</span> u = <span class="fn">minDistance</span>(n);</span></div>
+          <div class="code-line"><span class="ln">28</span><span class="i2">visited[u] = 1;</span></div>
+          <div class="code-line"><span class="ln">29</span><span class="i2"><span class="kw">for</span> (<span class="dt">int</span> v = 0; v &lt; n; v++) {</span></div>
+          <div class="code-line"><span class="ln">30</span><span class="i3"><span class="kw">if</span> (!visited[v] &amp;&amp; graph[u][v] &amp;&amp; dist[u] != INF &amp;&amp; dist[u] + graph[u][v] &lt; dist[v]) {</span></div>
+          <div class="code-line"><span class="ln">31</span><span class="i3">  dist[v] = dist[u] + graph[u][v];</span></div>
+          <div class="code-line"><span class="ln">32</span><span class="i3">}</span></div>
+          <div class="code-line"><span class="ln">33</span><span class="i2">}</span></div>
+          <div class="code-line"><span class="ln">34</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">35</span><span></span></div>
+          <div class="code-line"><span class="ln">36</span><span class="i1">printf(<span class="str">"Vertex\tDistance from Source\n"</span>);</span></div>
+          <div class="code-line"><span class="ln">37</span><span class="i1"><span class="kw">for</span> (<span class="dt">int</span> i = 0; i &lt; n; i++) {</span></div>
+          <div class="code-line"><span class="ln">38</span><span class="i2"><span class="kw">if</span> (dist[i] == INF) printf(<span class="str">"%d\t\t∞\n"</span>, i);</span></div>
+          <div class="code-line"><span class="ln">39</span><span class="i2"><span class="kw">else</span> printf(<span class="str">"%d\t\t%d\n"</span>, i, dist[i]);</span></div>
+          <div class="code-line"><span class="ln">40</span><span class="i1">}</span></div>
+          <div class="code-line"><span class="ln">41</span><span>}</span></div>
+          <div class="code-line"><span class="ln">42</span><span></span></div>
+          <div class="code-line"><span class="ln">43</span><span><span class="dt">int</span> main() {</span></div>
+          <div class="code-line"><span class="ln">44</span><span class="i1"><span class="dt">int</span> n = 6;</span></div>
+          <div class="code-line"><span class="ln">45</span><span class="i1"><span class="cm">// build adjacency matrix with weights ...</span></span></div>
+          <div class="code-line"><span class="ln">46</span><span class="i1">printf(<span class="str">"Dijkstra's Algorithm:\n"</span>);</span></div>
+          <div class="code-line"><span class="ln">47</span><span class="i1"><span class="fn">dijkstra</span>(0, n);</span></div>
+          <div class="code-line"><span class="ln">48</span><span class="i1"><span class="kw">return</span> 0;</span></div>
+          <div class="code-line"><span class="ln">49</span><span>}</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>Explanation</h3></div>
+        <div style="padding:20px; color:var(--muted); font-size:13px; line-height:1.7;">
+          <p><strong style="color:var(--text);">1. Distance Array (line 7):</strong> Initialized to INT_MAX (infinity), then start node set to 0. This stores the shortest known distance from source to each node.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">2. minDistance() Function (lines 9-16):</strong> Performs linear search O(V) through all unvisited nodes to find minimum distance. Returns index of nearest unvisited node. Called V times in the algorithm.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">3. Main Loop (lines 18-33):</strong> Runs V-1 iterations. Each iteration: (a) selects closest unvisited node u, (b) marks u as visited, (c) checks all neighbors of u for relaxation: if dist[u]+weight < dist[v], update dist[v]. This is the core relaxation step.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">4. Edge Relaxation (lines 26-30):</strong> Updates neighbor distances if path through current node is shorter. Formula: new_dist = dist[current] + edge_weight. Only updates if this is smaller than previously known distance.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">5. Time Complexity O(V²):</strong> V iterations of main loop × V searches in minDistance() = O(V²). Suitable for dense graphs where E ≈ V². Without heap optimization, linear search dominates. Consider priority queue (binary heap) for sparse graphs to reduce to O((V+E) log V).</p>
+        </div>
+      </div>
+    </div>
+    <div class="impl-grid hidden" id="python-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>dijkstra.py</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="pp">import</span> heapq</span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="pp">from</span> collections <span class="pp">import</span> defaultdict</span></div>
+          <div class="code-line"><span class="ln">3</span><span></span></div>
+          <div class="code-line"><span class="ln">4</span><span><span class="kw">def</span> <span class="fn">dijkstra</span>(<span class="vr">graph</span>, <span class="vr">start</span>):</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1"><span class="cm">"""Find shortest path from start to all nodes"""</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i1"><span class="vr">distances</span> = {<span class="vr">node</span>: float(<span class="str">'inf'</span>) <span class="kw">for</span> <span class="vr">node</span> <span class="op">in</span> <span class="vr">graph</span>}</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1"><span class="vr">distances</span>[<span class="vr">start</span>] = 0</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i1"><span class="vr">pq</span> = [(<span class="vr">start</span>, 0)]  <span class="cm"># (distance, node)</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i1"><span class="vr">visited</span> = <span class="kw">set</span>()</span></div>
+          <div class="code-line"><span class="ln">10</span><span></span></div>
+          <div class="code-line"><span class="ln">11</span><span><span class="kw">while</span> <span class="vr">pq</span>:</span></div>
+          <div class="code-line"><span class="ln">12</span><span class="i1"><span class="vr">cost</span>, <span class="vr">node</span> = heapq.<span class="fn">heappop</span>(<span class="vr">pq</span>)</span></div>
+          <div class="code-line"><span class="ln">13</span><span class="i1"><span class="kw">if</span> <span class="vr">node</span> <span class="op">in</span> <span class="vr">visited</span>:</span></div>
+          <div class="code-line"><span class="ln">14</span><span class="i2"><span class="kw">continue</span></span></div>
+          <div class="code-line"><span class="ln">15</span><span class="i1"><span class="vr">visited</span>.<span class="fn">add</span>(<span class="vr">node</span>)</span></div>
+          <div class="code-line"><span class="ln">16</span><span></span></div>
+          <div class="code-line"><span class="ln">17</span><span class="i1"><span class="kw">for</span> <span class="vr">neighbor</span>, <span class="vr">weight</span> <span class="op">in</span> <span class="vr">graph</span>[<span class="vr">node</span>]:</span></div>
+          <div class="code-line"><span class="ln">18</span><span class="i2"><span class="vr">alt</span> = <span class="vr">distances</span>[<span class="vr">node</span>] + <span class="vr">weight</span></span></div>
+          <div class="code-line"><span class="ln">19</span><span class="i2"><span class="kw">if</span> <span class="vr">alt</span> < <span class="vr">distances</span>[<span class="vr">neighbor</span>]:</span></div>
+          <div class="code-line"><span class="ln">20</span><span class="i3"><span class="vr">distances</span>[<span class="vr">neighbor</span>] = <span class="vr">alt</span></span></div>
+          <div class="code-line"><span class="ln">21</span><span class="i3">heapq.<span class="fn">heappush</span>(<span class="vr">pq</span>, (<span class="vr">alt</span>, <span class="vr">neighbor</span>))</span></div>
+          <div class="code-line"><span class="ln">22</span><span></span></div>
+          <div class="code-line"><span class="ln">23</span><span><span class="kw">return</span> <span class="vr">distances</span></span></div>
+          <div class="code-line"><span class="ln">24</span><span></span></div>
+          <div class="code-line"><span class="ln">25</span><span><span class="cm"># Example usage</span></span></div>
+          <div class="code-line"><span class="ln">26</span><span><span class="vr">graph</span> = defaultdict(<span class="dt">list</span>)</span></div>
+          <div class="code-line"><span class="ln">27</span><span><span class="vr">edges</span> = [(<span class="str">'A'</span>,<span class="str">'B'</span>,4), (<span class="str">'A'</span>,<span class="str">'D'</span>,2)]</span></div>
+          <div class="code-line"><span class="ln">28</span><span><span class="kw">for</span> <span class="vr">u</span>, <span class="vr">v</span>, <span class="vr">w</span> <span class="op">in</span> <span class="vr">edges</span>:</span></div>
+          <div class="code-line"><span class="ln">29</span><span class="i1"><span class="vr">graph</span>[<span class="vr">u</span>].<span class="fn">append</span>((<span class="vr">v</span>, <span class="vr">w</span>))</span></div>
+          <div class="code-line"><span class="ln">30</span><span class="i1"><span class="vr">graph</span>[<span class="vr">v</span>].<span class="fn">append</span>((<span class="vr">u</span>, <span class="vr">w</span>))</span></div>
+          <div class="code-line"><span class="ln">31</span><span></span></div>
+          <div class="code-line"><span class="ln">32</span><span><span class="vr">result</span> = <span class="fn">dijkstra</span>(<span class="vr">graph</span>, <span class="str">'A'</span>)</span></div>
+          <div class="code-line"><span class="ln">33</span><span><span class="kw">print</span>(<span class="str">"Shortest distances:"</span>, <span class="vr">result</span>)</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>Explanation</h3></div>
+        <div style="padding:20px; color:var(--muted); font-size:13px; line-height:1.7;">
+          <p><strong style="color:var(--text);">1. Imports & Initialization (lines 1-9):</strong> heapq provides binary min-heap operations (O(log V)). defaultdict(list) creates graph as adjacency list: {node: [(neighbor1, weight1), (neighbor2, weight2), ...]}. distances initialized as float('inf'), then start=0. Priority queue stores (distance, node) tuples.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">2. Min-Heap Property (line 12):</strong> heapq.heappop(pq) extracts tuple with smallest first element (distance) in O(log V). Much faster than C's linear O(V) search. Heap automatically maintains order by repeatedly moving smaller elements toward root.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">3. Visited Tracking (lines 13-15):</strong> Prevents processing same node twice. After popping (cost, node), check if node already visited. If yes, skip (continue) because we already processed it with smaller cost. Otherwise mark visited and process neighbors.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">4. Edge Relaxation (lines 17-21):</strong> For each neighbor of current node: calculate alt = distances[current] + edge_weight. If alt < distances[neighbor], update distance and push (alt, neighbor) to heap. Multiple entries for same node may exist in heap; visited set ensures we only process each node once (the first time popped = minimum distance).</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">5. Time Complexity O((V+E) log V):</strong> Process each node once (V iterations) and each edge once (E pushes to heap). Each heap operation (push/pop) is O(log V). Total: V×O(log V) + E×O(log V) = O((V+E) log V). Superior to C's O(V²) for sparse graphs (E << V²). Graph representation with adjacency list enables efficient neighbor iteration.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+/* ── Pen / draw layer ── */
+let penActive = false, isDrawing = false;
+let drawingHistory = [];
+let historyStep = -1;
+let penCanvas, penCtx, penToggleBtn, penUndoBtn, penRedoBtn, penColorInput, penSizeInput, penClearBtn;
+let lastX = 0, lastY = 0;
+
+function resizeCanvasPen() {
+  if (!penCanvas) return;
+  penCanvas.width = window.innerWidth;
+  penCanvas.height = window.innerHeight;
+  penCanvas.style.width = window.innerWidth + 'px';
+  penCanvas.style.height = window.innerHeight + 'px';
+  
+  if (penActive && drawingHistory.length > 0 && historyStep >= 0) {
+    const img = new Image();
+    img.src = drawingHistory[historyStep];
+    img.onload = () => {
+      penCtx.clearRect(0, 0, penCanvas.width, penCanvas.height);
+      penCtx.drawImage(img, 0, 0);
+    };
+  }
+}
+
+function savePenToHistory() {
+  historyStep++;
+  if (historyStep < drawingHistory.length) {
+    drawingHistory.length = historyStep;
+  }
+  drawingHistory.push(penCanvas.toDataURL());
+  updatePenUndoRedo();
+}
+
+function updatePenUndoRedo() {
+  if (!penUndoBtn || !penRedoBtn) return;
+  penUndoBtn.disabled = historyStep <= 0;
+  penRedoBtn.disabled = historyStep >= drawingHistory.length - 1;
+}
+
+function undoPen() {
+  if (historyStep > 0) {
+    historyStep--;
+    const img = new Image();
+    img.src = drawingHistory[historyStep];
+    img.onload = () => {
+      penCtx.clearRect(0, 0, penCanvas.width, penCanvas.height);
+      penCtx.drawImage(img, 0, 0);
+      updatePenUndoRedo();
+    };
+  }
+}
+
+function redoPen() {
+  if (historyStep < drawingHistory.length - 1) {
+    historyStep++;
+    const img = new Image();
+    img.src = drawingHistory[historyStep];
+    img.onload = () => {
+      penCtx.clearRect(0, 0, penCanvas.width, penCanvas.height);
+      penCtx.drawImage(img, 0, 0);
+      updatePenUndoRedo();
+    };
+  }
+}
+
+function togglePenMode() {
+  penActive = !penActive;
+  penCanvas.style.display = penActive ? 'block' : 'none';
+  penCanvas.style.pointerEvents = penActive ? 'auto' : 'none';
+  penToggleBtn.textContent = penActive ? '✏️ Pen ON' : '✏️ Pen';
+  penToggleBtn.classList.toggle('active', penActive);
+  if (penActive) {
+    penCanvas.style.cursor = 'crosshair';
+    if (drawingHistory.length === 0) {
+      savePenToHistory();
+    }
+  } else {
+    penCanvas.style.cursor = 'default';
+  }
+}
+
+function startPenDrawing(e) {
+  if (!penActive) return;
+  isDrawing = true;
+  [lastX, lastY] = [e.clientX, e.clientY];
+}
+
+function penDraw(e) {
+  if (!penActive || !isDrawing) return;
+  
+  const x = e.clientX;
+  const y = e.clientY;
+  
+  penCtx.strokeStyle = penColorInput.value;
+  penCtx.lineWidth = penSizeInput.value;
+  penCtx.lineCap = 'round';
+  penCtx.lineJoin = 'round';
+  
+  penCtx.beginPath();
+  penCtx.moveTo(lastX, lastY);
+  penCtx.lineTo(x, y);
+  penCtx.stroke();
+  
+  [lastX, lastY] = [x, y];
+}
+
+function stopPenDrawing() {
+  if (isDrawing) {
+    isDrawing = false;
+    savePenToHistory();
+  }
+}
+
+function getPenTouchCoords(e) {
+  return {
+    x: e.touches[0].clientX,
+    y: e.touches[0].clientY
+  };
+}
+
+function startPenDrawingTouch(e) {
+  if (!penActive) return;
+  isDrawing = true;
+  const coords = getPenTouchCoords(e);
+  [lastX, lastY] = [coords.x, coords.y];
+}
+
+function penDrawTouch(e) {
+  if (!penActive || !isDrawing) return;
+  e.preventDefault();
+  
+  const coords = getPenTouchCoords(e);
+  
+  penCtx.strokeStyle = penColorInput.value;
+  penCtx.lineWidth = penSizeInput.value;
+  penCtx.lineCap = 'round';
+  penCtx.lineJoin = 'round';
+  
+  penCtx.beginPath();
+  penCtx.moveTo(lastX, lastY);
+  penCtx.lineTo(coords.x, coords.y);
+  penCtx.stroke();
+  
+  [lastX, lastY] = [coords.x, coords.y];
+}
+
+function stopPenDrawingTouch() {
+  if (isDrawing) {
+    isDrawing = false;
+    savePenToHistory();
+  }
+}
+
+function initPenTool() {
+  penCanvas = document.getElementById('draw-canvas');
+  penCtx = penCanvas.getContext('2d');
+  penToggleBtn = document.getElementById('pen-toggle');
+  penUndoBtn = document.getElementById('btn-undo');
+  penRedoBtn = document.getElementById('btn-redo');
+  penColorInput = document.getElementById('pen-color');
+  penSizeInput = document.getElementById('pen-size');
+  penClearBtn = document.getElementById('btn-clear');
+
+  resizeCanvasPen();
+  window.addEventListener('resize', resizeCanvasPen);
+
+  penCanvas.addEventListener('mousedown', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    startPenDrawing(e);
+  });
+  penCanvas.addEventListener('mousemove', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    penDraw(e);
+  });
+  penCanvas.addEventListener('mouseup', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    stopPenDrawing(e);
+  });
+  penCanvas.addEventListener('mouseout', (e) => {
+    if (!penActive) return;
+    stopPenDrawing(e);
+  });
+
+  penCanvas.addEventListener('touchstart', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    startPenDrawingTouch(e);
+  });
+  penCanvas.addEventListener('touchmove', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    penDrawTouch(e);
+  });
+  penCanvas.addEventListener('touchend', (e) => {
+    if (!penActive) return;
+    e.preventDefault();
+    stopPenDrawingTouch(e);
+  });
+
+  penToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    togglePenMode();
+  });
+
+  penUndoBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    undoPen();
+  });
+  
+  penRedoBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    redoPen();
+  });
+
+  penClearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    penCtx.clearRect(0, 0, penCanvas.width, penCanvas.height);
+    drawingHistory = [];
+    historyStep = -1;
+    updatePenUndoRedo();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey) {
+      if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        togglePenMode();
+      }
+    }
+    
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      undoPen();
+    }
+    
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      redoPen();
+    }
+  });
+
+  updatePenUndoRedo();
+}
+
+function togglePen() { togglePenMode(); }
+function undoDraw() { undoPen(); }
+function redoDraw() { redoPen(); }
+function clearDraw() { 
+  penCtx.clearRect(0, 0, penCanvas.width, penCanvas.height);
+  drawingHistory = [];
+  historyStep = -1;
+  updatePenUndoRedo();
+}
+function setColor(color) { penColorInput.value = color; }
+function setSize(value) { penSizeInput.value = value; }
+
+/* ── Dijkstra Graph Logic ── */
+const svg = document.getElementById('graph-svg');
+const W = 760, H = 460;
+
+const defaultNodes = [
+  {id:'A', x:170, y:100},
+  {id:'B', x:410, y:65},
+  {id:'C', x:640, y:100},
+  {id:'D', x:210, y:320},
+  {id:'E', x:470, y:300},
+  {id:'F', x:660, y:340}
+];
+const defaultEdges = [
+  {from:'A',to:'B', weight:4},
+  {from:'A',to:'D', weight:2},
+  {from:'B',to:'C', weight:3},
+  {from:'B',to:'E', weight:5},
+  {from:'C',to:'F', weight:1},
+  {from:'D',to:'E', weight:1},
+  {from:'E',to:'F', weight:2}
+];
+
+let nodes = JSON.parse(JSON.stringify(defaultNodes));
+let edges = JSON.parse(JSON.stringify(defaultEdges));
+
+// Dijkstra state
+let dijkstraPQ = [];
+let dijkstraDist = {};
+let dijkstraVisited = new Set();
+let dijkstraCurrent = null;
+let dijkstraGraph = {};
+let dijkstraTimer = null;
+let dijkstraRunning = false;
+let dijkstraStep = 0;
+
+function buildAdjacency() {
+  const map = {};
+  nodes.forEach(n => { map[n.id] = []; dijkstraDist[n.id] = Infinity; });
+  edges.forEach(e => {
+    map[e.from].push({to: e.to, weight: e.weight});
+    map[e.to].push({to: e.from, weight: e.weight});
+  });
+  return map;
+}
+
+function getNode(id) { return nodes.find(n => n.id === id); }
+
+function populateStartSelect() {
+  const sel = document.getElementById('start-select');
+  sel.innerHTML = nodes.map(n => `<option value="${n.id}">${n.id}</option>`).join('');
+}
+
+function drawGraph() {
+  svg.innerHTML = '';
+
+  // Draw edges with weights
+  edges.forEach(edge => {
+    const from = getNode(edge.from);
+    const to = getNode(edge.to);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', from.x); line.setAttribute('x2', to.x);
+    line.setAttribute('y1', from.y); line.setAttribute('y2', to.y);
+    line.setAttribute('stroke', 'rgba(88,166,255,0.22)');
+    line.setAttribute('stroke-width', '2');
+    svg.appendChild(line);
+
+    // Weight label
+    const midX = (from.x + to.x) / 2;
+    const midY = (from.y + to.y) / 2;
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x', midX); text.setAttribute('y', midY - 5);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-family', 'IBM Plex Mono, monospace');
+    text.setAttribute('font-size', '12');
+    text.setAttribute('fill', '#6b7a99');
+    text.textContent = edge.weight;
+    svg.appendChild(text);
+  });
+
+  // Draw nodes
+  nodes.forEach(node => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+
+    let fillColor, strokeColor, strokeW = '2';
+    if (dijkstraCurrent === node.id) {
+      fillColor = 'rgba(251,191,36,0.28)'; strokeColor = '#fbbf24'; strokeW = '2.5';
+    } else if (dijkstraVisited.has(node.id)) {
+      fillColor = 'rgba(63,185,80,0.2)'; strokeColor = '#3fb950';
+    } else if (dijkstraPQ.some(p => p.node === node.id)) {
+      fillColor = 'rgba(240,136,62,0.2)'; strokeColor = '#f0883e';
+    } else {
+      fillColor = 'rgba(88,166,255,0.14)'; strokeColor = 'rgba(88,166,255,0.4)';
+    }
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', node.x); circle.setAttribute('cy', node.y);
+    circle.setAttribute('r', '28');
+    circle.setAttribute('fill', fillColor);
+    circle.setAttribute('stroke', strokeColor);
+    circle.setAttribute('stroke-width', strokeW);
+    g.appendChild(circle);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x', node.x); text.setAttribute('y', node.y + 6);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-family', 'IBM Plex Mono, monospace');
+    text.setAttribute('font-size', '18');
+    text.setAttribute('fill', '#e2e8f4');
+    text.textContent = node.id;
+    g.appendChild(text);
+
+    // Distance label
+    const distText = document.createElementNS('http://www.w3.org/2000/svg','text');
+    distText.setAttribute('x', node.x); distText.setAttribute('y', node.y + 45);
+    distText.setAttribute('text-anchor', 'middle');
+    distText.setAttribute('font-family', 'IBM Plex Mono, monospace');
+    distText.setAttribute('font-size', '12');
+    distText.setAttribute('fill', '#6b7a99');
+    const dist = dijkstraDist[node.id];
+    distText.textContent = dist === Infinity ? '∞' : dist;
+    g.appendChild(distText);
+
+    svg.appendChild(g);
+  });
+}
+
+function setStatus(msg) {
+  document.getElementById('step-status').textContent = msg || 'Ready';
+}
+
+function updateTraversalDisplay() {
+  document.getElementById('queue-view').textContent = dijkstraPQ.length ? `[ ${dijkstraPQ.map(p => `${p.node}:${p.dist}`).join(' | ')} ]` : '[ ]';
+  const distStr = Object.keys(dijkstraDist).map(k => `${k}:${dijkstraDist[k] === Infinity ? '∞' : dijkstraDist[k]}`).join(' | ');
+  document.getElementById('distances-view').textContent = `[ ${distStr} ]`;
+}
+
+function initDijkstra() {
+  const start = document.getElementById('start-select').value;
+  if (!start) { setStatus('Select a start node'); return false; }
+  dijkstraGraph = buildAdjacency();
+  nodes.forEach(n => dijkstraDist[n.id] = Infinity);
+  dijkstraDist[start] = 0;
+  dijkstraPQ = [{node: start, dist: 0}];
+  dijkstraVisited = new Set();
+  dijkstraCurrent = null;
+  dijkstraStep = 0;
+  updateTraversalDisplay();
+  drawGraph();
+  return true;
+}
+
+function doStep() {
+  if (dijkstraPQ.length === 0) {
+    dijkstraCurrent = null;
+    drawGraph();
+    setStatus(`Dijkstra complete — shortest paths computed`);
+    stopDijkstra();
+    return;
+  }
+  // Extract min
+  dijkstraPQ.sort((a,b) => a.dist - b.dist);
+  const current = dijkstraPQ.shift();
+  const node = current.node;
+  if (dijkstraVisited.has(node)) return doStep(); // Skip if already visited
+  dijkstraVisited.add(node);
+  dijkstraCurrent = node;
+  dijkstraStep++;
+
+  const neighbors = dijkstraGraph[node] || [];
+  neighbors.forEach(nb => {
+    const alt = dijkstraDist[node] + nb.weight;
+    if (alt < dijkstraDist[nb.to]) {
+      dijkstraDist[nb.to] = alt;
+      // Update or add to PQ
+      const existing = dijkstraPQ.find(p => p.node === nb.to);
+      if (existing) existing.dist = alt;
+      else dijkstraPQ.push({node: nb.to, dist: alt});
+    }
+  });
+  updateTraversalDisplay();
+  drawGraph();
+  setStatus(`Step ${dijkstraStep}: Processing ${node} — updated neighbors`);
+  if (dijkstraPQ.length === 0) {
+    dijkstraCurrent = null;
+    drawGraph();
+    setStatus(`Dijkstra complete — shortest paths computed`);
+  }
+}
+
+function startDijkstra() {
+  stopDijkstra();
+  if (!initDijkstra()) return;
+  dijkstraRunning = true;
+  dijkstraTimer = setInterval(() => {
+    if (dijkstraPQ.length === 0) { stopDijkstra(); return; }
+    doStep();
+  }, 1200);
+}
+
+function nextStep() {
+  if (!dijkstraRunning && dijkstraStep === 0) {
+    if (!initDijkstra()) return;
+  }
+  doStep();
+}
+
+function stopDijkstra() {
+  clearInterval(dijkstraTimer);
+  dijkstraTimer = null;
+  dijkstraRunning = false;
+}
+
+function resetGraph() {
+  stopDijkstra();
+  nodes = JSON.parse(JSON.stringify(defaultNodes));
+  edges = JSON.parse(JSON.stringify(defaultEdges));
+  dijkstraPQ = []; dijkstraVisited = new Set();
+  dijkstraCurrent = null; dijkstraStep = 0;
+  nodes.forEach(n => dijkstraDist[n.id] = Infinity);
+  updateTraversalDisplay();
+  drawGraph();
+  setStatus('Ready to start');
+  populateStartSelect();
+}
+
+function randomGraph() {
+  stopDijkstra();
+  const combos = [
+    ['A','B', Math.floor(Math.random()*10)+1],
+    ['A','D', Math.floor(Math.random()*10)+1],
+    ['A','E', Math.floor(Math.random()*10)+1],
+    ['B','C', Math.floor(Math.random()*10)+1],
+    ['B','E', Math.floor(Math.random()*10)+1],
+    ['C','F', Math.floor(Math.random()*10)+1],
+    ['D','E', Math.floor(Math.random()*10)+1],
+    ['D','F', Math.floor(Math.random()*10)+1],
+    ['E','F', Math.floor(Math.random()*10)+1]
+  ];
+  edges = [];
+  for (const [u,v,w] of combos) { if (Math.random() > 0.4) edges.push({from:u, to:v, weight:w}); }
+  if (edges.length < 5) edges = JSON.parse(JSON.stringify(defaultEdges));
+  dijkstraPQ = []; dijkstraVisited = new Set();
+  dijkstraCurrent = null; dijkstraStep = 0;
+  nodes.forEach(n => dijkstraDist[n.id] = Infinity);
+  updateTraversalDisplay();
+  drawGraph();
+  setStatus('Random weighted graph — press Run Dijkstra');
+}
+
+function switchImpl(lang) {
+  const cImpl = document.getElementById('c-impl');
+  const pythonImpl = document.getElementById('python-impl');
+  const cBtn = document.getElementById('impl-c');
+  const pythonBtn = document.getElementById('impl-python');
+  
+  if (lang === 'c') {
+    cImpl.classList.remove('hidden');
+    pythonImpl.classList.add('hidden');
+    cBtn.classList.add('active');
+    pythonBtn.classList.remove('active');
+  } else if (lang === 'python') {
+    cImpl.classList.add('hidden');
+    pythonImpl.classList.remove('hidden');
+    cBtn.classList.remove('active');
+    pythonBtn.classList.add('active');
+  }
+}
+
+window.addEventListener('resize', () => { });
+window.addEventListener('load', () => {
+  populateStartSelect();
+  drawGraph();
+  updateTraversalDisplay();
+  updateUndoRedo();
+  setStatus('Ready to start');
+  initPenTool();
+});
+</script>
+</body>
+</html>

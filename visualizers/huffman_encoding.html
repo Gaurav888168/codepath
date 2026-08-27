@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Huffman Encoding - Interactive Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a; --surface: #111827; --surface2: #1a2236; --border: #1e2d45; --border2: #263550;
+    --text: #e2e8f4; --muted: #6b7a99; --accent-main: #58a6ff; --accent-sel: #3fb950;
+    --accent2: #f472b6; --accent3: #34d399; --accent4: #fbbf24; --accent-orange: #f0883e;
+  }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body { min-height:100vh; background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+  .top-bar { position:sticky; top:0; z-index:100000; display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:10px 20px; background:rgba(10,14,26,0.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
+  .top-title { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; }
+  .top-title span { color:var(--accent4); }
+  .divider { width:1px; height:28px; background:var(--border2); flex-shrink:0; }
+  .page { position:relative; z-index:1; }
+  .pen-toolbar-top { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-left:auto; pointer-events:auto; }
+  header { padding:36px 40px 28px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(88,166,255,0.04) 0%, transparent 100%); }
+  .tag-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+  .tag { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; padding:4px 12px; border-radius:20px; }
+  .tag-blue { color:var(--accent-main); border:1px solid rgba(88,166,255,0.25); background:rgba(88,166,255,0.06); }
+  .tag-sel { color:var(--accent-sel); border:1px solid rgba(63,185,80,0.25); background:rgba(63,185,80,0.06); }
+  .tag-orange { color:var(--accent-orange); border:1px solid rgba(240,136,62,0.25); background:rgba(240,136,62,0.06); }
+  h1 { font-size:clamp(22px,4vw,38px); line-height:1.1; margin-bottom:8px; letter-spacing:-0.5px; }
+  .subtitle { font-size:13px; color:var(--muted); max-width:760px; line-height:1.75; }
+  .container { max-width:1100px; margin:0 auto; padding:28px 24px 48px; position:relative; }
+  .theory-box, .problem-box { background:var(--surface); border:1px solid var(--border2); border-radius:14px; padding:24px 28px; margin-bottom:24px; }
+  .theory-box { border-left:3px solid var(--accent3); }
+  .problem-box { border-left:3px solid var(--accent-main); }
+  .theory-box h2, .problem-box h2 { font-size:16px; margin-bottom:14px; }
+  .theory-points { list-style:none; }
+  .theory-points li { margin-bottom:10px; line-height:1.7; color:var(--muted); font-size:13px; }
+  .theory-points strong { color:var(--accent4); }
+  .problem-body { color:var(--muted); font-size:13px; line-height:1.8; }
+  .problem-body strong { color:var(--text); }
+  .main-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .card-header { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface2); }
+  .dot { width:8px; height:8px; border-radius:50%; }
+  .section-hdr { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text); margin:24px 0 16px; display:flex; align-items:center; gap:12px; font-weight:600; }
+  .section-hdr::after { content:''; flex:1; height:2px; background:linear-gradient(90deg, var(--border2) 0%, transparent 100%); }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:18px 20px; background:var(--surface2); border-top:1px solid var(--border); }
+  .btn, .small-input { font-family:'IBM Plex Mono',monospace; font-size:12px; border-radius:10px; border:1px solid var(--border2); background:var(--surface); color:var(--muted); }
+  .btn { padding:10px 16px; cursor:pointer; }
+  .btn:hover { border-color:var(--accent-main); color:var(--accent-main); }
+  .btn-primary { border-color:var(--accent-main); color:var(--text); background:linear-gradient(90deg, rgba(88,166,255,0.2), rgba(52,211,153,0.12)); }
+  .small-input { padding:10px 12px; background:var(--surface2); color:var(--text); }
+  .step-label { color:var(--muted); font-size:12px; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .code-block { padding:20px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.8; overflow-x:auto; }
+  .code-line { display:flex; gap:10px; }
+  .ln { color:var(--muted); min-width:18px; user-select:none; font-size:11px; }
+  .kw { color:var(--accent2); } .fn { color:var(--accent-main); } .cm { color:var(--muted); font-style:italic; }
+  .vr { color:var(--accent-sel); } .op { color:var(--accent4); } .dt { color:var(--accent3); } .str { color:var(--accent-orange); }
+  .i1 { padding-left:16px; } .i2 { padding-left:32px; } .i3 { padding-left:48px; }
+  .graph-wrap { position:relative; display:block; line-height:0; background:#0f172a; min-height:340px; }
+  #huffman-svg { width:100%; display:block; }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; padding:0 20px 16px; }
+  .legend-item { display:flex; align-items:center; gap:7px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); }
+  .legend-dot { width:12px; height:12px; border-radius:50%; border:2px solid; }
+  .impl-selector { display:flex; gap:8px; align-items:center; margin-bottom:16px; }
+  .impl-selector label { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .impl-toggle { display:flex; gap:6px; }
+  .impl-btn { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:6px 12px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--muted); cursor:pointer; }
+  .impl-btn.active { border-color:var(--accent-main); color:var(--accent-main); background:rgba(88,166,255,0.12); }
+  .impl-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+  .impl-grid.hidden { display:none; }
+  #pen-canvas { position:fixed; top:0; left:0; z-index:99999; cursor:crosshair; display:none; pointer-events:none; }
+  #pen-undo-btn:disabled, #pen-redo-btn:disabled { opacity:0.4; cursor:not-allowed; }
+  #pen-undo-btn:disabled:hover, #pen-redo-btn:disabled:hover { border-color:var(--border2); color:var(--muted); }
+  @media(max-width:900px){ .grid-2, .impl-grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<canvas id="pen-canvas"></canvas>
+<div class="top-bar">
+  <span class="top-title">Huffman Encoding <span>Visualizer</span></span>
+  <div class="divider"></div>
+  <div class="pen-toolbar-top" id="pen-toolbar-top">
+    <button class="btn btn-primary" id="pen-toggle-btn" title="Toggle Drawing Mode (P)" style="padding:8px 14px;font-size:12px;">✏️ Start Drawing</button>
+    <button id="pen-undo-btn" class="btn" style="padding:8px 12px;font-size:12px;">↶ Undo</button>
+    <button id="pen-redo-btn" class="btn" style="padding:8px 12px;font-size:12px;">↷ Redo</button>
+    <button id="pen-clear-btn" class="btn" style="padding:8px 12px;font-size:12px;">🗑️ Clear</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <label for="pen-color" style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono', monospace;">Color:</label>
+      <input type="color" id="pen-color" value="#fbbf24" style="width:36px;height:28px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;">
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <label for="pen-size" style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono', monospace; min-width:40px;">Size:</label>
+      <input type="range" id="pen-size" min="1" max="20" value="3" style="width:100px;">
+      <span id="pen-size-display" style="font-size:11px;color:var(--muted);min-width:30px;">3px</span>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+  <header>
+    <div class="tag-row">
+      <span class="tag tag-blue">Greedy Algorithms</span>
+      <span class="tag tag-sel">Compression</span>
+      <span class="tag tag-orange">Binary Tree</span>
+    </div>
+    <h1>Huffman Encoding <span style="color:var(--accent4)">Visualizer</span></h1>
+    <p class="subtitle">Build optimal prefix-free binary codes using character frequencies. See merge steps, tree construction, and generated bit codes together.</p>
+  </header>
+
+  <div class="container">
+    <div class="theory-box">
+      <h2>Theory</h2>
+      <ul class="theory-points">
+        <li><strong>Goal:</strong> Minimize total encoded length by assigning shorter codes to frequent characters.</li>
+        <li><strong>Data Structure:</strong> Use a min-heap to repeatedly pick the two smallest frequencies.</li>
+        <li><strong>Tree Rule:</strong> Left edge adds bit <strong>0</strong>, right edge adds bit <strong>1</strong>.</li>
+        <li><strong>Property:</strong> Huffman codes are prefix-free, so decoding is unambiguous.</li>
+        <li><strong>Optimality:</strong> Greedy merge of least frequent nodes gives optimal weighted path length.</li>
+      </ul>
+    </div>
+
+    <div class="problem-box">
+      <h2>Problem Statement</h2>
+      <div class="problem-body">
+        <p style="margin-bottom:10px;"><strong>Given</strong> arrays <strong>chars</strong> and <strong>freq</strong>, where <strong>freq[i]</strong> is the frequency of <strong>chars[i]</strong>, construct Huffman codes and return the code for each character.</p>
+        <p style="margin-bottom:10px;"><strong>Required Output:</strong> Prefix-free binary strings where higher-frequency characters generally get shorter codes.</p>
+        <p style="margin:14px 0 6px;color:var(--text);"><strong>Example 1:</strong></p>
+        <pre style="background:rgba(15,23,42,0.7);border:1px solid var(--border2);border-radius:8px;padding:10px;color:var(--muted);overflow:auto;">Input: chars = [a,b,c,d,e,f], freq = [5,9,12,13,16,45]
+Output (one valid set): f:0, c:100, d:101, a:1100, b:1101, e:111
+Explanation: More frequent f gets shortest code.</pre>
+        <p style="margin:14px 0 6px;color:var(--text);"><strong>Example 2:</strong></p>
+        <pre style="background:rgba(15,23,42,0.7);border:1px solid var(--border2);border-radius:8px;padding:10px;color:var(--muted);overflow:auto;">Input: chars = [A,B,C,D], freq = [10,15,30,16]
+Output (one valid set): C:0, D:10, A:110, B:111
+Explanation: Codes may differ by tie-breaking but weighted cost stays minimal.</pre>
+        <p style="margin:14px 0 6px;color:var(--text);"><strong>Constraints:</strong></p>
+        <ul style="margin-left:20px;color:var(--muted);line-height:1.8;">
+          <li>1 &lt;= chars.length &lt;= 10^5</li>
+          <li>1 &lt;= freq[i] &lt;= 10^9</li>
+          <li>All characters are distinct.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>greedy_strategy.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// Huffman Greedy Strategy</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span>1. Build min-heap of leaf nodes (char, freq)</span></div>
+          <div class="code-line"><span class="ln">3</span><span>2. Pop two minimum-frequency nodes</span></div>
+          <div class="code-line"><span class="ln">4</span><span>3. Merge into internal node with sum frequency</span></div>
+          <div class="code-line"><span class="ln">5</span><span>4. Push merged node back to heap</span></div>
+          <div class="code-line"><span class="ln">6</span><span>5. Repeat until heap size becomes 1 (root)</span></div>
+          <div class="code-line"><span class="ln">7</span><span>6. DFS root to assign 0/1 codes</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>ratio_anatomy.svg</h3></div>
+        <div style="padding:20px;color:var(--muted);font-size:13px;line-height:1.7;">
+          <p><strong style="color:var(--text);">Heap Priority:</strong> Always merge the two smallest frequencies first.</p>
+          <p style="margin-top:10px;"><strong style="color:var(--text);">Encoding:</strong> Left child adds bit 0, right child adds bit 1.</p>
+          <p style="margin-top:10px;"><strong style="color:var(--text);">Compression Benefit:</strong> Frequent characters stay near root, reducing total bits.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-card">
+      <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>huffman_tree.svg - Huffman Construction Visualization</h3></div>
+      <div class="graph-wrap"><svg id="huffman-svg" viewBox="0 0 980 360" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(63,185,80,0.18);border-color:var(--accent-sel);"></div>Merged in current step</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.25);border-color:var(--accent4);"></div>Picked from heap</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(88,166,255,0.14);border-color:rgba(88,166,255,0.4);"></div>Remaining nodes</div>
+      </div>
+      <div class="controls">
+        <label class="step-label">Input (char:freq comma separated):</label>
+        <input id="freq-input" class="small-input" style="width:340px;" value="a:5,b:9,c:12,d:13,e:16,f:45">
+        <button class="btn btn-primary" onclick="startBuild()">▶ Build Tree</button>
+        <button class="btn" onclick="nextStep()" id="btn-step">Step →</button>
+        <button class="btn" onclick="resetAll()">Reset</button>
+        <span class="step-label" id="step-status">Ready to build</span>
+      </div>
+    </div>
+
+    <p class="section-hdr">Selection State</p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-orange)"></div><h3>heap_state.log</h3></div>
+        <div style="padding:18px 20px;">
+          <pre id="heap-view" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);white-space:pre-wrap;max-height:220px;overflow:auto;">Heap not initialized.</pre>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent-sel)"></div><h3>codes.log</h3></div>
+        <div style="padding:18px 20px;">
+          <pre id="codes-view" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent-sel);white-space:pre-wrap;">Codes will appear after complete tree build.</pre>
+          <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:14px;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;">Step Info</p>
+          <pre id="step-info" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent-orange);white-space:pre-wrap;">Waiting to build...</pre>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-hdr">Algorithm & Pseudocode</p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent2)"></div><h3>huffman_encoding.txt</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="kw">function</span> <span class="fn">buildHuffman</span>(chars, freq):</span></div>
+          <div class="code-line"><span class="ln">2</span><span class="i1">heap = minHeap of leaf nodes</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1"><span class="kw">while</span> heap.size &gt; 1:</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i2">left = heap.popMin()</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i2">right = heap.popMin()</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i2">parent = Node('$', left.freq + right.freq)</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i2">parent.left = left, parent.right = right</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i2">heap.push(parent)</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i1">root = heap.popMin()</span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i1"><span class="fn">dfs</span>(root, "") to generate codes</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent3)"></div><h3>complexity.md</h3></div>
+        <div style="padding:20px;">
+          <table style="width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:12px;">
+            <tr><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Aspect</th><th style="text-align:left;padding:8px 14px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Complexity</th></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">Build Heap + Merges</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(n log n)</td></tr>
+            <tr><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);">DFS Code Generation</td><td style="padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.6);color:var(--accent-main);">O(n)</td></tr>
+            <tr><td style="padding:10px 14px;color:var(--text);font-weight:600;">Space</td><td style="padding:10px 14px;color:var(--accent-sel);font-weight:600;">O(n)</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <p class="section-hdr">Implementation</p>
+    <div class="impl-selector">
+      <label>Language:</label>
+      <div class="impl-toggle">
+        <button class="impl-btn active" id="impl-c" onclick="switchImpl('c')">C</button>
+        <button class="impl-btn" id="impl-python" onclick="switchImpl('python')">Python</button>
+      </div>
+    </div>
+    <div class="impl-grid" id="c-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>huffman_encoding.c</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="cm">// Min-heap based Huffman in C (outline)</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">struct</span> Node { <span class="dt">char</span> ch; <span class="dt">int</span> freq; <span class="kw">struct</span> Node *left, *right; };</span></div>
+          <div class="code-line"><span class="ln">3</span><span><span class="kw">while</span> (heapSize &gt; 1) {</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1">left = extractMin(heap); right = extractMin(heap);</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1">parent = newNode('$', left-&gt;freq + right-&gt;freq);</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i1">parent-&gt;left = left; parent-&gt;right = right;</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i1">insertMin(heap, parent);</span></div>
+          <div class="code-line"><span class="ln">8</span><span>}</span></div>
+          <div class="code-line"><span class="ln">9</span><span>printCodes(root, arr, top);</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>Explanation</h3></div>
+        <div style="padding:20px;color:var(--muted);font-size:13px;line-height:1.7;">
+          <p><strong style="color:var(--text);">Heap Operations:</strong> extractMin and insertMin maintain smallest frequencies at top.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">Merge Step:</strong> Internal parent node frequency is sum of two children.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">Code Generation:</strong> DFS accumulates 0/1 path bits from root to leaves.</p>
+        </div>
+      </div>
+    </div>
+    <div class="impl-grid hidden" id="python-impl">
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>huffman_encoding.py</h3></div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span><span class="kw">import</span> heapq</span></div>
+          <div class="code-line"><span class="ln">2</span><span><span class="kw">def</span> <span class="fn">huffman_codes</span>(chars, freq):</span></div>
+          <div class="code-line"><span class="ln">3</span><span class="i1">heap = [[f, [c, ""]] for c, f in zip(chars, freq)]</span></div>
+          <div class="code-line"><span class="ln">4</span><span class="i1">heapq.heapify(heap)</span></div>
+          <div class="code-line"><span class="ln">5</span><span class="i1"><span class="kw">while</span> len(heap) &gt; 1:</span></div>
+          <div class="code-line"><span class="ln">6</span><span class="i2">lo = heapq.heappop(heap); hi = heapq.heappop(heap)</span></div>
+          <div class="code-line"><span class="ln">7</span><span class="i2"><span class="kw">for</span> p <span class="op">in</span> lo[1:]: p[1] = "0" + p[1]</span></div>
+          <div class="code-line"><span class="ln">8</span><span class="i2"><span class="kw">for</span> p <span class="op">in</span> hi[1:]: p[1] = "1" + p[1]</span></div>
+          <div class="code-line"><span class="ln">9</span><span class="i2">heapq.heappush(heap, [lo[0] + hi[0]] + lo[1:] + hi[1:])</span></div>
+          <div class="code-line"><span class="ln">10</span><span class="i1"><span class="kw">return</span> sorted(heap[0][1:], key=lambda x: x[0])</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="dot" style="background:var(--accent4)"></div><h3>Explanation</h3></div>
+        <div style="padding:20px;color:var(--muted);font-size:13px;line-height:1.7;">
+          <p><strong style="color:var(--text);">heapq:</strong> Python min-heap gives O(log n) push/pop.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">Bit Prefixing:</strong> Left group gets 0 prefix, right gets 1 prefix per merge.</p>
+          <p style="margin-top:12px;"><strong style="color:var(--text);">Output:</strong> Sorted character-code pairs for readability.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let nodes = [];
+  let stepSnapshots = [];
+  let stepIndex = 0;
+  let built = false;
+
+  function parseInput() {
+    const raw = document.getElementById('freq-input').value.trim();
+    if (!raw) return null;
+    const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+    const out = [];
+    for (const p of parts) {
+      const seg = p.split(':');
+      if (seg.length !== 2) return null;
+      const ch = seg[0].trim();
+      const f = parseFloat(seg[1].trim());
+      if (!ch || Number.isNaN(f) || f <= 0) return null;
+      out.push({ ch, freq: f });
+    }
+    return out.length ? out : null;
+  }
+
+  function sortNodes(arr) {
+    return arr.slice().sort((a, b) => a.freq - b.freq || a.label.localeCompare(b.label));
+  }
+
+  function cloneNode(n) {
+    return { id:n.id, label:n.label, freq:n.freq, left:n.left, right:n.right, leaf:n.leaf, merged:n.merged || false, picked:n.picked || false };
+  }
+
+  function startBuild() {
+    const parsed = parseInput();
+    if (!parsed) {
+      document.getElementById('step-status').textContent = 'Invalid input. Use format: a:5,b:9,c:12';
+      return;
+    }
+    let id = 1;
+    let heap = parsed.map(x => ({ id:id++, label:x.ch, freq:x.freq, left:null, right:null, leaf:true }));
+    let all = heap.map(cloneNode);
+    stepSnapshots = [{ heap: sortNodes(heap), all: all.slice(), rootId: heap.length === 1 ? heap[0].id : null, text: 'Initialized min-heap with all characters.' }];
+
+    while (heap.length > 1) {
+      heap = sortNodes(heap);
+      const left = { ...heap.shift(), picked:true };
+      const right = { ...heap.shift(), picked:true };
+      const parent = { id:id++, label:'*', freq:left.freq + right.freq, left:left.id, right:right.id, leaf:false, merged:true };
+      all = all.map(n => ({ ...n, picked:false, merged:false }));
+      all = all.filter(n => n.id !== left.id && n.id !== right.id);
+      all.push({ ...left });
+      all.push({ ...right });
+      all.push({ ...parent });
+      heap.push({ ...parent });
+      stepSnapshots.push({
+        heap: sortNodes(heap),
+        all: all.map(cloneNode),
+        rootId: heap.length === 1 ? heap[0].id : null,
+        text: `Merged ${left.label}:${left.freq} and ${right.label}:${right.freq} -> ${parent.freq}`
+      });
+    }
+
+    nodes = stepSnapshots[stepSnapshots.length - 1].all.map(cloneNode);
+    stepIndex = 0;
+    built = true;
+    drawCurrent();
+    document.getElementById('step-status').textContent = 'Tree build prepared. Use Step.';
+    document.getElementById('step-info').textContent = 'Ready to process merge steps.';
+  }
+
+  function buildCodeMap(allNodes) {
+    const map = Object.fromEntries(allNodes.map(n => [n.id, n]));
+    const roots = allNodes.filter(n => !allNodes.some(x => x.left === n.id || x.right === n.id));
+    if (!roots.length) return {};
+    const root = roots[0];
+    const codes = {};
+    function dfs(id, bits) {
+      const n = map[id];
+      if (!n) return;
+      if (n.leaf) {
+        codes[n.label] = bits || '0';
+        return;
+      }
+      dfs(n.left, bits + '0');
+      dfs(n.right, bits + '1');
+    }
+    dfs(root.id, '');
+    return codes;
+  }
+
+  function nextStep() {
+    if (!built) {
+      document.getElementById('step-status').textContent = 'Press "Build Tree" first';
+      return;
+    }
+    stepIndex = Math.min(stepIndex + 1, stepSnapshots.length - 1);
+    drawCurrent();
+    if (stepIndex === stepSnapshots.length - 1) {
+      document.getElementById('step-status').textContent = '✓ Huffman tree complete';
+      const codes = buildCodeMap(stepSnapshots[stepIndex].all);
+      const lines = Object.keys(codes).sort().map(k => `${k}: ${codes[k]}`);
+      document.getElementById('codes-view').textContent = lines.join('\n');
+    }
+  }
+
+  function resetAll() {
+    stepIndex = 0;
+    built = false;
+    stepSnapshots = [];
+    document.getElementById('huffman-svg').innerHTML = '';
+    document.getElementById('heap-view').textContent = 'Heap not initialized.';
+    document.getElementById('codes-view').textContent = 'Codes will appear after complete tree build.';
+    document.getElementById('step-info').textContent = 'Waiting to build...';
+    document.getElementById('step-status').textContent = 'Ready to build';
+  }
+
+  function drawCurrent() {
+    const snap = stepSnapshots[stepIndex];
+    if (!snap) return;
+    const svg = document.getElementById('huffman-svg');
+    svg.innerHTML = '';
+    const map = Object.fromEntries(snap.all.map(n => [n.id, n]));
+    const heapRoots = snap.heap.map(n => n.id);
+    const topStartX = 60;
+    const topY = 36;
+    const topGap = 140;
+    const boxW = 118;
+    const boxH = 42;
+
+    // Top row: current min-heap nodes still participating in merges
+    heapRoots.forEach((id, idx) => {
+      const n = map[id];
+      if (!n) return;
+      const x = topStartX + idx * topGap;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x);
+      rect.setAttribute('y', topY);
+      rect.setAttribute('width', boxW);
+      rect.setAttribute('height', boxH);
+      const fill = n.merged ? 'rgba(63,185,80,0.2)' : n.picked ? 'rgba(251,191,36,0.28)' : 'rgba(88,166,255,0.16)';
+      const stroke = n.merged ? 'rgba(63,185,80,0.7)' : n.picked ? 'var(--accent4)' : 'rgba(88,166,255,0.5)';
+      rect.setAttribute('fill', fill);
+      rect.setAttribute('stroke', stroke);
+      rect.setAttribute('stroke-width', '2');
+      rect.setAttribute('rx', '8');
+      svg.appendChild(rect);
+
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', x + boxW / 2);
+      label.setAttribute('y', topY + 16);
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('fill', '#e2e8f4');
+      label.setAttribute('font-family', 'monospace');
+      label.setAttribute('font-size', '11');
+      label.textContent = n.leaf ? n.label : 'internal';
+      svg.appendChild(label);
+
+      const freq = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      freq.setAttribute('x', x + boxW / 2);
+      freq.setAttribute('y', topY + 31);
+      freq.setAttribute('text-anchor', 'middle');
+      freq.setAttribute('fill', '#6b7a99');
+      freq.setAttribute('font-family', 'monospace');
+      freq.setAttribute('font-size', '11');
+      freq.textContent = `freq=${n.freq}`;
+      svg.appendChild(freq);
+    });
+
+    // Draw forest (tree for each heap root) below top row
+    const positions = {};
+    let globalLeaf = 0;
+    const levelYStart = 132;
+    const levelGap = 78;
+
+    function assignSubtree(id, depth) {
+      const node = map[id];
+      if (!node) return 0;
+      if (node.leaf) {
+        const x = 70 + globalLeaf * 130;
+        positions[id] = { x, y: levelYStart + depth * levelGap, depth };
+        globalLeaf++;
+        return x;
+      }
+      const lx = assignSubtree(node.left, depth + 1);
+      const rx = assignSubtree(node.right, depth + 1);
+      const x = (lx + rx) / 2;
+      positions[id] = { x, y: levelYStart + depth * levelGap, depth };
+      return x;
+    }
+
+    for (const rootId of heapRoots) assignSubtree(rootId, 0);
+
+    const maxDepth = Object.values(positions).length ? Math.max(...Object.values(positions).map(p => p.depth)) : 0;
+    const treeWidth = Math.max(980, 180 + Math.max(globalLeaf - 1, 0) * 130);
+    const treeHeight = Math.max(420, 190 + maxDepth * levelGap);
+    svg.setAttribute('viewBox', `0 0 ${treeWidth} ${treeHeight}`);
+
+    for (const n of snap.all) {
+      if (!positions[n.id]) continue;
+      if (n.left && positions[n.left]) {
+        const e = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        e.setAttribute('x1', positions[n.id].x); e.setAttribute('y1', positions[n.id].y + 18);
+        e.setAttribute('x2', positions[n.left].x); e.setAttribute('y2', positions[n.left].y - 18);
+        e.setAttribute('stroke', 'rgba(88,166,255,0.35)'); e.setAttribute('stroke-width', '2');
+        svg.appendChild(e);
+        const bit = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        bit.setAttribute('x', (positions[n.id].x + positions[n.left].x) / 2 - 8);
+        bit.setAttribute('y', (positions[n.id].y + positions[n.left].y) / 2 - 4);
+        bit.setAttribute('fill', '#fbbf24'); bit.setAttribute('font-family', 'monospace'); bit.setAttribute('font-size', '11');
+        bit.textContent = '0';
+        svg.appendChild(bit);
+      }
+      if (n.right && positions[n.right]) {
+        const e = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        e.setAttribute('x1', positions[n.id].x); e.setAttribute('y1', positions[n.id].y + 18);
+        e.setAttribute('x2', positions[n.right].x); e.setAttribute('y2', positions[n.right].y - 18);
+        e.setAttribute('stroke', 'rgba(88,166,255,0.35)'); e.setAttribute('stroke-width', '2');
+        svg.appendChild(e);
+        const bit = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        bit.setAttribute('x', (positions[n.id].x + positions[n.right].x) / 2 + 8);
+        bit.setAttribute('y', (positions[n.id].y + positions[n.right].y) / 2 - 4);
+        bit.setAttribute('fill', '#fbbf24'); bit.setAttribute('font-family', 'monospace'); bit.setAttribute('font-size', '11');
+        bit.textContent = '1';
+        svg.appendChild(bit);
+      }
+    }
+
+    for (const n of snap.all) {
+      if (!positions[n.id]) continue;
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', positions[n.id].x);
+      c.setAttribute('cy', positions[n.id].y);
+      c.setAttribute('r', n.leaf ? '21' : '18');
+      const fill = n.merged ? 'rgba(63,185,80,0.18)' : n.picked ? 'rgba(251,191,36,0.25)' : 'rgba(88,166,255,0.14)';
+      const stroke = n.merged ? 'rgba(63,185,80,0.6)' : n.picked ? 'var(--accent4)' : 'rgba(88,166,255,0.45)';
+      c.setAttribute('fill', fill); c.setAttribute('stroke', stroke); c.setAttribute('stroke-width', '2');
+      svg.appendChild(c);
+
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', positions[n.id].x);
+      t.setAttribute('y', positions[n.id].y + 4);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('fill', '#e2e8f4');
+      t.setAttribute('font-family', 'monospace');
+      t.setAttribute('font-size', '11');
+      t.textContent = `${n.leaf ? n.label : '*'}:${n.freq}`;
+      svg.appendChild(t);
+    }
+
+    const heapText = snap.heap.map(n => `${n.label}:${n.freq}`).join(' | ');
+    document.getElementById('heap-view').textContent = heapText || '(root only)';
+    document.getElementById('step-info').textContent = `Step ${stepIndex}/${stepSnapshots.length - 1}: ${snap.text}`;
+    document.getElementById('step-status').textContent = `Step ${stepIndex}/${stepSnapshots.length - 1}`;
+  }
+
+  function switchImpl(lang) {
+    const cImpl = document.getElementById('c-impl');
+    const pImpl = document.getElementById('python-impl');
+    const cBtn = document.getElementById('impl-c');
+    const pBtn = document.getElementById('impl-python');
+    if (lang === 'c') {
+      cImpl.classList.remove('hidden'); pImpl.classList.add('hidden');
+      cBtn.classList.add('active'); pBtn.classList.remove('active');
+    } else {
+      pImpl.classList.remove('hidden'); cImpl.classList.add('hidden');
+      pBtn.classList.add('active'); cBtn.classList.remove('active');
+    }
+  }
+
+  let penActive = false, isDrawing = false, drawingHistory = [], historyStep = -1;
+  function initPenTool() {
+    const canvas = document.getElementById('pen-canvas');
+    const ctx = canvas.getContext('2d');
+    const toggleBtn = document.getElementById('pen-toggle-btn');
+    const undoBtn = document.getElementById('pen-undo-btn');
+    const redoBtn = document.getElementById('pen-redo-btn');
+    const colorInput = document.getElementById('pen-color');
+    const sizeInput = document.getElementById('pen-size');
+    const sizeDisplay = document.getElementById('pen-size-display');
+    const clearBtn = document.getElementById('pen-clear-btn');
+    const toolbar = document.getElementById('pen-toolbar-top');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+      canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px';
+      if (penActive && drawingHistory.length > 0 && historyStep >= 0) {
+        const img = new Image();
+        img.src = drawingHistory[historyStep];
+        img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
+      }
+    }
+    function saveToHistory() {
+      historyStep++;
+      if (historyStep < drawingHistory.length) drawingHistory.length = historyStep;
+      drawingHistory.push(canvas.toDataURL());
+      undoBtn.disabled = historyStep <= 0;
+      redoBtn.disabled = historyStep >= drawingHistory.length - 1;
+    }
+    function undo() {
+      if (historyStep <= 0) return;
+      historyStep--;
+      const img = new Image(); img.src = drawingHistory[historyStep];
+      img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); undoBtn.disabled = historyStep <= 0; redoBtn.disabled = historyStep >= drawingHistory.length - 1; };
+    }
+    function redo() {
+      if (historyStep >= drawingHistory.length - 1) return;
+      historyStep++;
+      const img = new Image(); img.src = drawingHistory[historyStep];
+      img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); undoBtn.disabled = historyStep <= 0; redoBtn.disabled = historyStep >= drawingHistory.length - 1; };
+    }
+    function togglePenMode() {
+      penActive = !penActive;
+      canvas.style.display = penActive ? 'block' : 'none';
+      canvas.style.pointerEvents = penActive ? 'auto' : 'none';
+      toggleBtn.textContent = penActive ? '✏️ Stop Drawing' : '✏️ Start Drawing';
+      if (penActive && drawingHistory.length === 0) saveToHistory();
+    }
+    function setCanvasInteractivity(enabled) { if (penActive) canvas.style.pointerEvents = enabled ? 'auto' : 'none'; }
+
+    let lx = 0, ly = 0;
+    canvas.addEventListener('mousedown', e => { if (!penActive) return; e.preventDefault(); isDrawing = true; lx = e.clientX; ly = e.clientY; });
+    canvas.addEventListener('mousemove', e => {
+      if (!penActive || !isDrawing) return;
+      e.preventDefault();
+      ctx.strokeStyle = colorInput.value; ctx.lineWidth = sizeInput.value; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(e.clientX, e.clientY); ctx.stroke(); lx = e.clientX; ly = e.clientY;
+    });
+    canvas.addEventListener('mouseup', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } });
+    canvas.addEventListener('mouseout', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } });
+    toggleBtn.addEventListener('click', e => { e.stopPropagation(); togglePenMode(); });
+    undoBtn.addEventListener('click', e => { e.stopPropagation(); undo(); });
+    redoBtn.addEventListener('click', e => { e.stopPropagation(); redo(); });
+    clearBtn.addEventListener('click', e => { e.stopPropagation(); ctx.clearRect(0,0,canvas.width,canvas.height); drawingHistory = []; historyStep = -1; undoBtn.disabled = true; redoBtn.disabled = true; });
+    sizeInput.addEventListener('input', e => { sizeDisplay.textContent = e.target.value + 'px'; });
+    toolbar.addEventListener('mouseenter', () => { if (isDrawing) { isDrawing = false; saveToHistory(); } setCanvasInteractivity(false); });
+    toolbar.addEventListener('mouseleave', () => setCanvasInteractivity(true));
+    document.addEventListener('keydown', e => {
+      if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') togglePenMode();
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+    });
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    undoBtn.disabled = true; redoBtn.disabled = true;
+  }
+
+  initPenTool();
+</script>
+</body>
+</html>
